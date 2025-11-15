@@ -1,0 +1,71 @@
+{
+  "timestamp": "2025-11-15T18:49:22.696Z",
+  "total": 1,
+  "anomalies": [
+    {
+      "id": "anom_high_activity_חיפה_-_כרמל_ועיר_תחתית_garbage_1763232562690",
+      "category": "high_activity",
+      "type": "garbage",
+      "area": "חיפה - כרמל ועיר תחתית",
+      "title": "ריבוי דיווחי garbage באזור חיפה - כרמל ועיר תחתית",
+      "description": "נמצאו 14 דיווחים בחודש הנוכחי מול ממוצע 8.6 (Z=3.61, +63%).",
+      "metrics": {
+        "currentReports": 14,
+        "baselineMean": 8.6,
+        "baselineStd": 1.5,
+        "threshold": 14,
+        "pctChange": 63,
+        "zScore": 3.61,
+        "bins": [
+          {
+            "ts": 1748725200000,
+            "count": 7
+          },
+          {
+            "ts": 1751317200000,
+            "count": 11
+          },
+          {
+            "ts": 1753995600000,
+            "count": 9
+          },
+          {
+            "ts": 1756674000000,
+            "count": 9
+          },
+          {
+            "ts": 1759266000000,
+            "count": 7
+          },
+          {
+            "ts": 1761948000000,
+            "count": 14
+          }
+        ]
+      },
+      "relatedReports": [
+        "rpt_2006",
+        "rpt_2027",
+        "rpt_2050",
+        "rpt_2063",
+        "rpt_2065",
+        "rpt_2069",
+        "rpt_2073",
+        "rpt_2076",
+        "rpt_2088",
+        "rpt_2091",
+        "rpt_2092",
+        "rpt_2105",
+        "rpt_2110",
+        "rpt_2113"
+      ],
+      "severity": "high",
+      "status": "open",
+      "detectedAt": 1763232562690,
+      "center": {
+        "lat": 32.81083028571429,
+        "lng": 34.98035914285715
+      }
+    }
+  ]
+}

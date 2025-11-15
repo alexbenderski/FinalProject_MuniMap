@@ -1,0 +1,41 @@
+/* auth.css */
+
+/* הקונטיינר הראשי */
+.auth-main {
+  @apply min-h-screen flex items-center justify-center bg-gray-50;
+}
+
+/* הקארד */
+.auth-card {
+  @apply w-full max-w-md bg-white shadow-lg rounded-2xl p-8;
+}
+
+/* כותרת ראשית */
+.auth-title {
+  @apply text-black font-bold text-center mb-4 text-4xl;
+}
+
+/* טקסט עזר */
+.auth-subtitle {
+  @apply text-gray-600 text-sm mb-6 text-center;
+}
+
+/* אינפוט */
+.auth-input {
+  @apply w-full border rounded-md px-3 py-2 focus:outline-none focus:ring focus:ring-blue-300;
+}
+
+/* כפתור */
+.auth-button {
+  @apply w-full bg-green-400 text-black font-semibold py-2 rounded-md hover:bg-green-500 transition disabled:opacity-60;
+}
+
+/* הודעת שגיאה */
+.auth-error {
+  @apply text-sm text-red-600;
+}
+
+/* טקסט קטן מתחת */
+.auth-footer {
+  @apply text-xs text-gray-500 flex items-start gap-2;
+}
