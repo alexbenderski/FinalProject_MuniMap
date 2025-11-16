@@ -1,5 +1,6 @@
 import { groupBy, buildMonthlyBins, calcDynamicThreshold, mean } from "./utils";
 import { buildAnomaly, Anomaly } from "./builders";
+import { generateAnomalyDescription } from "./anomalyTextGenerator";
 
 export interface Report {
   id: string;
@@ -51,7 +52,6 @@ export function detectHighActivity(reports: Report[], now = Date.now()): Anomaly
       console.log(`❌ No anomaly: current(${current}) < threshold(${threshold})`);
       continue;
     }
-
     console.log("✨ Found spike based on threshold!");
 
     // determine related reports inside this month window
@@ -79,29 +79,32 @@ export function detectHighActivity(reports: Report[], now = Date.now()): Anomaly
     const severity = z >= 3.0 || pct >= 100 ? "high" : "medium";
     console.log("🚨 Creating anomaly entry!");
 
-    anomalies.push(
-      buildAnomaly({
-        category: type,
-        type: "spike",
-        area,
-        title: `ריבוי דיווחי ${type} באזור ${area}`,
-        description: `נמצאו ${current} דיווחים בחודש הנוכחי מול ממוצע ${μ.toFixed(
-          1
-        )} (Z=${z.toFixed(2)}, +${pct.toFixed(0)}%).`,
-        metrics: {
-          currentReports: current,
-          baselineMean: +μ.toFixed(2),
-          baselineStd: +σ.toFixed(2),
-          threshold: Math.round(threshold),
-          pctChange: Math.round(pct),
-          zScore: +z.toFixed(2),
-          bins,
-        },
-        relatedReports: related.map(r => r.id),
-        center,
-        severity,
-      })
-    );
+const anomaly = buildAnomaly({
+  category: type,
+  type: "spike",
+  area,
+  title: `ריבוי דיווחי ${type} באזור ${area}`,
+  description: `נמצאו ${current} דיווחים בחודש הנוכחי מול ממוצע ${μ.toFixed(
+    1
+  )} (Z=${z.toFixed(2)}, +${pct.toFixed(0)}%).`,
+  metrics: {
+    currentReports: current,
+    baselineMean: +μ.toFixed(2),
+    baselineStd: +σ.toFixed(2),
+    threshold: Math.round(threshold),
+    pctChange: Math.round(pct),
+    zScore: +z.toFixed(2),
+    bins,
+  },
+  relatedReports: related.map((r) => r.id),
+  center,
+  severity,
+});
+
+  // מוסיף את המשפט הדינמי:
+  anomaly.generalMessage = generateAnomalyDescription(anomaly);
+  anomalies.push(anomaly);
+
   }
 
   console.log("=== 🧪 Total anomalies found:", anomalies.length, " ===");

@@ -61,8 +61,17 @@ export interface AnomalyBin {
   ts: number;
   count: number;
 }
-export type AnomalyType = "spike" | "drop" | "trend" | "coldspot";
 
+export type AnomalyType =
+  | "spike"            // ריבוי דיווחים פתאומי
+  | "trend"            // עלייה מתמשכת
+  | "drop"
+  //
+  | "slow_response"    // זמן טיפול ארוך
+  | "unclosed_cases"   // ריבוי תקלות שלא נסגרו
+  | "geo_cluster"      // ריכוז דיווחים נקודתי
+  | "delay"            // איחור מצטבר
+  | "custom";          // כל דבר עתידי
 export interface AnomalyMetrics {
   currentReports: number;
   baselineMean: number;
@@ -76,6 +85,7 @@ export interface AnomalyMetrics {
 export interface Anomaly {
   firebaseKey: string; 
   id: string;
+  generalMessage?: string;  
   category: string;
   type: AnomalyType;
   area: string;

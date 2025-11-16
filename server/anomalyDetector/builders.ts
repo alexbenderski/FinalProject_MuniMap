@@ -3,10 +3,21 @@
 export interface AnomalyMetrics {
   [key: string]: number | string | unknown;
 }
-export type AnomalyType = "spike" | "drop" | "trend" | "coldspot";
+export type AnomalyType =
+  | "spike"            // ריבוי דיווחים פתאומי
+  | "trend"            // עלייה מתמשכת
+  | "drop"
+  //
+  | "slow_response"    // זמן טיפול ארוך
+  | "unclosed_cases"   // ריבוי תקלות שלא נסגרו
+  | "geo_cluster"      // ריכוז דיווחים נקודתי
+  | "delay"            // איחור מצטבר
+  | "custom";          // כל דבר עתידי
+
 
 export interface Anomaly {
   id: string;
+  generalMessage?: string;  
   category: string;
   type: AnomalyType;
   area: string;

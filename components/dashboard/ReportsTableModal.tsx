@@ -440,171 +440,162 @@ async function handleGenerateDualLinks() {
 
 
 
-
-
-
-
-
 return (
   <>
     <Modal title={title ?? "Reports Table"} onClose={onClose}>
       <div className="flex flex-col bg-white rounded-lg shadow-lg max-w-[95vw] max-h-[90vh] w-[1000px] overflow-hidden">
 
-        {/* ✅ פירוט האנומליה מעל הטבלה */}
+{/* פירוט האנומליה מעל הטבלה */}
 {localAnomaly && (
   <div className="px-6 pt-4 pb-3 text-sm text-gray-700 leading-relaxed border-b mb-3 bg-gray-50">
-    <div className="flex items-center justify-between mb-2">
+
+    {/* כותרת + כפתור Reviewed */}
+    <div className="flex items-center justify-between mb-3">
       <h2 className="font-semibold text-lg text-gray-900">
         פרטים על האנומליה:
       </h2>
 
-      {/* כפתור סימון כ־Reviewed */}
-<button
-  onClick={async () => {
-    if (!currentUserKey) {
-      alert("לא נמצא משתמש מחובר");
-      return;
-    }
-
-    const alreadyReviewed =
-      !!localAnomaly.reviewedBy?.[currentUserKey];
-
-    if (alreadyReviewed) {
-      alert("כבר סימנת את האנומליה הזו כ־Reviewed ✅");
-      return;
-    }
-
-    if (!confirm("האם אתה בטוח שקראת ובדקת את האנומליה הזו?")) return;
-
-    try {
-      const { markAnomalyAsReviewed } = await import("@/lib/fetchers");
-      const result = await markAnomalyAsReviewed(localAnomaly);
-
-      if (result.alreadyReviewed) {
-        alert("כבר סומנה בעבר");
-        return;
-      }
-
-      // עדכון מקומי ב־state
-      setLocalAnomaly(prev => ({
-        ...prev!,
-        reviewedBy: {
-          ...(prev?.reviewedBy ?? {}),
-          [currentUserKey]: result.timestamp ?? Date.now(),
-        },
-      }));
-
-      // עדכון למעלה (BottomBar)
-      if (onReviewUpdate) {
-        onReviewUpdate({
-          ...localAnomaly,
-          reviewedBy: {
-            ...(localAnomaly.reviewedBy ?? {}),
-            [currentUserKey]: result.timestamp ?? Date.now(),
+      {/* כפתור סימון כ־Reviewed — נשאר זהה */}
+      <button
+        onClick={async () => {
+          if (!currentUserKey) {
+            alert("לא נמצא משתמש מחובר");
+            return;
           }
-        });
-      }
 
-      alert(`סומנה כ־Reviewed על ידי ${result.email}`);
-    } catch (err) {
-      console.error(err);
-      alert("❌ שגיאה בעדכון המצב");
-    }
-  }}
-    className={`rounded-md px-3 py-1 text-sm font-medium ${
-      currentUserKey && localAnomaly.reviewedBy?.[currentUserKey]
-        ? "bg-green-100 text-green-700 border border-green-300 cursor-default"
-        : "bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200"
-    }`}
-    disabled={!!(currentUserKey && localAnomaly.reviewedBy?.[currentUserKey])}
-    >
-      {currentUserKey && localAnomaly.reviewedBy?.[currentUserKey]
-        ? "✅ Already Reviewed"
-        : "❌ Not Reviewed yet"}
-</button>
+          const alreadyReviewed =
+            !!localAnomaly.reviewedBy?.[currentUserKey];
 
+          if (alreadyReviewed) {
+            alert("כבר סימנת את האנומליה הזו כ־Reviewed ✅");
+            return;
+          }
 
+          if (!confirm("האם אתה בטוח שקראת ובדקת את האנומליה הזו?")) return;
 
+          try {
+            const { markAnomalyAsReviewed } = await import("@/lib/fetchers");
+            const result = await markAnomalyAsReviewed(localAnomaly);
+
+            if (result.alreadyReviewed) {
+              alert("כבר סומנה בעבר");
+              return;
+            }
+
+            setLocalAnomaly(prev => ({
+              ...prev!,
+              reviewedBy: {
+                ...(prev?.reviewedBy ?? {}),
+                [currentUserKey]: result.timestamp ?? Date.now(),
+              },
+            }));
+
+            if (onReviewUpdate) {
+              onReviewUpdate({
+                ...localAnomaly,
+                reviewedBy: {
+                  ...(localAnomaly.reviewedBy ?? {}),
+                  [currentUserKey]: result.timestamp ?? Date.now(),
+                }
+              });
+            }
+
+            alert(`סומנה כ־Reviewed על ידי ${result.email}`);
+          } catch (err) {
+            console.error(err);
+            alert("❌ שגיאה בעדכון המצב");
+          }
+        }}
+        className={`rounded-md px-3 py-1 text-sm font-medium ${
+          currentUserKey && localAnomaly.reviewedBy?.[currentUserKey]
+            ? "bg-green-100 text-green-700 border border-green-300 cursor-default"
+            : "bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200"
+        }`}
+        disabled={!!(currentUserKey && localAnomaly.reviewedBy?.[currentUserKey])}
+      >
+        {currentUserKey && localAnomaly.reviewedBy?.[currentUserKey]
+          ? "✅ Already Reviewed"
+          : "❌ Not Reviewed yet"}
+      </button>
     </div>
-    {/* --- פרטי אנומליה --- */}
-<ul className="list-disc pl-5 space-y-1 text-gray-800">
 
-  <li>
-    <strong>דיווחים בחודש הנוכחי:</strong>{" "}
-    {localAnomaly.metrics.currentReports}
-  </li>
+    {/* ⭐ מבנה שני טורים */}
+    <div className="flex gap-10 items-start">
 
-  <li>
-    <strong>ממוצע היסטורי:</strong>{" "}
-    {localAnomaly.metrics.baselineMean}
-    <Tooltip message="כמה דיווחים היו בממוצע ב 6 חודשים קודמים באזור זה." />
-  </li>
+      {/* טור ימין — generalMessage */}
+      <div className="w-1/2">
+        {localAnomaly.generalMessage && (
+          <p className="mt-1 mb-4 text-gray-800 leading-relaxed whitespace-pre-line">
+            {localAnomaly.generalMessage}
+          </p>
+        )}
+      </div>
 
-  <li>
-    <strong>סטיית תקן:</strong>{" "}
-    {localAnomaly.metrics.baselineStd}
-    <Tooltip message="כמה המשתנים מפוזרים סביב הממוצע.
-     ערך גבוה = הרבה חוסר יציבות.
-     אם סטיית תקן היא X אז 
-     כמות הדיווחים זזה +- ב X מהממוצע." />
-  </li>
+      {/* טור שמאל — רשימת הנתונים */}
+      <div className="w-1/2">
+        <ul className="list-disc pl-5 space-y-1 text-gray-800">
 
-  <li>
-    <strong>Threshold (סף גילוי):</strong>{" "}
-    {localAnomaly.metrics.threshold}
-    <Tooltip message="הערך שמעליו נחשבת התנהגות לחריגה. מחושב לפי ממוצע + סטיית תקן." />
-  </li>
+          <li>
+            <strong>דיווחים בחודש הנוכחי:</strong>{" "}
+            {localAnomaly.metrics.currentReports}
+          </li>
 
-  <li>
-    <strong>שינוי באחוזים:</strong>{" "}
-    {localAnomaly.metrics.pctChange > 0 ? "+" : ""}
-    {localAnomaly.metrics.pctChange}%
-    <Tooltip message="בכמה אחוזים הדיווחים בחודש הנוכחי גבוהים מהממוצע ההיסטורי." />
-  </li>
+          <li>
+            <strong>ממוצע היסטורי:</strong>{" "}
+            {localAnomaly.metrics.baselineMean}
+            <Tooltip message="כמה דיווחים היו בממוצע ב־6 חודשים קודמים באזור זה." />
+          </li>
 
-  <li>
-    <strong>Z-Score:</strong>{" "}
-    {localAnomaly.metrics.zScore}
-    <Tooltip message=" משמש להשוואת ערכים מקבוצות נתונים שונות ולזיהוי ערכים חריגים.
-ערכים שנחשבים חריגים בדרך כלל נמצאים מחוץ לטווח של +2 .
-" />
-  </li>
+          <li>
+            <strong>סטיית תקן:</strong>{" "}
+            {localAnomaly.metrics.baselineStd}
+            <Tooltip message="כמה המשתנים מפוזרים סביב הממוצע. ערך גבוה = הרבה חוסר יציבות. אם סטיית תקן היא X אז כמות הדיווחים זזה ±X מהממוצע." />
+          </li>
 
-  {/* <li>
-    <strong>מספר דיווחים רלוונטיים:</strong>{" "}
-    {localAnomaly.relatedReports.length}
-  </li> */}
+          <li>
+            <strong>Threshold (סף גילוי):</strong>{" "}
+            {localAnomaly.metrics.threshold}
+            <Tooltip message="הערך שמעליו נחשבת התנהגות לחריגה." />
+          </li>
 
-  <li>
-    <strong>זוהה בפעם הראשונה בתאריך:</strong>{" "}
-    {new Date(localAnomaly.firstDetected).toLocaleString("he-IL")}
-  </li>
+          <li>
+            <strong>שינוי באחוזים:</strong>{" "}
+            {localAnomaly.metrics.pctChange > 0 ? "+" : ""}
+            {localAnomaly.metrics.pctChange}%
+            <Tooltip message="כמה אחוזים הדיווחים הנוכחיים גבוהים מהממוצע." />
+          </li>
 
-  {localAnomaly.center && (
-    <li>
-      <strong>מרכז גיאוגרפי:</strong>{" "}
-      {localAnomaly.center.lat.toFixed(5)},{" "}
-      {localAnomaly.center.lng.toFixed(5)}
-      <Tooltip message="נקודת האמצע הגיאוגרפית של כל הדיווחים שנכנסו לאנומליה." />
-    </li>
-  )}
-</ul>
+          <li>
+            <strong>Z-Score:</strong>{" "}
+            {localAnomaly.metrics.zScore}
+          </li>
 
-    {/* --- רשימת מי שכבר סקר --- */}
+          <li>
+            <strong>זוהה בפעם הראשונה בתאריך:</strong>{" "}
+            {new Date(localAnomaly.firstDetected).toLocaleString("he-IL")}
+          </li>
+
+          {localAnomaly.center && (
+            <li>
+              <strong>מרכז גיאוגרפי:</strong>{" "}
+              {localAnomaly.center.lat.toFixed(5)},{" "}
+              {localAnomaly.center.lng.toFixed(5)}
+            </li>
+          )}
+
+        </ul>
+      </div>
+    </div>
+
+    {/* --- רשימת מי שסקר --- */}
     {localAnomaly.reviewedBy && (
-      <div className="mt-3 border-t pt-2">
+      <div className="mt-4 border-t pt-2">
         <h3 className="font-semibold mb-1">✔️ כבר סוקר על ידי:</h3>
         <ul className="list-disc pl-5">
           {Object.entries(localAnomaly.reviewedBy).map(([emailKey, ts]) => (
             <li key={emailKey}>
               {emailKey.replace(/_/g, ".")} –{" "}
-              {new Date(ts).toLocaleString("he-IL", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {new Date(ts).toLocaleString("he-IL")}
             </li>
           ))}
         </ul>
@@ -612,6 +603,9 @@ return (
     )}
   </div>
 )}
+
+
+
 
           {/* טופ־בר */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 border-b bg-gray-50">
@@ -660,100 +654,118 @@ return (
             </div>
           </div>
 
-          {/* טבלה */}
-          <div className="overflow-y-auto flex-1 p-3 bg-white">
-            <table className="w-full border-collapse text-sm">
-              <thead className="bg-gray-100 border-b font-semibold sticky top-0 z-10">
-                <tr>
-                  <th className="p-2 border w-[40px]">✔</th>
-                  <th className="p-2 border w-[90px]">Report ID</th>
-                  <th className="p-2 border w-[100px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Category")}>
-                    Category
-                  </th>
-                  <th className="p-2 border cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Description")}>
-                    Description
-                  </th>
-                  <th className="p-2 border w-[120px] text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Criticality")}>
-                    Criticality
-                  </th>
-                  <th className="p-2 border w-[150px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Timestamp")}>
-                    Timestamp
-                  </th>
-                  <th className="p-2 border w-[120px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Location")}>
-                    Location
-                  </th>
-                  <th className="p-2 border w-[180px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Address")}>
-                    Address
-                  </th>
-                  <th className="p-2 border w-[90px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Status")}>
-                    Status
-                  </th>
-                  <th className="p-2 border w-[70px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Media")}>
-                    Media
-                  </th>
-                  <th className="p-2 border w-[130px]">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedRows.map((r) => {
-                  const rowId = getRowId(r);
-                  return (
-                  <tr key={rowId} className={`border ${selectedReports.includes(rowId) ? "bg-green-100" : "hover:bg-gray-50"}`}>
-                    <td className="p-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedReports.includes(rowId)}
-                        onChange={() => toggleSelect(rowId)}
-                      />
-                    </td>
-                    <td className="p-2 text-center">{r.id ?? "—"}</td>
-                    <td className="p-2 text-center capitalize">{r.type}</td>
-                    <td className="p-2">{r.description}</td>
-                    <td className="text-center">
-                      {r.type ? <CriticalityCell timestamp={r.timestamp} type={r.type} /> : "—"}
-                    </td>
-                    <td className="p-2 text-center">{new Date(r.timestamp).toLocaleString("he-IL")}</td>
-                    <td className="p-2 text-center">{r.area}</td>
-                    <td>{r.address || "—"}</td>
-                    <td className="p-2 text-center">{r.status}</td>
-                    <td className="p-2 text-center">{r.media ? "📷" : "—"}</td>
-                    <td className="p-2 text-center space-x-2">
-                      <button
-                        className="text-blue-600 hover:underline"
-                        onClick={() => {
-                          setReportsToShow([r]);
-                          setMapOpen(true);
-                        }}
-                      >
-                        Show on map
-                      </button>
-                      <button
-                        className="text-green-600 hover:underline"
-                        onClick={() => handleOpenDetails(r)}
-                      >
-                        Open Details
-                      </button>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+{/* 🔽 במקום ה־div של הטבלה + ה־footer הנפרד, נעטוף אותם יחד */}
+<div className="flex-1 overflow-y-auto flex flex-col">
 
-            {filteredRows.length === 0 && (
-              <div className="text-center py-3 text-gray-500">No reports found.</div>
-            )}
-          </div>
+  {/* טבלה */}
+  <div className="p-3 bg-white">
+    <table className="w-full text-sm border-separate border-spacing-0">
+      <thead className="bg-white border-b-2 border-gray-300 font-semibold sticky top-0 z-20 shadow-sm">
+        <tr>
+          <th className="p-2 border w-[40px]">✔</th>
+          <th className="p-2 border w-[90px]">Report ID</th>
+          <th className="p-2 border w-[100px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Category")}>
+            Category
+          </th>
+          <th className="p-2 border cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Description")}>
+            Description
+          </th>
+          <th className="p-2 border w-[120px] text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Criticality")}>
+            Criticality
+          </th>
+          <th className="p-2 border w-[150px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Timestamp")}>
+            Timestamp
+          </th>
+          <th className="p-2 border w-[120px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Location")}>
+            Location
+          </th>
+          <th className="p-2 border w-[180px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Address")}>
+            Address
+          </th>
+          <th className="p-2 border w-[90px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Status")}>
+            Status
+          </th>
+          <th className="p-2 border w-[70px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Media")}>
+            Media
+          </th>
+          <th className="p-2 border w-[130px]">Actions</th>
+        </tr>
+      </thead>
 
-          <div className="border-t p-3 text-right bg-gray-50">
-            <button
-              onClick={onClose}
-              className="bg-gray-300 hover:bg-gray-400 px-4 py-1 rounded font-semibold"
+      <tbody>
+        {sortedRows.map((r) => {
+          const rowId = getRowId(r);
+          return (
+            <tr
+              key={rowId}
+              className={`border ${
+                selectedReports.includes(rowId)
+                  ? "bg-green-100"
+                  : "hover:bg-gray-50"
+              }`}
             >
-              Close
-            </button>
-          </div>
-        </div>
+              <td className="p-2 text-center">
+                <input
+                  type="checkbox"
+                  checked={selectedReports.includes(rowId)}
+                  onChange={() => toggleSelect(rowId)}
+                />
+              </td>
+              <td className="p-2 text-center">{r.id ?? "—"}</td>
+              <td className="p-2 text-center capitalize">{r.type}</td>
+              <td className="p-2">{r.description}</td>
+              <td className="text-center">
+                {r.type ? <CriticalityCell timestamp={r.timestamp} type={r.type} /> : "—"}
+              </td>
+              <td className="p-2 text-center">
+                {new Date(r.timestamp).toLocaleString("he-IL")}
+              </td>
+              <td className="p-2 text-center">{r.area}</td>
+              <td>{r.address || "—"}</td>
+              <td className="p-2 text-center">{r.status}</td>
+              <td className="p-2 text-center">{r.media ? "📷" : "—"}</td>
+              <td className="p-2 text-center space-x-2">
+                <button
+                  className="text-blue-600 hover:underline"
+                  onClick={() => {
+                    setReportsToShow([r]);
+                    setMapOpen(true);
+                  }}
+                >
+                  Show on map
+                </button>
+                <button
+                  className="text-green-600 hover:underline"
+                  onClick={() => handleOpenDetails(r)}
+                >
+                  Open Details
+                </button>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+
+    {filteredRows.length === 0 && (
+      <div className="text-center py-3 text-gray-500">
+        No reports found.
+      </div>
+    )}
+  </div>
+
+  {/* footer – נמצא בתוך אותו אזור גלילה, אבל עם shrink-0 */}
+  <div className="border-t p-3 text-right bg-gray-50 shrink-0">
+    <button
+      onClick={onClose}
+      className="bg-gray-300 hover:bg-gray-400 px-4 py-1 rounded font-semibold"
+    >
+      Close
+    </button>
+  </div>
+</div>
+  </div>
+
       </Modal>
 
       {/* חלון הפילטרים */}
