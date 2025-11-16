@@ -21,11 +21,12 @@ interface ReportsTableModalProps {
   open: boolean;
   onClose: () => void;
   reports?: Report[];
+  selectedArea: string | null;
   onApplyFilters: (filters: FiltersPayload) => void; // 👈  — כדי לעדכן גם את המפה
   title?: string;               
   anomalyDetails?: Anomaly; // 👈 חדש — מוסיף את פרטי האנומליה
   onReviewUpdate?: (updatedAnomaly: Anomaly) => void; 
-
+  
 }
 
 type FiltersPayload = {
@@ -60,6 +61,7 @@ export default function ReportsTableModal({
   open,
   onClose,
   reports: externalReports,
+  selectedArea, 
   onApplyFilters,
   title,
   anomalyDetails,
@@ -623,6 +625,7 @@ return (
           >
             Show all reports on map
           </button>
+          
             <button
             className="text-green-600 font-semibold hover:underline ml-3"
             onClick={handleGenerateDualLinks}
@@ -793,6 +796,7 @@ return (
           onClose={() => setMapOpen(false)}
           reports={reportsToShow}
           criticality={filters.criticality}
+          selectedArea={selectedArea}
         />
       )}
       {detailsOpen && selectedReport && (

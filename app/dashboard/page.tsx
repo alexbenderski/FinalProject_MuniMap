@@ -134,6 +134,7 @@ export default function DashboardPage() {
             open={searchOpen}
             onClose={() => setSearchOpen(false)}
             reports={reportsForTable}
+            selectedArea={selectedArea}
             onApplyFilters={(filters) => {
               setSelectedArea(filters.location || null);
               setSelectedTypes(filters.categories);
@@ -141,8 +142,9 @@ export default function DashboardPage() {
               setDateTo(filters.dateTo);
               setStatus(filters.status);
               setMediaOnly(filters.mediaOnly);
-              setCriticality(filters.criticality || ""); // ✅ חדש
+              setCriticality(filters.criticality || ""); 
             }}
+
           />
         )}
 
@@ -158,6 +160,7 @@ export default function DashboardPage() {
           <AnomaliesModal
             open={anomListOpen}
             onClose={() => setAnomListOpen(false)}
+            selectedArea={selectedArea}
           />
         )}
       </div>

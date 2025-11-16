@@ -9,7 +9,14 @@ import { getCurrentUserInfo } from "@/lib/fetchers";
 
 
 
-export default function AnomaliesModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function AnomaliesModal({
+   open, onClose,
+   selectedArea,
+  }: { 
+    open: boolean;
+    onClose: () => void;
+    selectedArea: string | null;
+  }) {
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -245,6 +252,7 @@ async function handleMarkReviewed(anomaly: Anomaly) {
           open={reportsModalOpen}
           onClose={() => setReportsModalOpen(false)}
           reports={reportsForAnomaly}
+          selectedArea={selectedArea}
           onApplyFilters={() => {}}
           title={`Reports for: ${selectedAnomaly.title}`}
           anomalyDetails={selectedAnomaly}
