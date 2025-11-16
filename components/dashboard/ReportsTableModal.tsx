@@ -537,13 +537,16 @@ return (
   <li>
     <strong>ממוצע היסטורי:</strong>{" "}
     {localAnomaly.metrics.baselineMean}
-    <Tooltip message="כמה דיווחים היו בממוצע בחודשים קודמים באזור זה." />
+    <Tooltip message="כמה דיווחים היו בממוצע ב 6 חודשים קודמים באזור זה." />
   </li>
 
   <li>
     <strong>סטיית תקן:</strong>{" "}
     {localAnomaly.metrics.baselineStd}
-    <Tooltip message="כמה המשתנים מפוזרים סביב הממוצע. ערך גבוה = הרבה חוסר יציבות." />
+    <Tooltip message="כמה המשתנים מפוזרים סביב הממוצע.
+     ערך גבוה = הרבה חוסר יציבות.
+     אם סטיית תקן היא X אז 
+     כמות הדיווחים זזה +- ב X מהממוצע." />
   </li>
 
   <li>
@@ -562,17 +565,19 @@ return (
   <li>
     <strong>Z-Score:</strong>{" "}
     {localAnomaly.metrics.zScore}
-    <Tooltip message="בכמה> סטיות תקן הדיווחים של החודש חורגים מהממוצע. מעל 3 נחשב חריג מאוד." />
+    <Tooltip message=" משמש להשוואת ערכים מקבוצות נתונים שונות ולזיהוי ערכים חריגים.
+ערכים שנחשבים חריגים בדרך כלל נמצאים מחוץ לטווח של +2 .
+" />
   </li>
 
-  <li>
+  {/* <li>
     <strong>מספר דיווחים רלוונטיים:</strong>{" "}
     {localAnomaly.relatedReports.length}
-  </li>
+  </li> */}
 
   <li>
-    <strong>זוהה בתאריך:</strong>{" "}
-    {new Date(localAnomaly.detectedAt).toLocaleString("he-IL")}
+    <strong>זוהה בפעם הראשונה בתאריך:</strong>{" "}
+    {new Date(localAnomaly.firstDetected).toLocaleString("he-IL")}
   </li>
 
   {localAnomaly.center && (

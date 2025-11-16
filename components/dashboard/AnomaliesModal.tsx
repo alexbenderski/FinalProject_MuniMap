@@ -116,6 +116,7 @@ async function handleMarkReviewed(anomaly: Anomaly) {
                   <th className="p-2 border w-[160px] text-center">area</th>
                   <th className="p-2 border w-[120px] text-center">num of reports</th>
                   <th className="p-2 border w-[120px] text-center">status</th>
+                  <th className="p-2 border w-[130px] text-center">first date</th>
                   <th className="p-2 border w-[130px] text-center">last date</th>
                   <th className="p-2 border w-[120px] text-center">actions</th>
                 </tr>
@@ -123,7 +124,7 @@ async function handleMarkReviewed(anomaly: Anomaly) {
 <tbody>
   {filtered.map((a, index) => {
     const metrics = a.metrics ?? {};
-    const lastDate = a.detectedAt;
+    const lastDate = a.lastUpdated;
 
 
     return (
@@ -132,11 +133,11 @@ async function handleMarkReviewed(anomaly: Anomaly) {
 
         {/* type icon */}
         <td className="p-2 text-center text-lg">
-          {a.type === "garbage"
+          {a.category === "garbage"
             ? "🗑️"
-            : a.type === "lighting"
+            : a.category === "lighting"
             ? "💡"
-            : a.type === "tree"
+            : a.category === "tree"
             ? "🌳"
             : "⚠️"}
         </td>
@@ -179,14 +180,27 @@ async function handleMarkReviewed(anomaly: Anomaly) {
           </button>
         </td>
 
-        {/* last date */}
+        {/* first date */}
         <td className="p-2 text-center text-gray-600">
-          {new Date(a.detectedAt).toLocaleDateString("he-IL", {
+          {new Date(a.firstDetected).toLocaleDateString("he-IL", {
             day: "2-digit",
             month: "2-digit",
             year: "2-digit",
           })}{" "}
-          {new Date(a.detectedAt).toLocaleTimeString("he-IL", {
+          {new Date(a.firstDetected).toLocaleTimeString("he-IL", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </td>
+
+        {/* last date */}
+        <td className="p-2 text-center text-gray-600">
+          {new Date(a.lastUpdated).toLocaleDateString("he-IL", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+          })}{" "}
+          {new Date(a.lastUpdated).toLocaleTimeString("he-IL", {
             hour: "2-digit",
             minute: "2-digit",
           })}

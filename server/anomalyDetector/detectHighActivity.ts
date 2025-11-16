@@ -74,17 +74,15 @@ export function detectHighActivity(reports: Report[], now = Date.now()): Anomaly
 
     const pct = μ ? ((current - μ) / μ) * 100 : 100;
     const z = (current - μ) / (σ || 1);
-
     console.log(`📊 pctChange=${pct}%, zScore=${z}`);
 
     const severity = z >= 3.0 || pct >= 100 ? "high" : "medium";
-
     console.log("🚨 Creating anomaly entry!");
 
     anomalies.push(
       buildAnomaly({
-        category: "high_activity",
-        type,
+        category: type,
+        type: "spike",
         area,
         title: `ריבוי דיווחי ${type} באזור ${area}`,
         description: `נמצאו ${current} דיווחים בחודש הנוכחי מול ממוצע ${μ.toFixed(

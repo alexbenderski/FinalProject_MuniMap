@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, push } from "firebase/database";
+import { getDatabase, ref, set, push, get } from "firebase/database";
 import { Anomaly } from "./anomalyDetector/builders";
 
 //to run firebaseConfig process.env from .env from the server folder
@@ -19,19 +19,27 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/**
- * שומר אנומליות חדשות תחת Anomalies/
- * כל אנומליה תקבל מפתח ייחודי אוטומטי
- */
-export async function saveAnomaliesToFirebase(anomalies: Anomaly[]): Promise<void> {
-  try {
-    const refPath = ref(db, "Anomalies");
-    for (const anomaly of anomalies) {
-      const newRef = push(refPath);
-      await set(newRef, anomaly);
+export async function saveOrUpdateAnomaliesToDB(anomalies: Anomaly[]) {
+  for (const anomaly of anomalies) {
+    const anomalyRef = ref(db, `Anomalies/${anomaly.id}`);
+
+    const snapshot = await get(anomalyRef);
+
+    if (snapshot.exists()) {
+      const existing = snapshot.val();
+
+      await set(anomalyRef, {
+        ...existing,
+        ...anomaly,
+        firstDetected: existing.firstDetected,
+        lastUpdated: Date.now(),
+      });
+
+    } else {
+      await set(anomalyRef, anomaly);
     }
-    console.log(`✅ Saved ${anomalies.length} anomalies to Firebase`);
-  } catch (err) {
-    console.error("❌ Error saving anomalies:", err);
   }
+
+  console.log(`✅ Saved/Updated ${anomalies.length} anomalies`);
 }
+

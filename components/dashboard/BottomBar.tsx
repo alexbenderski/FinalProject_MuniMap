@@ -22,7 +22,7 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
       const list: Anomaly[] = Object.values(data || {});
 
       // מיון לפי זמן גילוי
-      list.sort((a, b) => b.detectedAt - a.detectedAt);
+      list.sort((a, b) => b.lastUpdated - a.lastUpdated);
 
       // מגבילים ל-20 שורות
       setAnomalies(list.slice(0, 20));
@@ -56,7 +56,7 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
     <>
       <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md">
         <div className="mx-auto max-w-3xl px-4 py-2 text-center">
-          <h2 className="text-base font-semibold mb-1">התראות על חריגות</h2>
+          <h2 className="text-base font-semibold mb-1">❗התראות על חריגות❗</h2>
 
           {loading ? (
             <p className="text-gray-500 text-sm">טוען חריגות...</p>
@@ -73,11 +73,11 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
                   <div className="flex flex-col text-right">
                     {/* אייקון + כותרת */}
                     <span className="font-medium text-sm">
-                      {a.type === "garbage"
+                      {a.category === "garbage"
                         ? "🗑️"
-                        : a.type === "lighting"
+                        : a.category === "lighting"
                         ? "💡"
-                        : a.type === "tree"
+                        : a.category === "tree"
                         ? "🌳"
                         : "⚠️"}{" "}
                       {a.title}
@@ -96,7 +96,7 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
 
                   {/* זמן גילוי */}
                   <span className="text-xs text-gray-500 whitespace-nowrap">
-                    {new Date(a.detectedAt).toLocaleString("he-IL", {
+                    {new Date(a.lastUpdated).toLocaleString("he-IL", {
                       day: "2-digit",
                       month: "2-digit",
                       year: "2-digit",

@@ -3,11 +3,12 @@
 export interface AnomalyMetrics {
   [key: string]: number | string | unknown;
 }
+export type AnomalyType = "spike" | "drop" | "trend" | "coldspot";
 
 export interface Anomaly {
   id: string;
   category: string;
-  type: string;
+  type: AnomalyType;
   area: string;
   title: string;
   description: string;
@@ -15,7 +16,8 @@ export interface Anomaly {
   relatedReports: string[];
   severity: "medium" | "high";
   status: "open" | "closed";
-  detectedAt: number;
+  firstDetected: number ;
+  lastUpdated: number;
   center?: { lat: number; lng: number } | null;
 }
 
@@ -26,16 +28,16 @@ export function buildAnomalyId({
 }: {
   category: string;
   area: string;
-  type: string;
+  type: AnomalyType;
 }): string {
   const safeArea = area.replace(/\s+/g, "_");
   const safeType = type.replace(/\s+/g, "_");
-  return `anom_${category}_${safeArea}_${safeType}_${Date.now()}`;
+  return `anom_${category}_${safeArea}_${safeType}`;
 }
 
 export function buildAnomaly(params: {
   category: string;
-  type: string;
+  type: AnomalyType;
   area: string;
   title: string;
   description: string;
@@ -67,7 +69,8 @@ export function buildAnomaly(params: {
     relatedReports,
     severity,
     status: "open",
-    detectedAt: Date.now(),
+    firstDetected: Date.now(),   // ← חדש
+    lastUpdated: Date.now(),     // ← חדש
     center,
   };
 }

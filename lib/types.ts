@@ -61,6 +61,7 @@ export interface AnomalyBin {
   ts: number;
   count: number;
 }
+export type AnomalyType = "spike" | "drop" | "trend" | "coldspot";
 
 export interface AnomalyMetrics {
   currentReports: number;
@@ -76,7 +77,7 @@ export interface Anomaly {
   firebaseKey: string; 
   id: string;
   category: string;
-  type: string;
+  type: AnomalyType;
   area: string;
   title: string;
   description: string;
@@ -87,12 +88,21 @@ export interface Anomaly {
     lat: number;
     lng: number;
   };
-  detectedAt: number;
+  firstDetected: number ;
+  lastUpdated: number;
   status: string;
   reviewedBy?: {
     [emailKey: string]: number; // timestamp
   };
 }
+
+
+
+
+
+
+
+
 
 export type City = {
   city: string;
