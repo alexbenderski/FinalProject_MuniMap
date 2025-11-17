@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import { observeUser } from "@/lib/auth-client";
+import { observeUser } from "@/lib/client/auth-client";
 import type { User } from "firebase/auth";
 
 type AuthCtx = { user: User | null; loading: boolean };

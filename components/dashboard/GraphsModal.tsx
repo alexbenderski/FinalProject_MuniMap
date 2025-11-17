@@ -4,7 +4,7 @@ import Modal from "@/components/dashboard/Modal";
 import {
   LineChart, Line, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { fetchGraphData, GraphTopic } from "@/lib/fetchers";
+import { fetchGraphData, GraphTopic } from "@/lib/client/fetchers";
 import { Graph } from "@/lib/types";
 
 export default function GraphsModal({ open, onClose }: { open: boolean; onClose: () => void }) {

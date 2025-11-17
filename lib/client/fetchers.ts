@@ -1,4 +1,4 @@
-import { app } from "@/lib/firebase";
+import { app } from "./firebase";
 import { getDatabase, ref, get,remove, update } from "firebase/database";
 import { Anomaly,DetailedStats,Report, AreaAgg,TimeRange } from "@/lib/types";
 import { getAuth } from "firebase/auth";
@@ -68,7 +68,7 @@ export async function fetchAnomalies(): Promise<Anomaly[]> {
     );
 
     // מיון מהחדש לישן
-    return anomalies.sort((a, b) => b.detectedAt - a.detectedAt);
+    return anomalies.sort((a, b) => b.lastUpdated - a.lastUpdated);
   } catch (err) {
     console.error("Error fetching anomalies:", err);
     return [];

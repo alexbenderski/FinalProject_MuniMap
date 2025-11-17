@@ -1,6 +1,6 @@
 // src/hooks/useCityBoundary.ts
 import { useState, useEffect } from "react";
-import { fetchCitiesFromLocal } from "@/lib/fetchers";
+import { fetchCitiesFromLocal } from "@/lib/client/fetchers";
 import { City } from "@/lib/types";
 
 export function useCityBoundary(selectedArea: string | null, map: google.maps.Map | null) {

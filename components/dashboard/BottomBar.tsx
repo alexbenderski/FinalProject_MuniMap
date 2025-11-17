@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { fetchAnomalies, fetchReports } from "@/lib/fetchers";
+import { fetchAnomalies, fetchReports } from "@/lib/client/fetchers";
 import { Anomaly, Report } from "@/lib/types";
 import ReportsTableModal from "@/components/dashboard/ReportsTableModal";
 
@@ -124,10 +124,9 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
           open={reportsModalOpen}
           onClose={() => setReportsModalOpen(false)}
           reports={reportsForAnomaly}
-          onApplyFilters={() => {}}
+          onApplyFilters={() => { } }
           title={`Reports for: ${selectedAnomaly.title}`}
-          anomalyDetails={selectedAnomaly}
-        />
+          anomalyDetails={selectedAnomaly} selectedArea={null}        />
       )}
     </>
   );

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Modal from "@/components/dashboard/Modal";
-import { fetchDetailedStatistics } from "@/lib/fetchers";
+import { fetchDetailedStatistics } from "@/lib/client/fetchers";
 import { DetailedStats, AreaStats, CategoryStats,TimeRange } from "@/lib/types";
 import DetailedStatsTableModal from "@/components/dashboard/DetailedStatsTableModal";
 

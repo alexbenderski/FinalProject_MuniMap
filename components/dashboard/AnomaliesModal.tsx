@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-import { fetchAnomalies,fetchReports } from "@/lib/fetchers";
+import { fetchAnomalies,fetchReports } from "@/lib/client/fetchers";
 import Modal from "@/components/dashboard/Modal";
 import { Anomaly,Report } from "@/lib/types";
 import ReportsTableModal from "@/components/dashboard/ReportsTableModal";
-import { markAnomalyAsReviewed } from "@/lib/fetchers";
-import { getCurrentUserInfo } from "@/lib/fetchers";
+import { markAnomalyAsReviewed } from "@/lib/client/fetchers";
+import { getCurrentUserInfo } from "@/lib/client/fetchers";
 
 
 

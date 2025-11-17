@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Modal from "@/components/dashboard/Modal";
-import { fetchReports } from "@/lib/fetchers";
+import { fetchReports } from "@/lib/client/fetchers";
 import { Report as DBReport, TimeRange } from "@/lib/types";
 
 interface DetailedStatsTableModalProps {

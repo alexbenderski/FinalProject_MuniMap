@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { fetchCitiesFromLocal } from "@/lib/fetchers";
+import { fetchCitiesFromLocal } from "@/lib/client/fetchers";
 
 type City = {
   city: string;

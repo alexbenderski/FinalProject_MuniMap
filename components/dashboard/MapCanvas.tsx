@@ -7,11 +7,11 @@ import {
   InfoWindow,//show a window pop up when click on the icons
   useJsApiLoader,//special hook that loads the js file of the google maps and ensures that api loaded before the map drawing
 } from "@react-google-maps/api";
-import { fetchCitiesFromLocal, fetchReports } from "@/lib/fetchers";
+import { fetchCitiesFromLocal, fetchReports } from "@/lib/client/fetchers";
 import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
 import { Report, City} from "@/lib/types";
-import { useCityBoundary } from "@/hooks/useCityBoundary";
-import { useFilteredReports } from "@/hooks/useFilteredReports";
+import { useCityBoundary } from "@/lib/client/hooks/useCityBoundary";
+import { useFilteredReports } from "@/lib/client/hooks/useFilteredReports";
 
 const containerStyle = { width: "100%", height: "100%" };
 const defaultCenter = { lat: 32.794, lng: 34.989 };

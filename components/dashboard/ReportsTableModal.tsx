@@ -2,11 +2,11 @@
 import { useEffect, useState, useMemo } from "react";
 import  Modal  from "@/components/dashboard/Modal";
 import FiltersModal from "@/components/dashboard/FiltersModal";
-import { fetchReports, deleteReport } from "@/lib/fetchers";
+import { fetchReports, deleteReport } from "@/lib/client/fetchers";
 import { Report,Anomaly } from "@/lib/types";
 import ReportsMapModal from "@/components/dashboard/ReportsMapModal";
 import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
-import { getCurrentUserInfo } from "@/lib/fetchers";
+import { getCurrentUserInfo } from "@/lib/client/fetchers";
 import Image from "next/image";
 import Tooltip from "@/components/dashboard/Tooltip";
 
@@ -476,7 +476,7 @@ return (
           if (!confirm("האם אתה בטוח שקראת ובדקת את האנומליה הזו?")) return;
 
           try {
-            const { markAnomalyAsReviewed } = await import("@/lib/fetchers");
+            const { markAnomalyAsReviewed } = await import("@/lib/client/fetchers");
             const result = await markAnomalyAsReviewed(localAnomaly);
 
             if (result.alreadyReviewed) {

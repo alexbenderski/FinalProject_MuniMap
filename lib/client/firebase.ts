@@ -9,7 +9,6 @@ const firebaseConfig = {
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL!, // ✅ add this in .env.local
   storageBucket: "munimap-c9082.firebasestorage.app", // ✅ חייב להיות בדיוק ככה
 
 };

@@ -3,10 +3,12 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 
-import { runAllDetectors } from "./anomalyDetector";
-import { getReportsFromFirebase } from "./firebaseReader";
-import { Anomaly } from "./anomalyDetector/builders";
-import { saveOrUpdateAnomaliesToDB } from "./firebaseWriter";
+import { runAllDetectors } from "../lib/server/anomalyDetector";
+// import { getReportsFromFirebase } from "./firebaseReader"; //old
+import {getReportsForDetector} from "../lib/server/reports-service"
+ import { Anomaly } from "../lib/server/anomalyDetector/builders";
+// import { saveOrUpdateAnomaliesToDB } from "./firebaseWriter";
+import { saveOrUpdateAnomaliesToDB } from "../lib/server/anomalies-service";
 
 const app = express();
 app.use(cors());
@@ -21,7 +23,7 @@ app.get("/api/anomalies", (_req: Request, res: Response) => {
 async function runDetectionJob(): Promise<void> {
   console.log("🕒 Running anomaly detection job...");
   try {
-    const reports = await getReportsFromFirebase();
+    const reports = await getReportsForDetector();
     const anomalies = await runAllDetectors(reports);
 
     lastAnomalies = anomalies;

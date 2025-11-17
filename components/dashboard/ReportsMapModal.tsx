@@ -4,7 +4,7 @@ import Modal from "@/components/dashboard/Modal";
 import { GoogleMap, Marker, useJsApiLoader,Polygon } from "@react-google-maps/api";
 import { Report } from "@/lib/types";
 import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
-import { useCityBoundary } from "@/hooks/useCityBoundary";
+import { useCityBoundary } from "@/lib/client/hooks/useCityBoundary";
 
 interface ReportsMapModalProps {
   open: boolean;

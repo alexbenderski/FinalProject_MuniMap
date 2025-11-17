@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { Report,FilterStatus } from "@/lib/types";
-import { updateReportInDB,softDeleteReportInDB } from "@/lib/fetchers";
+import { updateReportInDB,softDeleteReportInDB } from "@/lib/client/fetchers";
 
 const STATUS_FLOW = ["open", "pending", "in progress", "resolved"] as const;
 type ReportStatus = typeof STATUS_FLOW[number];

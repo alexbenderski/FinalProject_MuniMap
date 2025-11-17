@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import Modal from "@/components/dashboard/Modal";
-import { fetchReportsStats, fetchResolutionTimeData } from "@/lib/fetchers";
+import { fetchReportsStats, fetchResolutionTimeData } from "@/lib/client/fetchers";
 import GraphsModal from "@/components/dashboard/GraphsModal";
 import DetailedStatsModal from "@/components/dashboard/DetailedStatsModal";
 import { TimeRange } from "@/lib/types";
