@@ -12,18 +12,22 @@ import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
 import { Report, City} from "@/lib/types";
 import { useCityBoundary } from "@/lib/client/hooks/useCityBoundary";
 import { useFilteredReports } from "@/lib/client/hooks/useFilteredReports";
+import { getReportCriticality } from "@/lib/server/sla"; // אם תעביר את הפונקציה לשם
+import { SLA_DAYS } from "@/lib/server/sla";
 
 const containerStyle = { width: "100%", height: "100%" };
 const defaultCenter = { lat: 32.794, lng: 34.989 };
 
-function getReportCriticality(timestamp: number): "green" | "yellow" | "orange" | "red" {
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - timestamp) / (1000 * 60 * 60 * 24));
-  if (diffDays <= 5) return "green";
-  if (diffDays <= 14) return "yellow";
-  if (diffDays <= 30) return "orange";
-  return "red";
-}
+// function getReportCriticality(timestamp: number): "green" | "yellow" | "orange" | "red" {
+//   const now = new Date();
+//   const diffDays = Math.floor((now.getTime() - timestamp) / (1000 * 60 * 60 * 24));
+//   if (diffDays <= 5) return "green";
+//   if (diffDays <= 14) return "yellow";
+//   if (diffDays <= 30) return "orange";
+//   return "red";
+// }
+
+
 
 
 export default function MapCanvas({
@@ -188,9 +192,9 @@ useEffect(() => {
           icon={{
             url:
               r.type === "garbage"
-                ? `/icons/${getReportCriticality(r.timestamp)}_garbage.png`
+                ? `/icons/${getReportCriticality(r)}_garbage.png`
                 : r.type === "lighting"
-                ? `/icons/${getReportCriticality(r.timestamp)}_lighting.png`
+                ? `/icons/${getReportCriticality(r)}_lighting.png`
                 : r.type === "tree"
                 ? "/icons/tree.png"
                 : "",

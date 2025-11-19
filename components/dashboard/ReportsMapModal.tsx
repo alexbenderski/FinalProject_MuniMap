@@ -5,6 +5,8 @@ import { GoogleMap, Marker, useJsApiLoader,Polygon } from "@react-google-maps/ap
 import { Report } from "@/lib/types";
 import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
 import { useCityBoundary } from "@/lib/client/hooks/useCityBoundary";
+import { getReportCriticality } from "@/lib/server/sla"; // אם תעביר את הפונקציה לשם
+import { SLA_DAYS } from "@/lib/server/sla";
 
 interface ReportsMapModalProps {
   open: boolean;
@@ -18,14 +20,7 @@ interface ReportsMapModalProps {
 const containerStyle = { width: "1200px", height: "calc(80vh - 60px)" };
 const defaultCenter = { lat: 32.794, lng: 34.989 };
 
-function getReportCriticality(timestamp: number): "green" | "yellow" | "orange" | "red" {
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - timestamp) / (1000 * 60 * 60 * 24));
-  if (diffDays <= 5) return "green";
-  if (diffDays <= 14) return "yellow";
-  if (diffDays <= 30) return "orange";
-  return "red";
-}
+
 
 export default function ReportsMapModal({ open, onClose, reports, criticality, selectedArea }: ReportsMapModalProps) {
 
@@ -46,7 +41,7 @@ export default function ReportsMapModal({ open, onClose, reports, criticality, s
     return reports.filter((r) => {
       if (r.deleted) return false;
       if (!criticality) return true;
-      return getReportCriticality(r.timestamp) === criticality;
+      return getReportCriticality(r) === criticality;
     });
   }, [reports, criticality]);
 
@@ -112,9 +107,9 @@ export default function ReportsMapModal({ open, onClose, reports, criticality, s
               icon={{
                 url:
                   r.type === "garbage"
-                    ? `/icons/${getReportCriticality(r.timestamp)}_garbage.png`
+                    ? `/icons/${getReportCriticality(r)}_garbage.png`
                     : r.type === "lighting"
-                    ? `/icons/${getReportCriticality(r.timestamp)}_lighting.png`
+                    ? `/icons/${getReportCriticality(r)}_lighting.png`
                     : r.type === "tree"
                     ? "/icons/tree.png"
                     : "",

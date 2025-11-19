@@ -2,6 +2,11 @@
 import React, { useEffect, useState } from "react";
 import { Report,FilterStatus } from "@/lib/types";
 import { updateReportInDB,softDeleteReportInDB } from "@/lib/client/fetchers";
+import { storage  } from "@/lib/client/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Image from "next/image";
+
+
 
 const STATUS_FLOW = ["open", "pending", "in progress", "resolved"] as const;
 type ReportStatus = typeof STATUS_FLOW[number];
@@ -13,6 +18,23 @@ interface ReportDetailsModalProps {
   report: Report | null;
   onReportUpdated?: (updated: Report) => void; // ✅ נוסיף callback לעדכון המסך
 }
+
+
+
+//
+// async function uploadImage(file: File, reportId: string) {
+//   // צור reference ב־Storage
+//   const storageRef = ref(storage, `reports/${reportId}/${file.name}`);
+
+//   // העלה את הקובץ
+//   await uploadBytes(storageRef, file);
+
+//   // קבל URL ציבורי/מוגן
+//   const url = await getDownloadURL(storageRef);
+
+//   return url; // זה מה שתשמור במסד הנתונים בשדה imageUrl
+// }
+
 
 
 export default function ReportDetailsModal({
@@ -32,39 +54,6 @@ export default function ReportDetailsModal({
   console.log("Modal not opening: open=", open, "report=", localReport);
   return null;
 }
-
-  // const handleUpdateStatus = () => {
-  //   if (!localReport) return;
-  //   const currentStatus = localReport.status;
-  //   const currentIndex = STATUS_FLOW.indexOf(currentStatus);
-  //   if (currentIndex === -1 || currentIndex === STATUS_FLOW.length - 1) {
-  //     alert("Report already resolved — cannot move forward.");
-  //     return;
-  //   }
-
-  //   // נבצע עדכון קדימה
-  //   const newStatus: ReportStatus = STATUS_FLOW[currentIndex + 1];
-  //   const updatedBy = "System Operator";
-  //   const updatedAt = Date.now();
-
-  //   const newHistory = [
-  //     ...(localReport.statusHistory || []),
-  //     { status: newStatus, updatedBy, updatedAt },
-  //   ];
-
-  //   const updatedReport = {
-  //     ...localReport,
-  //     status: newStatus,
-  //     statusHistory: newHistory,
-  //     updatedBy,
-  //     updatedAt,
-  //   };
-
-  //   setLocalReport(updatedReport);
-  //   onReportUpdated?.(updatedReport);
-  //   alert(`Status updated to "${newStatus}"`);
-  //   setConfirmAction(null);
-  // };
 
 const handleUpdateStatus = async () => {
   if (!localReport) return;
@@ -253,12 +242,32 @@ const handleDeleteReport = async () => {
             </div>
           </div>
 
+
           {/* טיימליין */}
           <div>
             <h3 className="font-semibold mb-1">Status Timeline</h3>
             {renderTimeline()}
-          </div>
+
+            {/* תמונה */}
+          {localReport.mediaUrl && (
+            <div className="mt-4">
+              <h3 className="font-semibold mb-1">Attached Image</h3>
+              <Image
+                src={localReport.mediaUrl}
+                alt={`Report ${localReport.id} image`}
+                width={600}
+                height={400}
+                className="rounded border object-cover"
+              />
+            </div>
+          )}
         </div>
+
+        </div>
+
+
+
+
 
         {/* כפתורים */}
         <div className="mt-6 flex justify-end gap-3">

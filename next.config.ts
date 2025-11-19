@@ -5,5 +5,9 @@ const nextConfig: NextConfig = {
     root: "./", // קובע ל־Next.js שהשורש הוא התיקייה הנוכחית
   },
 };
-
+module.exports = {
+  images: {
+    domains: ["firebasestorage.googleapis.com"],
+  },
+};
 export default nextConfig;
