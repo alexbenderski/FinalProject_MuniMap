@@ -16,7 +16,7 @@ const firebaseConfig = {
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app); // ✅ Realtime DB
-export const storage = getStorage(app); // ✅ אפשר גם לייצא אותו ישירות
+export const storage = getStorage(app); 
 
 
 

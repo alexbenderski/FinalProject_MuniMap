@@ -7,6 +7,7 @@ export interface DetectorReport {
   type: string;
   area: string;
   timestamp: number;
+  resolvedAt: number | undefined;
   deleted: boolean;
   lat?: number;
   lng?: number;
@@ -34,6 +35,7 @@ export async function getReportsForDetector(): Promise<DetectorReport[]> {
         area: r.area ?? "—",
         timestamp: Number(r.timestamp) || 0,
         deleted: Boolean(r.deleted),
+        resolvedAt: r.resolvedAt ? Number(r.resolvedAt) : undefined,
         lat: typeof r.lat === "number" ? r.lat : undefined,
         lng: typeof r.lng === "number" ? r.lng : undefined,
       });

@@ -9,6 +9,7 @@ import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
 import { getCurrentUserInfo } from "@/lib/client/fetchers";
 import Image from "next/image";
 import Tooltip from "@/components/dashboard/Tooltip";
+import { SLA_DAYS } from "@/lib/server/sla";  
 
 interface Props {
   timestamp: number;
@@ -126,30 +127,57 @@ useEffect(() => {
   ///////////////////////////////////////////////////////////////functions global////////////////////////////////////
 
 
-// ✅ מחשב את רמת הקריטיות לפי תאריך
+// // ✅ מחשב את רמת הקריטיות לפי תאריך
+// function getReportCriticality(timestamp: number, type?: string) {
+//   const reportDate = new Date(timestamp);
+//   const now = new Date();
+//   const diffDays = Math.floor(
+//     (now.getTime() - reportDate.getTime()) / (1000 * 60 * 60 * 24)
+//   );
+
+//   const ranges = [
+//     { max: 5, level: "חדש", key: "green" },
+//     { max: 14, level: "בינוני", key: "yellow" },
+//     { max: 30, level: "ישן", key: "orange" },
+//     { max: Infinity, level: "קריטי", key: "red" },
+//   ];
+
+//   const current = ranges.find(r => diffDays <= r.max)!;
+//   const normalizedType = type?.toLowerCase() || "default";
+
+//   return {
+//     level: current.level,
+//     color: current.key,
+//     icon: `/icons/${current.key}_${normalizedType}.png`,
+//   };
+// }
+
+
+//sla version
 function getReportCriticality(timestamp: number, type?: string) {
-  const reportDate = new Date(timestamp);
-  const now = new Date();
-  const diffDays = Math.floor(
-    (now.getTime() - reportDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const now = Date.now();
+  const ageDays = Math.floor((now - timestamp) / (1000 * 60 * 60 * 24));
 
-  const ranges = [
-    { max: 5, level: "חדש", key: "green" },
-    { max: 14, level: "בינוני", key: "yellow" },
-    { max: 30, level: "ישן", key: "orange" },
-    { max: Infinity, level: "קריטי", key: "red" },
-  ];
+  const sla = SLA_DAYS[type ?? "default"] ?? 7;
 
-  const current = ranges.find(r => diffDays <= r.max)!;
-  const normalizedType = type?.toLowerCase() || "default";
+  let color = "green";
+  if (ageDays > sla * 2) color = "red";
+  else if (ageDays > sla) color = "orange";
+  else if (ageDays >= sla * 0.5) color = "yellow";
 
   return {
-    level: current.level,
-    color: current.key,
-    icon: `/icons/${current.key}_${normalizedType}.png`,
+    level:
+      color === "green"   ? "חדש" :
+      color === "yellow"  ? "בינוני" :
+      color === "orange"  ? "ישן" :
+      "קריטי",
+    color,
+    icon: `/icons/${color}_${type ?? "default"}.png`,
   };
 }
+
+
+
 
 
 

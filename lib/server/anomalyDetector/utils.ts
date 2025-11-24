@@ -77,20 +77,6 @@ export function calcDynamicThreshold(bins: Bin[]): {
 
 
 
-  /*
-
-1️⃣ t1 = μ + Z_K * σ
-This is the statistical threshold, based on the Z-score (mean plus a number of standard deviations).
-
-2️⃣ t2 = μ * (1 + P_MIN)
-This is the percentage-based threshold, requiring a minimum relative increase (X%) compared to the historical average.
-
-3️⃣ t3 = μ + C_MIN
-This is the absolute minimum-increase threshold, ensuring that there are at least a certain number of additional reports (e.g., +5) to avoid false positives caused by small fluctuations.
-
-4️⃣ CURRENT_MIN = 7
-This is the minimum activity threshold — the system will not trigger anomalies in areas with very low report counts, since these are typically just noise.
-  */
   const μ = mean(hist);
   const σ = std(hist, μ);
   const Z_K = 2.0;

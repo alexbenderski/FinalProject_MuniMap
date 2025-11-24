@@ -2,8 +2,6 @@
 import React, { useEffect, useState } from "react";
 import { Report,FilterStatus } from "@/lib/types";
 import { updateReportInDB,softDeleteReportInDB } from "@/lib/client/fetchers";
-import { storage  } from "@/lib/client/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
 
 
@@ -63,19 +61,26 @@ const handleUpdateStatus = async () => {
 
   if (!reportType || !reportId) {
     alert("Missing report identifiers (type/id). Cannot update.");
-    console.error("Update aborted: type/id missing", { reportType, reportId, localReport });
     return;
   }
 
-  const currentIndex = STATUS_FLOW.indexOf(localReport.status as typeof STATUS_FLOW[number]);
-  if (currentIndex === -1 || currentIndex === STATUS_FLOW.length - 1) {
-    alert("Report already resolved — cannot move forward.");
+  const currentIndex = STATUS_FLOW.indexOf(localReport.status as ReportStatus);
+
+  // ❗ אם כבר resolved — לא מאפשרים עדכון
+  if (currentIndex === STATUS_FLOW.length - 1) {
+    alert("This report is already resolved — further updates are not allowed.");
     return;
   }
 
   const newStatus = STATUS_FLOW[currentIndex + 1];
   const updatedBy = "System Operator";
   const updatedAt = Date.now();
+
+  // ⬅️ כאן נבדוק אם עברנו ל־resolved
+  const extraFields =
+    newStatus === "resolved"
+      ? { resolvedAt: updatedAt }
+      : {};
 
   const nextHistory = [
     ...(localReport.statusHistory || []),
@@ -84,12 +89,13 @@ const handleUpdateStatus = async () => {
 
   try {
     // כתיבה למסד
-    await updateReportInDB(reportType, reportId, {
-      status: newStatus,
-      statusHistory: nextHistory,
-      updatedBy,
-      updatedAt,
-    });
+  await updateReportInDB(reportType, reportId, {
+    status: newStatus,
+    statusHistory: nextHistory,
+    updatedBy,
+    updatedAt,
+    ...extraFields,
+  });
 
     //  עדכון מקומי כדי שהמסך וה־Timeline יתרנדרו מיד
     const merged = {
@@ -98,6 +104,7 @@ const handleUpdateStatus = async () => {
       statusHistory: nextHistory,
       updatedBy,
       updatedAt,
+      ...extraFields,
     };
 
     setLocalReport(merged);
