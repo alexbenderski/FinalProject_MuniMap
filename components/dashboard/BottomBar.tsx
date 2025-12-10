@@ -85,7 +85,7 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
 
                     {/* אזור + מספר דיווחים + חומרה */}
                     <span className="text-xs text-gray-600">
-                      אזור: {a.area} • דיווחים: {a.metrics.currentReports} •{" "}
+                      אזור: {a.area} • דיווחים: {a.metrics?.currentReports ?? "-"} •{" "}
                       {a.severity === "high"
                         ? "חומרה: גבוהה"
                         : a.severity === "medium"

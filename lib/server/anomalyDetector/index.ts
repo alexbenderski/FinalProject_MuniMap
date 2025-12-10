@@ -1,20 +1,33 @@
 // Detector registry (runs all detectors)
+// index.ts
 
 import { detectHighActivity, Report } from "./detectHighActivity";
 import { Anomaly } from "./builders";
 import { detectSlowResolution } from "./detectSlowResolution";
+import { saveFullAnomalySnapshot } from "./anomaly-storage";
 
-// כל פונקציה שמזהה אנומליות חייבת לקבל מערך של דיווחים (Report) ולהחזיר מערך של אנומליות (Anomaly)
-type Detector = (reports: Report[]) => Anomaly[];
+// 👈 מאפשר גם סינכרוני וגם אסינכרוני
+type Detector = (reports: Report[]) => Anomaly[] | Promise<Anomaly[]>;
 
-// בעתיד נוכל להוסיף כאן פונקציות נוספות כמו detectSlowResponse וכו'
-const DETECTORS: Detector[] = [ detectSlowResolution];
+// אפשר להשאיר כרגע רק slow, או גם להחזיר את ה-spike
+const DETECTORS: Detector[] = [
+  detectHighActivity,
+  detectSlowResolution,
+];
 
 export async function runAllDetectors(reports: Report[]): Promise<Anomaly[]> {
   const results: Anomaly[] = [];
+
   for (const detector of DETECTORS) {
-    const res = detector(reports);
-    results.push(...res);
+    const anomalies = await detector(reports);
+    results.push(...anomalies);
+
+    // 💾 שמירה מיידית של כל אנומליה — רק כאן!
+    for (const anomaly of anomalies) {
+      await saveFullAnomalySnapshot(anomaly);
+    }
+    
   }
+
   return results;
 }

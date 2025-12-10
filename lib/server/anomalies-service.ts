@@ -1,3 +1,5 @@
+//anomalies-service.ts
+
 import { db } from "./firebase-admin";
 // import { Anomaly } from "@/lib/types";
 import { Anomaly } from "./anomalyDetector/builders";

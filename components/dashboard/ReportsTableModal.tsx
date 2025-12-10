@@ -10,6 +10,7 @@ import { getCurrentUserInfo } from "@/lib/client/fetchers";
 import Image from "next/image";
 import Tooltip from "@/components/dashboard/Tooltip";
 import { SLA_DAYS } from "@/lib/server/sla";  
+import { getReportCriticalityType } from "@/lib/server/sla";
 
 interface Props {
   timestamp: number;
@@ -181,24 +182,62 @@ function getReportCriticality(timestamp: number, type?: string) {
 
 
 
- function CriticalityCell({ timestamp, type }: Props) {
-  const c = getReportCriticality(timestamp, type);
-  const [imgSrc, setImgSrc] = useState(c.icon);
+//  function CriticalityCell({ timestamp, type }: Props) {
+//   const c = getReportCriticality(timestamp, type);
+//   const [imgSrc, setImgSrc] = useState(c.icon);
+
+//   return (
+//     <div className="flex flex-col items-center justify-center">
+//       <Image
+//         src={imgSrc}
+//         alt={c.level}
+//         width={24}
+//         height={24}
+//         onError={() => setImgSrc(`/icons/${c.color}_default.png`)}
+//         unoptimized
+//       />
+//       <span style={{ color: c.color, fontSize: "13px" }}>{c.level}</span>
+//     </div>
+//   );
+// }
+
+
+function CriticalityCell({ timestamp, type }: Props) {
+  // מייצרים אובייקט "report" מלא רק עם מה שפונקציית ה-SLA צריכה
+const fakeReport: Partial<Report> = {
+  timestamp,
+  type,
+};
+
+  // ← כאן שינינו! עכשיו משתמשים ב-SLA האמיתי
+ const crit = getReportCriticalityType(fakeReport as Report);// מחזיר: "green" | "yellow" | "orange" | "red"
+
+  const icon = `/icons/${crit}_${type}.png`;
+
+  const level =
+    crit === "green"  ? "חדש" :
+    crit === "yellow" ? "בינוני" :
+    crit === "orange" ? "ישן" :
+    "קריטי";
+
+  const [imgSrc, setImgSrc] = useState(icon);
 
   return (
     <div className="flex flex-col items-center justify-center">
       <Image
         src={imgSrc}
-        alt={c.level}
+        alt={level}
         width={24}
         height={24}
-        onError={() => setImgSrc(`/icons/${c.color}_default.png`)}
+        onError={() => setImgSrc(`/icons/${crit}_default.png`)}
         unoptimized
       />
-      <span style={{ color: c.color, fontSize: "13px" }}>{c.level}</span>
+      <span style={{ color: crit, fontSize: "13px" }}>{level}</span>
     </div>
   );
 }
+
+
 
 
 
@@ -215,11 +254,16 @@ function getSortValue(r: Report, column: string) {
       return r.address?.toLowerCase() || "";
     case "Timestamp":
       return r.timestamp;
+    // case "Criticality": {
+    //   const { level } = getReportCriticality(r.timestamp,  r.type ?? "default");
+    //   const order = { חדש: 1, בינוני: 2, ישן: 3, קריטי: 4 };
+    //   return order[level as keyof typeof order] || 5;
+    // }
     case "Criticality": {
-      const { level } = getReportCriticality(r.timestamp,  r.type ?? "default");
-      const order = { חדש: 1, בינוני: 2, ישן: 3, קריטי: 4 };
-      return order[level as keyof typeof order] || 5;
-    }
+  const color = getReportCriticalityType(r); // "green" | "yellow" | "orange" | "red"
+  const order = { green: 1, yellow: 2, orange: 3, red: 4 };
+  return order[color as keyof typeof order] || 5;
+}
     case "Status": {
       const order = { open: 1, pending: 2, "in progress": 3, resolved: 4 };
       return order[r.status as keyof typeof order] || 5;
@@ -251,8 +295,11 @@ function handleSort(column: string) {
     async function load() {
       if (externalReports && externalReports.length > 0) {
         // ✅ גם כאן נסנן אם רוצים למנוע הופעת מחוקים
-        const filtered = externalReports.filter((r) => !r.deleted);
-        setRows(filtered);
+        // const filtered = externalReports.filter((r) => !r.deleted);
+        // אל תזרוק deleted — אנומליה זקוקה גם לדיווחים שאינם active
+        // const filtered = externalReports;
+        // setRows(filtered);
+        setRows(externalReports);
         return;
       }
 
@@ -267,9 +314,10 @@ function handleSort(column: string) {
         );
       });
 
-      // ✅ כאן אנחנו מסננים דיווחים שמסומנים כמחוקים
-      const activeReports = all.filter((r) => !r.deleted);
-      setRows(activeReports);
+      // // ✅ כאן אנחנו מסננים דיווחים שמסומנים כמחוקים
+      // const activeReports = all.filter((r) => !r.deleted);
+      // setRows(activeReports);
+            setRows(all);
     }
 
     load();
@@ -277,38 +325,61 @@ function handleSort(column: string) {
 
 
   
-  // ✅ סינון לפי הפילטרים שנבחרו
-  const filteredRows = useMemo(() => {
-    return rows.filter((r) => {
-      const categoryMatch =
-        filters.categories.length === 0 || filters.categories.includes(r.type ?? "");
-      const locationMatch =
-        !filters.location || r.area === filters.location;
-      const statusMatch =
-        filters.status === "all"
-          ? r.status !== "resolved"
-          : r.status === filters.status;
-      const mediaMatch = !filters.mediaOnly || r.media === true;
+const filteredRows = useMemo(() => {
+  // ⭐ במצב אנומליה — משתמשים רק בדיווחים שלה, ללא סינון כלל
+  if (anomalyDetails) {
+    return anomalyRows.sort((a, b) => b.timestamp - a.timestamp);
+  }
 
-      const fromMs = filters.dateFrom ? new Date(filters.dateFrom).getTime() : null;
-      const toMs = filters.dateTo ? new Date(filters.dateTo).getTime() : null;
-      const timeMatch =
-        (!fromMs || r.timestamp >= fromMs) && (!toMs || r.timestamp <= toMs);
+  // ⭐ במצב רגיל — סינון רגיל
+  return rows.filter((r) => {
+    const categoryMatch =
+      filters.categories.length === 0 ||
+      filters.categories.includes(r.type ?? "");
 
-      const idMatch = searchId
-        ? (r.id ?? "").toLowerCase().includes(searchId.toLowerCase())
-        : true;
+    const locationMatch =
+      !filters.location || r.area === filters.location;
 
-      return (
-        categoryMatch &&
-        locationMatch &&
-        statusMatch &&
-        mediaMatch &&
-        timeMatch &&
-        idMatch
-      );
-    });
-  }, [rows, filters, searchId]);
+    const statusMatch =
+      filters.status === "all"
+        ? true
+        : r.status === filters.status;
+
+    const mediaMatch =
+      !filters.mediaOnly || r.media === true;
+
+    const fromMs = filters.dateFrom
+      ? new Date(filters.dateFrom).getTime()
+      : null;
+
+    const toMs = filters.dateTo
+      ? new Date(filters.dateTo).getTime()
+      : null;
+
+    const timeMatch =
+      (!fromMs || r.timestamp >= fromMs) &&
+      (!toMs || r.timestamp <= toMs);
+
+    const idMatch = searchId
+      ? (r.id ?? "").toLowerCase().includes(searchId.toLowerCase())
+      : true;
+
+      const criticalityMatch =
+        !filters.criticality ||
+        getReportCriticalityType(r) === filters.criticality;
+      
+    return (
+      categoryMatch &&
+      locationMatch &&
+      statusMatch &&
+      mediaMatch &&
+      timeMatch &&
+      idMatch &&
+      criticalityMatch   // ⭐ זה הקטע שגורם לפילטר לעבוד לפי SLA
+
+    );
+  });
+}, [rows, anomalyRows, anomalyDetails, filters, searchId]);
 
 
 // ✅ הוספת מיון לפני ההצגה
@@ -564,11 +635,19 @@ return (
       {/* טור שמאל — רשימת הנתונים */}
       <div className="w-1/2">
         <ul className="list-disc pl-5 space-y-1 text-gray-800">
-
           <li>
-            <strong>דיווחים בחודש הנוכחי:</strong>{" "}
+            <strong> דיווחים בחודש הנוכחי </strong>{" "}
             {localAnomaly.metrics.currentReports}
+            <Tooltip message="current"/>
           </li>
+
+            {localAnomaly.type === "slow_response" && ( //if..
+    <li>
+            <strong> זמן הטיפול הממוצע </strong>{" "}
+            {localAnomaly.metrics.currentAvgDays}
+            <Tooltip message="ממוצע כל זמני הטיפול של הדיווחים מהסוג הזה שנסגרו בחודש הנוכחי."/>
+    </li>
+  )}
 
           <li>
             <strong>ממוצע היסטורי:</strong>{" "}
@@ -585,7 +664,24 @@ return (
           <li>
             <strong>Threshold (סף גילוי):</strong>{" "}
             {localAnomaly.metrics.threshold}
-            <Tooltip message="הערך שמעליו נחשבת התנהגות לחריגה." />
+          <Tooltip
+            message={
+              "Threshold\n" +
+              "זהו סף ההשוואה שהמערכת קובעת.\n\n" +
+
+              "Current\n" +
+              "זה הערך הנוכחי שמופיע למעלה באנומליה.\n\n" +
+
+              "כדי להבין אם יש חריגה:\n" +
+              "מסתכלים על הערך הנוכחי\n" +
+              "Current\n" +
+              "ואז משווים אותו לערך הסף\n" +
+              "Threshold\n\n" +
+
+              "אם הערך הנוכחי גדול מערך הסף — יש חריגה.\n" +
+              "אם הערך הנוכחי קטן או שווה — המצב תקין."
+            }
+          />
           </li>
 
           <li>
@@ -598,6 +694,19 @@ return (
           <li>
             <strong>Z-Score:</strong>{" "}
             {localAnomaly.metrics.zScore}
+            <Tooltip
+              message={
+                "Z-Score מודד כמה רחוק נתון נמצא מהממוצע, ביחידות של סטיית תקן.\n\n" +
+                "• Z = 0 — הנתון שווה לממוצע\n" +
+                "• Z > 0 — הנתון גבוה מהממוצע\n" +
+                "• Z < 0 — הנתון נמוך מהממוצע\n\n" +
+                "מתי זה טוב?\n" +
+                "• Z נמוך — זמן טיפול קצר מהרגיל, המצב טוב.\n\n" +
+                "מתי זה רע?\n" +
+                "• Z גבוה — זמן טיפול ארוך מהממוצע, ייתכן עומס או תקלה.\n\n" +
+                "משמש לנרמול נתונים ולזיהוי חריגות."
+              }
+            />
           </li>
 
           <li>
@@ -647,7 +756,8 @@ return (
                 alert("No reports selected.");
                 return;
               }
-              setReportsToShow(selected);
+              // setReportsToShow(selected);
+              setReportsToShow(filteredRows);
               setMapOpen(true);
             }}
           >
@@ -822,7 +932,8 @@ return (
         <ReportsMapModal
           open={mapOpen}
           onClose={() => setMapOpen(false)}
-          reports={reportsToShow}
+          // reports={reportsToShow}
+          reports={filteredRows}
           criticality={filters.criticality}
           selectedArea={selectedArea}
         />

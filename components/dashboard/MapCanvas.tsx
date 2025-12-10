@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState,useRef } from "react";
+import { useEffect, useState,useRef,useMemo  } from "react";
 import {
   GoogleMap,//main component that draws the map, working with center,zoom levels and events handle
   Polygon,//draws bounds of some area by the lat/lng 
@@ -12,7 +12,7 @@ import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
 import { Report, City} from "@/lib/types";
 import { useCityBoundary } from "@/lib/client/hooks/useCityBoundary";
 import { useFilteredReports } from "@/lib/client/hooks/useFilteredReports";
-import { getReportCriticality } from "@/lib/server/sla"; // אם תעביר את הפונקציה לשם
+import { getReportCriticalityType } from "@/lib/server/sla"; // אם תעביר את הפונקציה לשם
 import { SLA_DAYS } from "@/lib/server/sla";
 
 const containerStyle = { width: "100%", height: "100%" };
@@ -51,6 +51,8 @@ export default function MapCanvas({
 })
 
 {
+  console.log("%cMAPCANVAS LOADED", "color:orange;font-size:20px");
+
   //useState because this one will changes over time so when we render we want to save the states after the rendering for each.
   const [map, setMap] = useState<google.maps.Map | null>(null); //store map instance. can used to call functions like fitbounds / panTo
   const [reports, setReports] = useState<Report[]>([]);//array of reports from the db
@@ -137,6 +139,21 @@ const { filteredReports } = useFilteredReports(reports, {
   criticality,
 });
 
+// 🔹 כאן מסננים לפי צבע בלבד, על בסיס חישוב SLA
+const visibleReports = useMemo(() => {
+  // אם לא נבחרה רמת קריטיות – מחזירים את כל הדיווחים שכבר עברו את שאר הפילטרים
+  if (!criticality || criticality === "") return filteredReports;
+
+  // אם נבחר צבע (green / yellow / orange / red) –
+  // נשאיר רק כאלה שה־SLA שלהם מחזיר את אותו הצבע
+  return filteredReports.filter((r) => {
+    const crit = getReportCriticalityType(r); // מחזיר "green" | "yellow" | "orange" | "red"
+    return crit === criticality;
+  });
+}, [filteredReports, criticality]);
+
+
+
 const prevReportsRef = useRef<Report[]>([]);
 
 useEffect(() => {
@@ -179,29 +196,29 @@ useEffect(() => {
           )}
 
           {/* מציג אייקונים רק אם גם אזור וגם סוג נבחרו */}
-          {filteredReports.map((r) => (
+          {visibleReports.map((r) => (
             <Marker
-              // key={r.timestamp}
               key={r.id}
               position={{ lat: r.lat, lng: r.lng }}
               title={r.address ? r.address : (r.area || "לא נמצאה כתובת")}
               onClick={() => {
-                setSelectedReport(r); 
-                setIsModalOpen(true);// sign that the window is open now 
+                setSelectedReport(r);
+                setIsModalOpen(true);
               }}
-          icon={{
-            url:
-              r.type === "garbage"
-                ? `/icons/${getReportCriticality(r)}_garbage.png`
-                : r.type === "lighting"
-                ? `/icons/${getReportCriticality(r)}_lighting.png`
-                : r.type === "tree"
-                ? "/icons/tree.png"
-                : "",
-            scaledSize: new google.maps.Size(16, 16),
-          }}
+              icon={{
+                url:
+                  r.type === "garbage"
+                    ? `/icons/${getReportCriticalityType(r)}_garbage.png`
+                    : r.type === "lighting"
+                    ? `/icons/${getReportCriticalityType(r)}_lighting.png`
+                    : r.type === "tree"
+                    ? `/icons/${getReportCriticalityType(r)}_tree.png`
+                    : "",
+                scaledSize: new google.maps.Size(16, 16),
+              }}
             />
           ))}
+
 
           {/* חלונית מידע */}
           {selectedReport && (

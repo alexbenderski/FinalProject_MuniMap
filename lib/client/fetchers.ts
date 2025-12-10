@@ -54,12 +54,13 @@ export async function deleteReport(reportType: string, reportId: string) {
 export async function fetchAnomalies(): Promise<Anomaly[]> {
   try {
     const db = getDatabase(app);
-    const snapshot = await get(ref(db, "Anomalies"));
+
+    // ⬅️ מושכים רק את האנומליות הפעילות
+    const snapshot = await get(ref(db, "Anomalies/ActiveAnomalies"));
     if (!snapshot.exists()) return [];
 
     const data = snapshot.val();
 
-    // המרה לפורמט הנכון: כולל firebaseKey (שם הצומת במסד)
     const anomalies: Anomaly[] = Object.entries(data).map(
       ([firebaseKey, anomalyData]) => ({
         firebaseKey,
@@ -67,7 +68,11 @@ export async function fetchAnomalies(): Promise<Anomaly[]> {
       })
     );
 
-    // מיון מהחדש לישן
+
+
+
+
+
     return anomalies.sort((a, b) => b.lastUpdated - a.lastUpdated);
   } catch (err) {
     console.error("Error fetching anomalies:", err);

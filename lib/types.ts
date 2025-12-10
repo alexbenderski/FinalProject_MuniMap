@@ -9,6 +9,61 @@ export interface statusHistoryEntry {
   updatedBy: string;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+export interface SlowResponseMetrics {
+  currentAvgDays: number;
+  baselineAvgDays: number;
+
+  currentReports: number;
+  baselineMean: number;
+  baselineStd: number;
+  threshold: number;
+  pctChange: number;
+  zScore: number;
+  ratio: number;
+
+  bins: {
+    ts: number;
+    count: number;
+    avg: number;
+  }[];
+}
+
+
+export interface AnomalyUpdateSnapshot {
+  timestamp: number;
+
+  id: string;
+  category: string;
+  area: string;
+  type: string;
+  status: string;
+  severity: string;
+
+  title: string;
+  description: string;
+  generalMessage?: string | null;
+
+  metrics: SlowResponseMetrics;
+  relatedReports: string[];
+
+  center?: { lat: number; lng: number } | null;
+
+  firstDetected: number;
+  lastUpdated: number;
+}
+
+
 export interface Report {
   resolvedAt: number;
   id?: string;
@@ -73,6 +128,7 @@ export type AnomalyType =
   | "delay"            // איחור מצטבר
   | "custom";          // כל דבר עתידי
 export interface AnomalyMetrics {
+  currentAvgDays: number;
   currentReports: number;
   baselineMean: number;
   baselineStd: number;
@@ -105,8 +161,6 @@ export interface Anomaly {
     [emailKey: string]: number; // timestamp
   };
 }
-
-
 
 
 

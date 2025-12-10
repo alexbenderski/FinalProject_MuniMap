@@ -41,11 +41,11 @@ export default function FiltersModal({ open, onClose, onApply }: FiltersModalPro
   const [filters, setFilters] = useState<FiltersPayload & { criticality: string }>({
     categories: [],
     location: "",
-    status: "" as FiltersPayload["status"], // 👈 טיפוס נכון
+    status: "" as FiltersPayload["status"], 
     mediaOnly: false,
     dateFrom: "",
     dateTo: "",
-    criticality: "", // 👈 השדה החדש
+    criticality: "", 
   });
 
   const defaultColor = "green";
@@ -173,10 +173,10 @@ export default function FiltersModal({ open, onClose, onApply }: FiltersModalPro
             className="border rounded p-1 ml-2"
           >
             <option value="">הכול</option>
-            <option value="green">חדש (0–5 ימים)</option>
-            <option value="yellow">בינוני (6–14)</option>
-            <option value="orange">ישן (15–30)</option>
-            <option value="red">קריטי (31+)</option>
+            <option value="green">חדש </option>
+            <option value="yellow">בינוני </option>
+            <option value="orange">ישן</option>
+            <option value="red">קריטי </option>
           </select>
         </div>
 

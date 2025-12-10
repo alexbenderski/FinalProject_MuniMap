@@ -1,6 +1,8 @@
+//detectSlowResolution.ts
 import { groupBy, buildMonthlyBins, mean, std, calcDynamicThreshold } from "./utils";
 import { buildAnomaly, Anomaly } from "./builders";
 import { generateAnomalyDescription } from "./anomalyTextGenerator";
+import { saveAnomalyUpdateSnapshot } from "./anomaly-storage";
 
 export interface ResolveReport {
   id: string;
@@ -11,10 +13,10 @@ export interface ResolveReport {
   deleted?: boolean;
 }
 
-export function detectSlowResolution(
+export async function detectSlowResolution(
   reports: ResolveReport[],
   now = Date.now()
-): Anomaly[] {
+): Promise<Anomaly[]> {
   console.log("\n=====================");
   console.log("🔍 detectSlowResolution START");
   console.log("=====================");
@@ -193,6 +195,10 @@ export function detectSlowResolution(
 
     console.log("\n✅ ANOMALY CREATED:");
     console.log(JSON.stringify(anomaly, null, 2));
+
+
+    // await saveAnomalyUpdateSnapshot(anomaly);
+
 
     anomalies.push(anomaly);
   }

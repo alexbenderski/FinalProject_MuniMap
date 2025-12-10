@@ -5,7 +5,7 @@ import { GoogleMap, Marker, useJsApiLoader,Polygon } from "@react-google-maps/ap
 import { Report } from "@/lib/types";
 import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
 import { useCityBoundary } from "@/lib/client/hooks/useCityBoundary";
-import { getReportCriticality } from "@/lib/server/sla"; // אם תעביר את הפונקציה לשם
+import { getReportCriticalityType } from "@/lib/server/sla"; // אם תעביר את הפונקציה לשם
 import { SLA_DAYS } from "@/lib/server/sla";
 
 interface ReportsMapModalProps {
@@ -23,6 +23,7 @@ const defaultCenter = { lat: 32.794, lng: 34.989 };
 
 
 export default function ReportsMapModal({ open, onClose, reports, criticality, selectedArea }: ReportsMapModalProps) {
+console.log("%cRMM LOADED", "color:cyan;font-size:20px");
 
 
   const { isLoaded } = useJsApiLoader({
@@ -37,13 +38,33 @@ export default function ReportsMapModal({ open, onClose, reports, criticality, s
   const { cityBoundary } = useCityBoundary(selectedArea || null, map);
 
   // ✔️ useMemo prevents infinite loops
+  // const visibleReports = useMemo(() => {
+  //   return reports.filter((r) => {
+  //     if (r.deleted) return false;
+  //     if (!criticality) return true;
+  //     return getReportCriticalityType(r) === criticality;
+  //   });
+  // }, [reports, criticality]);
+  console.log("reports length:", reports.length);
+  console.log("criticality prop:", criticality);
   const visibleReports = useMemo(() => {
-    return reports.filter((r) => {
-      if (r.deleted) return false;
-      if (!criticality) return true;
-      return getReportCriticality(r) === criticality;
-    });
-  }, [reports, criticality]);
+        console.log("visibleReports:");
+
+  return reports.filter((r) => {
+    if (r.deleted) return false;
+
+    // ➤ אם לא נבחר פילטר — הכל נכנס
+    if (!criticality || criticality === "") return true;
+
+    // ➤ מחשבים צבע SLA אמיתי
+    const crit = getReportCriticalityType(r);
+    console.log("crit:",crit);
+    console.log("criticality:",criticality);
+    console.log("\n");
+    return crit === criticality;
+
+  });
+}, [reports, criticality]);
 
   // ✔️ safe center update
   useEffect(() => {
@@ -95,28 +116,27 @@ export default function ReportsMapModal({ open, onClose, reports, criticality, s
           />
         )}
 
-          {visibleReports.map((r) => (
-            <Marker
-              key={r.id}
-              position={{ lat: r.lat, lng: r.lng }}
-              title={r.address || r.area || "No address"}
-              onClick={() => {
-                setSelectedReport(r);
-                setDetailsOpen(true);
-              }}
-              icon={{
-                url:
-                  r.type === "garbage"
-                    ? `/icons/${getReportCriticality(r)}_garbage.png`
-                    : r.type === "lighting"
-                    ? `/icons/${getReportCriticality(r)}_lighting.png`
-                    : r.type === "tree"
-                    ? "/icons/tree.png"
-                    : "",
-                scaledSize: new google.maps.Size(16, 16),
-              }}
-            />
-          ))}
+          {visibleReports.map((r) => {
+
+            // 🟢 הוספת השורה הזאת ממש כאן:
+            const critColor = getReportCriticalityType(r);
+
+            return (
+              <Marker
+                key={r.id}
+                position={{ lat: r.lat, lng: r.lng }}
+                title={r.address || r.area || "No address"}
+                onClick={() => {
+                  setSelectedReport(r);
+                  setDetailsOpen(true);
+                }}
+                icon={{
+                  url: `/icons/${critColor}_${r.type}.png`,
+                  scaledSize: new google.maps.Size(16, 16),
+                }}
+              />
+            );
+          })}
         </GoogleMap>
       )}
 

@@ -8,7 +8,8 @@ import { runAllDetectors } from "../lib/server/anomalyDetector";
 import {getReportsForDetector} from "../lib/server/reports-service"
  import { Anomaly } from "../lib/server/anomalyDetector/builders";
 // import { saveOrUpdateAnomaliesToDB } from "./firebaseWriter";
-import { saveOrUpdateAnomaliesToDB } from "../lib/server/anomalies-service";
+import { saveOrUpdateAnomaliesToDB } from "../lib/server/anomalies-service";//no need
+import { cleanupOldAnomalies } from "../lib/server/anomalyDetector/cleanupOldAnomalies";
 
 const app = express();
 app.use(cors());
@@ -28,12 +29,12 @@ async function runDetectionJob(): Promise<void> {
 
     lastAnomalies = anomalies;
 
-    try {
-      await saveOrUpdateAnomaliesToDB(anomalies);
-      console.log("✅ Saved anomalies to DB successfully");
-    } catch (err) {
-      console.error("❌ Failed to save anomalies to DB:", err);
-    }
+    // try {
+    //   await saveOrUpdateAnomaliesToDB(anomalies);
+    //   console.log("✅ Saved anomalies to DB successfully");
+    // } catch (err) {
+    //   console.error("❌ Failed to save anomalies to DB:", err);
+    // }
     if (anomalies.length > 0) {
       console.log(`✅ ${anomalies.length} anomalies saved to Firebase`);
     } else {
@@ -44,9 +45,13 @@ async function runDetectionJob(): Promise<void> {
   }
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const mul = 3;
+const DAY_MS =  60 * 1000 * mul ;
 setInterval(runDetectionJob, DAY_MS);
 runDetectionJob();
+//setInterval(cleanupOldAnomalies, 1000 * 60 * 60 * 24);  24 hours
+setInterval(cleanupOldAnomalies, 1000 * 60 * mul ); //1 minute
+
 
 const PORT = 4000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));

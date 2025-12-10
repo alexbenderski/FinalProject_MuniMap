@@ -2,7 +2,7 @@
 
 import {Report} from "@/lib/types";
 
-export function getReportCriticality(report: Report) {
+export function getReportCriticalityType(report: Report) {
   const now = Date.now();
   //calculate how much days the report is open.
   //(1000 * 60 * 60 * 24) to convert milisec to days.
