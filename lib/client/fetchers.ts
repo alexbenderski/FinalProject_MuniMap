@@ -319,7 +319,7 @@ function buildEmptyMonthBuckets(timeRange: TimeRange) {
  * גרפים דינמיים – מחזיר תמיד את כל החודשים לפי טווח, עם 0 היכן שאין נתונים.
  */
 export async function fetchGraphData(
-  category: "garbage" | "lighting" | "tree",
+  category: "garbage" | "lighting" | "tree" | "hazard",
   timeRange: TimeRange,
   topic: GraphTopic
 ): Promise<GraphPoint[]> {
@@ -491,7 +491,6 @@ export async function fetchDetailedStatistics(
         ? (s.sumDays / s.resolvedCount).toFixed(1)
         : "—",
     }))
-    .filter((x) => x.avgResolveDays !== "—")
     .sort((a, b) => parseFloat(b.avgResolveDays) - parseFloat(a.avgResolveDays))
     .slice(0, 5);
 

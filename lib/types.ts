@@ -89,28 +89,7 @@ export interface Report {
 }
 
 
-//// old Anomaly:
-// export interface Anomaly {
-//   id: string;
-//   type: string;
-//   area: string;
-//   title: string;
-//   count: number;
-//   days: number;
-//   lastTimestamp: number;
-//   status: string;
-//   relatedReports: string[];
-//   createdAt: number;
-//   details?: {
-//     currentAvg?: number;
-//     prevAvg?: number;
-//     changePercent?: number;
-//     reason?: string;
-//   };
-//   reviewedBy?: {
-//     [emailKey: string]: number; // כאן כל מפתח הוא אימייל עם "_" והערך הוא timestamp
-//   };
-// }
+
 
 export interface AnomalyBin {
   ts: number;
@@ -182,7 +161,7 @@ export interface Graph {
   data?: { month: string; reports: number; resolved?: number; avgDays?: number }[];
   id: number;
   type: "line" | "bar" | "double";
-  category: "garbage" | "lighting" | "tree";
+  category: "garbage" | "lighting" | "tree" | "hazard";
   timeRange: "month" | "3month" | "6month" | "year";
   from?: string;
   to?: string;

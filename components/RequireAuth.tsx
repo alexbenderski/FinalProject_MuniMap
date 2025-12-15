@@ -15,3 +15,4 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   if (!user)   return null; // redirecting
   return <>{children}</>;
 }
+

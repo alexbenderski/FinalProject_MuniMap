@@ -10,6 +10,7 @@ import {getReportsForDetector} from "../lib/server/reports-service"
 // import { saveOrUpdateAnomaliesToDB } from "./firebaseWriter";
 import { saveOrUpdateAnomaliesToDB } from "../lib/server/anomalies-service";//no need
 import { cleanupOldAnomalies } from "../lib/server/anomalyDetector/cleanupOldAnomalies";
+import { archiveOldReports } from "../lib/server/archive-reports";
 
 const app = express();
 app.use(cors());
@@ -52,6 +53,9 @@ runDetectionJob();
 //setInterval(cleanupOldAnomalies, 1000 * 60 * 60 * 24);  24 hours
 setInterval(cleanupOldAnomalies, 1000 * 60 * mul ); //1 minute
 
+// ✅ דיווחים – פעם ביום
+setInterval(archiveOldReports, 1000 * 60 * 60 * 1);
+archiveOldReports();
 
 const PORT = 4000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));

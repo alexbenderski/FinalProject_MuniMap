@@ -1,3 +1,4 @@
+//auth-client
 "use client";
 import { auth } from "./firebase";
 import {

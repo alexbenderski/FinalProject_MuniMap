@@ -14,42 +14,55 @@ export default function GraphsModal({ open, onClose }: { open: boolean; onClose:
   if (!open) return null;
 
   //  מגדירים אילו נושאים אפשריים לפי סוג הגרף
-  const allowedTopics: Record<string, { value: GraphTopic; label: string }[]> = {
-    line: [
-      { value: "frequency", label: "תדירות לפי קטגוריה" },
-      { value: "avgResolve", label: "ממוצע זמן טיפול לפי קטגוריה" },
-      { value: "unresolved", label: "לא סגורים" },
-    ],
-    bar: [
-      { value: "frequency", label: "תדירות לפי קטגוריה" },
-      { value: "unresolved", label: "לא סגורים" },
-    ],
-    double: [
-      { value: "resolvedVsTotal", label: "כל הדיווחים מול סגורים" },
-    ],
-  };
+const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: string }[]> = {
+  frequency: [
+    { type: "line", label: "גרף קו" },
+    { type: "bar", label: "גרף עמודות" },
+  ],
+  avgResolve: [
+    { type: "line", label: "גרף קו" },
+  ],
+  unresolved: [
+    { type: "bar", label: "גרף עמודות" },
+  ],
+  resolvedVsTotal: [
+    { type: "double", label: "עמודות כפולות" },
+  ],
+};
 
-  const addGraph = async () => {
-    if (graphs.length >= 4) {
-      alert("ניתן להציג עד 4 גרפים בלבד בו זמנית");
-      return;
-    }
-    if (!newGraph.type || !newGraph.category || !newGraph.timeRange || !newGraph.topic) {
-      alert("אנא בחר את כל השדות הנדרשים");
-      return;
-    }
+    const addGraph = async () => {
+      if (graphs.length >= 4) {
+        alert("ניתן להציג עד 4 גרפים בלבד בו זמנית");
+        return;
+      }
+      if (!newGraph.type || !newGraph.category || !newGraph.timeRange || !newGraph.topic) {
+        alert("אנא בחר את כל השדות הנדרשים");
+        return;
+      }
 
-    const fetchedData = await fetchGraphData(
-      newGraph.category as "garbage" | "lighting" | "tree",
-      newGraph.timeRange as "month" | "3month" | "6month" | "year",
-      newGraph.topic as GraphTopic
-    );
+      // 🔹 בדיקה: האם כבר קיים גרף עם אותם הגדרות?
+      const exists = graphs.some((g) =>
+        g.category === newGraph.category &&
+        // g.timeRange === newGraph.timeRange &&
+        g.topic === newGraph.topic
+      );
 
-    setGraphs([
-      ...graphs,
-      { ...(newGraph as Graph), id: Date.now(), data: fetchedData },
-    ]);
-  };
+      if (exists) {
+        alert("כבר קיים גרף עם אותם נתונים (קטגוריה, טווח זמן ונושא)");
+        return;
+      }
+
+      const fetchedData = await fetchGraphData(
+        newGraph.category as "garbage" | "lighting" | "tree" | "hazard",
+        newGraph.timeRange as "month" | "3month" | "6month" | "year",
+        newGraph.topic as GraphTopic
+      );
+
+      setGraphs([
+        ...graphs,
+        { ...(newGraph as Graph), id: Date.now(), data: fetchedData },
+      ]);
+    };
 
   const removeGraph = (id: number) => {
     setGraphs(graphs.filter((g) => g.id !== id));
@@ -72,6 +85,8 @@ export default function GraphsModal({ open, onClose }: { open: boolean; onClose:
             <option value="garbage">פסולת</option>
             <option value="lighting">תאורה</option>
             <option value="tree">עצים</option>
+            <option value="hazard">hazard</option>
+
           </select>
 
           {/* טווח זמן */}
@@ -87,36 +102,51 @@ export default function GraphsModal({ open, onClose }: { open: boolean; onClose:
             <option value="year">שנה אחרונה</option>
           </select>
 
-          {/* סוג גרף */}
-          <select
-            className="border rounded-md px-3 py-1"
-            value={newGraph.type || ""}
-            onChange={(e) => {
-              const type = e.target.value as Graph["type"];
-              setNewGraph({ ...newGraph, type, topic: undefined }); // 🧽 מאפס את נושא הגרף הקודם
-            }}
-          >
-            <option value="" disabled>בחר סוג גרף</option>
-            <option value="line">קו</option>
-            <option value="bar">עמודות</option>
-            <option value="double">עמודות כפולות</option>
-          </select>
 
           {/* נושא גרף — משתנה לפי סוג */}
           <select
             className="border rounded-md px-3 py-1"
             value={newGraph.topic || ""}
-            onChange={(e) => setNewGraph({ ...newGraph, topic: e.target.value as Graph["topic"] })}
-            disabled={!newGraph.type}
+            onChange={(e) => {
+              const topic = e.target.value as GraphTopic;
+              setNewGraph({
+                ...newGraph,
+                topic,
+                type: undefined, // מאפס כי סוג תלוי בנושא
+              });
+            }}
           >
-            <option value="" disabled>בחר נושא גרף</option>
-            {newGraph.type &&
-              allowedTopics[newGraph.type].map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
+            <option value="" disabled>בחר נושא</option>
+            <option value="frequency">תדירות לפי קטגוריה</option>
+            <option value="avgResolve">ממוצע זמן טיפול</option>
+            <option value="unresolved">לא סגורים</option>
+            <option value="resolvedVsTotal">סה״כ דיווחים מול סגורים</option>
+          </select>
+
+
+          {/* סוג גרף */}
+          <select
+            className="border rounded-md px-3 py-1"
+            value={newGraph.type || ""}
+            disabled={!newGraph.topic}
+            onChange={(e) => {
+              setNewGraph({
+                ...newGraph,
+                type: e.target.value as Graph["type"],
+              });
+            }}
+          >
+            <option value="" disabled>בחר סוג גרף</option>
+
+            {newGraph.topic &&
+              allowedTypesPerTopic[newGraph.topic].map((g) => (
+                <option key={g.type} value={g.type}>
+                  {g.label}
                 </option>
               ))}
           </select>
+
+
 
           <button
             onClick={addGraph}

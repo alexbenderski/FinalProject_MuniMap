@@ -40,6 +40,38 @@ export default function DetailedStatsTableModal({
   const [rows, setRows] = useState<AggregatedRow[]>([]);
   const [loading, setLoading] = useState(true);
 
+  type SortKey =
+    | "name"
+    | "total"
+    | "resolved"
+    | "unresolved"
+    | "resolvedPercent"
+    | "avgResolveDays"
+    | "oldestOpenDays"
+    | "lastReportDate"
+    | "pending"
+    | "inProgress"
+    | "medianResolveDays"
+
+
+
+
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+const [sortKey, setSortKey] = useState<keyof AggregatedRow | null>(null);
+
+function onSort(key: keyof AggregatedRow) {
+  if (sortKey === key) {
+    // אותו עמודה → הופכים כיוון
+    setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+  } else {
+    // עמודה חדשה → מתחילים בירידה
+    setSortKey(key);
+    setSortDir("desc");
+  }
+}
+
+
+
   useEffect(() => {
     if (!open) return;
     loadReports();
@@ -194,74 +226,83 @@ export default function DetailedStatsTableModal({
 
   if (!open) return null;
 
-  const renderColumns = () => {
-    switch (type) {
-      case "areas":
-        return (
-          <>
-            <th>Area</th>
-            <th>Total</th>
-            <th>Resolved</th>
-            <th>Pending</th>
-            <th>In Progress</th>
-            <th>Unresolved</th>
-            <th>%Resolved</th>
-            <th>Avg Resolve (days)</th>
-            <th>Last Report</th>
-          </>
-        );
-      case "unresolved":
-        return (
-          <>
-            <th>Area</th>
-            <th>Total</th>
-            <th>Unresolved</th>
-            <th>Unresolved %</th>
-            <th>Oldest Report (days)</th>
-            <th>Avg Days Open</th>
-            <th>Last Report</th>
-          </>
-        );
-      case "areasByResolve":
-        return (
-          <>
-            <th>Area</th>
-            <th>Total</th>
-            <th>Resolved</th>
-            <th>Avg Resolve (days)</th>
-            <th>%Resolved</th>
-            <th>Median Resolve (est)</th>
-            <th>Last Report</th>
-          </>
-        );
-      case "categoriesByResolve":
-        return (
-          <>
-            <th>Category</th>
-            <th>Total</th>
-            <th>Resolved</th>
-            <th>Unresolved</th>
-            <th>%Resolved</th>
-            <th>Avg Resolve (days)</th>
-          </>
-        );
-    }
-  };
+const th = (label: string, key: SortKey) => (
+  <th
+    className="text-left px-2 cursor-pointer select-none"
+    onClick={() => onSort(key)}
+  >
+    {label}
+    {sortKey === key && (sortDir === "asc" ? " ▲" : " ▼")}
+  </th>
+);
+
+const renderColumns = () => {
+  switch (type) {
+    case "areas":
+      return (
+        <>
+          {th("Area", "name")}
+          {th("Total", "total")}
+          {th("Resolved", "resolved")}
+          {th("Pending", "pending")}
+          {th("In Progress", "inProgress")}
+          {th("Unresolved", "unresolved")}
+          {th("%Resolved", "resolvedPercent")}
+          {th("Avg Resolve (days)", "avgResolveDays")}
+        </>
+      );
+
+    case "unresolved":
+      return (
+        <>
+          {th("Area", "name")}
+          {th("Total", "total")}
+          {th("Unresolved", "unresolved")}
+          {th("Unresolved %", "resolvedPercent")}
+          {th("Oldest Report (days)", "oldestOpenDays")}
+          {th("Avg Days Open", "avgResolveDays")}
+        </>
+      );
+
+    case "areasByResolve":
+      return (
+        <>
+          {th("Area", "name")}
+          {th("Total", "total")}
+          {th("Resolved", "resolved")}
+          {th("Avg Resolve (days)", "avgResolveDays")}
+          {th("%Resolved", "resolvedPercent")}
+          {th("Median Resolve (est)", "medianResolveDays")}
+        </>
+      );
+
+    case "categoriesByResolve":
+      return (
+        <>
+          {th("Category", "name")}
+          {th("Total", "total")}
+          {th("Resolved", "resolved")}
+          {th("Unresolved", "unresolved")}
+          {th("%Resolved", "resolvedPercent")}
+          {th("Avg Resolve (days)", "avgResolveDays")}
+        </>
+      );
+  }
+};
 
   const renderRow = (r: AggregatedRow) => {
     switch (type) {
       case "areas":
         return (
           <>
-            <td>{r.name}</td>
-            <td>{r.total}</td>
-            <td className="text-green-600">{r.resolved}</td>
-            <td>{r.pending}</td>
-            <td>{r.inProgress}</td>
-            <td className="text-red-600">{r.unresolved}</td>
-            <td>{r.resolvedPercent}%</td>
-            <td>{r.avgResolveDays}</td>
-            <td>{r.lastReportDate}</td>
+            <td className="text-left px-2">{r.name}</td>
+            <td className="text-left px-2">{r.total}</td>
+            <td className="text-left px-2 text-green-600">{r.resolved}</td>
+            <td className="text-left px-2">{r.pending}</td>
+            <td className="text-left px-2">{r.inProgress}</td>
+            <td className="text-left px-2 text-red-600">{r.unresolved}</td>
+            <td className="text-left px-2  text-green-600">{r.resolvedPercent}%</td>
+            <td className="text-left px-2">{r.avgResolveDays}</td>
           </>
         );
       case "unresolved":
@@ -269,41 +310,63 @@ export default function DetailedStatsTableModal({
           r.total > 0 ? ((r.unresolved / r.total) * 100).toFixed(1) : "0";
         return (
           <>
-            <td>{r.name}</td>
-            <td>{r.total}</td>
-            <td>{r.unresolved}</td>
-            <td>{unresolvedPercent}%</td>
-            <td>{r.oldestOpenDays ?? "—"}</td>
-            <td>{r.avgResolveDays ?? "—"}</td>
-            <td>{r.lastReportDate}</td>
+            <td className="text-left px-2">{r.name}</td>
+            <td className="text-left px-2">{r.total}</td>
+            <td className="text-left px-2 text-red-600" >{r.unresolved}</td>
+            <td className="text-left px-2  text-red-600">{unresolvedPercent}%</td>
+            <td className="text-left px-2">{r.oldestOpenDays ?? "—"}</td>
+            <td className="text-left px-2">{r.avgResolveDays ?? "—"}</td>
           </>
         );
       case "areasByResolve":
         return (
           <>
-            <td>{r.name}</td>
-            <td>{r.total}</td>
-            <td className="text-green-600">{r.resolved}</td>
-            <td>{r.avgResolveDays ?? "—"}</td>
-            <td>{r.resolvedPercent}%</td>
-            <td>{r.medianResolveDays ?? "—"}</td>
-            <td>{r.lastReportDate}</td>
+            <td  className="text-left px-2">{r.name}</td>
+            <td  className="text-left px-2">{r.total}</td>
+            <td className="text-left px-2 text-green-600">{r.resolved}</td>
+            <td  className="text-left px-2 ">{r.avgResolveDays ?? "—"}</td>
+            <td  className="text-left px-2  text-green-600">{r.resolvedPercent}%</td>
+            <td  className="text-left px-2">{r.medianResolveDays ?? "—"}</td>
           </>
         );
       case "categoriesByResolve":
-        return (
-          <>
-            <td>{r.name}</td>
-            <td>{r.total}</td>
-            <td className="text-green-600">{r.resolved}</td>
-            <td className="text-red-600">{r.unresolved}</td>
-            <td>{r.resolvedPercent}%</td>
-            <td>{r.avgResolveDays ?? "—"}</td>
-          </>
-        );
+  return (
+    <>
+      <td className="text-left px-2">{r.name}</td>
+      <td className="text-left px-2">{r.total}</td>
+      <td className="text-left px-2 text-green-600">{r.resolved}</td>
+      <td className="text-left px-2 text-red-600">{r.unresolved}</td>
+      <td className="text-left px-2  text-green-600">{r.resolvedPercent}%</td>
+      <td className="text-left px-2">{r.avgResolveDays ?? "—"}</td>
+    </>
+  );
     }
   };
 
+const sortedRows = [...rows].sort((a, b) => {
+  if (!sortKey) return 0;
+
+  const dir = sortDir === "asc" ? 1 : -1;
+
+  const av = a[sortKey];
+  const bv = b[sortKey];
+
+  // // תאריך
+  // if (sortKey === "lastReportDate") {
+  //   const ta = av ? new Date(av as string).getTime() : 0;
+  //   const tb = bv ? new Date(bv as string).getTime() : 0;
+  //   return (ta - tb) * dir;
+  // }
+
+  // מספר
+  if (typeof av === "number" && typeof bv === "number") {
+    return (av - bv) * dir;
+  }
+
+  // טקסט
+  return String(av ?? "").localeCompare(String(bv ?? ""), "he") * dir;
+});
+  
   return (
     <Modal
       title={`Details — ${
@@ -321,7 +384,7 @@ export default function DetailedStatsTableModal({
         {loading ? (
           <p className="text-center text-gray-500 py-5">Loading data...</p>
         ) : (
-          <table className="min-w-full border-collapse border border-gray-300 text-sm">
+          <table className="min-w-full table-fixed border-collapse border border-gray-300 text-sm">
             <thead className="bg-gray-100">
               <tr>{renderColumns()}</tr>
             </thead>
@@ -333,7 +396,7 @@ export default function DetailedStatsTableModal({
                   </td>
                 </tr>
               ) : (
-                rows.map((r, i) => (
+                sortedRows.map((r, i) => (
                   <tr key={i} className="border-b">
                     {renderRow(r)}
                   </tr>

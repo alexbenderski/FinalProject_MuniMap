@@ -11,6 +11,7 @@ import FiltersModal from "@/components/dashboard/FiltersModal";
 import ReportsTableModal from "@/components/dashboard/ReportsTableModal";
 import { Report } from "@/lib/types";
 import AnomaliesModal from "@/components/dashboard/AnomaliesModal";
+import ArchivedReportsModal from "@/components/dashboard/ArchivedReportsModal"
 
 export default function DashboardPage() {
   // 🔹 מצבים כלליים של פתיחת חלונות
@@ -81,7 +82,7 @@ export default function DashboardPage() {
               alert("No filtered reports to display — please apply filters first.");
             }
           }}
-          onOpenArchive={() => console.log("Archive clicked")}
+          onOpenArchive={() => setArchiveOpen(true)}
         />
 
         {/* 🔹 אזור התוכן המרכזי */}
@@ -149,11 +150,14 @@ export default function DashboardPage() {
         )}
 
         {/* 🔹 חלון ארכיון */}
-        {archiveOpen && (
-          <Modal title="Archived Reports" onClose={() => setArchiveOpen(false)}>
-            <p>Archive window</p>
-          </Modal>
-        )}
+{archiveOpen && (
+  <Modal
+    title="Archived Reports"
+    onClose={() => setArchiveOpen(false)}
+  >
+    <ArchivedReportsModal />
+  </Modal>
+)}
 
         {/* 🔹 רשימת אנומליות */}
         {anomListOpen && (

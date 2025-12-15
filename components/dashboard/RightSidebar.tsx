@@ -31,6 +31,7 @@ export default function RightSidebar({ //props of the interface RightSidebarProp
   filterSummary,
 }: RightSidebarProps) {
   const [statsOpen, setStatsOpen] = useState(false);
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
 
   // // פונקציה שמוסיפה / מסירה סוג אירוע לפי לחיצה
   // const toggleType = (t: string) =>
@@ -46,7 +47,10 @@ export default function RightSidebar({ //props of the interface RightSidebarProp
       <div className="font-semibold mb-2">Select area</div>
       <RegionSelector
         selectedArea={selectedArea}
-        onSelect={(city) => setSelectedArea(city)}
+        onSelect={(city, district) => {
+          setSelectedArea(city);
+          setSelectedDistrict(district);
+        }}
       />
     </div>
           <button
@@ -74,7 +78,9 @@ export default function RightSidebar({ //props of the interface RightSidebarProp
           ))}
         </ul>
         <div className="mt-3 bg-green-100 rounded-md p-2 text-sm">
-          <strong>Selected area:</strong> {selectedArea ?? "—"}
+          <strong>Selected area:</strong> {selectedArea ?? "—"} <br />
+          <strong>Selected district:</strong> {selectedDistrict ?? "—"}
+
         </div>
       </div>
 

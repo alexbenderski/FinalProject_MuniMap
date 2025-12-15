@@ -108,6 +108,10 @@ async function loadStats() {
 
   if (!open) return null;
 
+
+
+
+  
   return (
     <Modal title="Statistics reports and Analysis" onClose={onClose}>
       <div className="p-4 bg-white rounded-lg max-h-[85vh] overflow-y-auto w-[950px]">

@@ -14,6 +14,7 @@ import { useCityBoundary } from "@/lib/client/hooks/useCityBoundary";
 import { useFilteredReports } from "@/lib/client/hooks/useFilteredReports";
 import { getReportCriticalityType } from "@/lib/server/sla"; // אם תעביר את הפונקציה לשם
 import { SLA_DAYS } from "@/lib/server/sla";
+import { useAuth } from "@/components/AuthProvider";
 
 const containerStyle = { width: "100%", height: "100%" };
 const defaultCenter = { lat: 32.794, lng: 34.989 };
@@ -118,7 +119,9 @@ export default function MapCanvas({
       //  { area: "...", type: "garbage" },
       // ]
       
-      setReports(all.filter((r) => r.area === selectedArea)); 
+      setReports(all.filter((r) => r.area === selectedArea));
+
+      // setReports(all.filter((r) => r.area === selectedArea)); 
 
     }
     loadReports();
@@ -138,6 +141,7 @@ const { filteredReports } = useFilteredReports(reports, {
   mediaOnly,
   criticality,
 });
+const { permissions } = useAuth();
 
 // 🔹 כאן מסננים לפי צבע בלבד, על בסיס חישוב SLA
 const visibleReports = useMemo(() => {
