@@ -14,7 +14,7 @@ import { fetchReportsStats, fetchResolutionTimeData } from "@/lib/client/fetcher
 import GraphsModal from "@/components/dashboard/GraphsModal";
 import DetailedStatsModal from "@/components/dashboard/DetailedStatsModal";
 import { TimeRange } from "@/lib/types";
-
+import StatusTransitionModal from "@/components/dashboard/StatusTransitionModal";
 
 type Stats = {
   total: number;
@@ -44,6 +44,7 @@ export default function StatisticsModal({
   const [detailedOpen, setDetailedOpen] = useState(false);
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
+  const [openStatusTransition, setOpenStatusTransition] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -237,10 +238,17 @@ async function loadStats() {
         </button>
         <button
         onClick={() => setDetailedOpen(true)}
-            className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 block mx-auto"
+            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 block mx-auto"
             >
             Open Detailed Statistics 📈
         </button>
+        <button
+        onClick={() => setOpenStatusTransition(true)}
+        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 block mx-auto"
+      >
+        Analyze Status Transitions ⏱
+      </button>
+
 
 
 
@@ -263,8 +271,14 @@ async function loadStats() {
         />
       )}
       </div>
-
+      <StatusTransitionModal
+        open={openStatusTransition}
+        onClose={() => setOpenStatusTransition(false)}
+      />
+      
     </Modal>
+
+    
   );
   
 }

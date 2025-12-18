@@ -11,6 +11,7 @@ import {getReportsForDetector} from "../lib/server/reports-service"
 import { saveOrUpdateAnomaliesToDB } from "../lib/server/anomalies-service";//no need
 import { cleanupOldAnomalies } from "../lib/server/anomalyDetector/cleanupOldAnomalies";
 import { archiveOldReports } from "../lib/server/archive-reports";
+import { exportArchivedReports } from "../lib/server/archive-export";
 
 const app = express();
 app.use(cors());
@@ -21,6 +22,10 @@ let lastAnomalies: Anomaly[] = [];
 app.get("/api/anomalies", (_req: Request, res: Response) => {
   res.json(lastAnomalies);
 });
+
+// ✅ EXPORT ARCHIVED REPORTS
+// app.post("/api/archive/export", exportArchivedReports);
+
 
 async function runDetectionJob(): Promise<void> {
   console.log("🕒 Running anomaly detection job...");
@@ -51,10 +56,10 @@ const DAY_MS =  60 * 1000 * mul ;
 setInterval(runDetectionJob, DAY_MS);
 runDetectionJob();
 //setInterval(cleanupOldAnomalies, 1000 * 60 * 60 * 24);  24 hours
-setInterval(cleanupOldAnomalies, 1000 * 60 * mul ); //1 minute
+setInterval(cleanupOldAnomalies, 1000 * 60 * mul ); //
 
 // ✅ דיווחים – פעם ביום
-setInterval(archiveOldReports, 1000 * 60 * 60 * 1);
+setInterval(archiveOldReports, 1000 * 60  * 1);
 archiveOldReports();
 
 const PORT = 4000;
