@@ -22,7 +22,7 @@
 
 
 
-
+//AuthProvider.tsx
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
 import { observeUser } from "@/lib/client/auth-client";
@@ -31,7 +31,9 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/client/firestore";
 
 type Permissions = {
-  district: string;
+  //district: string;
+  city: string;
+
 };
 
 type AuthCtx = { 

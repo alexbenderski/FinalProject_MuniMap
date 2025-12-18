@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import RegionSelector from "./RegionSelector";
 import { Report, City} from "@/lib/types";
 import StatisticsModal from "@/components/dashboard/StatisticsModal";
+import { useAuth } from "../AuthProvider";
 
 interface RightSidebarProps {
   selectedArea: string | null;
@@ -39,20 +40,22 @@ export default function RightSidebar({ //props of the interface RightSidebarProp
   //     prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]// check if t (the new type that selected) is already selected 
   //     // if its in the selectedtypes array(prev.includes(t)),  make array without it (prev.filter((x) => x !== t)) OR add it to the new array ([...prev, t])
   //   );
+  const { permissions } = useAuth();
 
   return (
     <aside className="w-[320px] border-l bg-white flex flex-col">
-      {/* בחירת אזור */}
-    <div className="border-b p-3">
-      <div className="font-semibold mb-2">Select area</div>
-      <RegionSelector
-        selectedArea={selectedArea}
-        onSelect={(city, district) => {
-          setSelectedArea(city);
-          setSelectedDistrict(district);
-        }}
-      />
-    </div>
+
+
+      {/* 🔒 City lock */}
+      <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+        <div className="text-sm text-blue-800 font-semibold">
+          עירייה
+        </div>
+        <div className="text-lg font-bold text-blue-900 mt-1">
+          עיריית {permissions?.city}
+        </div>
+      </div>
+
           <button
         className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-md mb-2"
         onClick={() => setStatsOpen(true)}
@@ -62,7 +65,7 @@ export default function RightSidebar({ //props of the interface RightSidebarProp
 
       {/* המודל עצמו */}
       {statsOpen && (
-        <StatisticsModal open={statsOpen} onClose={() => setStatsOpen(false)} />
+        <StatisticsModal open={statsOpen} onClose={() => setStatsOpen(false)} city={permissions?.city ?? null} />
       )}
 
       {/* סיכום הפילטרים */}
@@ -79,7 +82,7 @@ export default function RightSidebar({ //props of the interface RightSidebarProp
         </ul>
         <div className="mt-3 bg-green-100 rounded-md p-2 text-sm">
           <strong>Selected area:</strong> {selectedArea ?? "—"} <br />
-          <strong>Selected district:</strong> {selectedDistrict ?? "—"}
+          {/* <strong>Selected district:</strong> {selectedDistrict ?? "—"} */}
 
         </div>
       </div>

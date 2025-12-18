@@ -26,9 +26,11 @@ type Stats = {
 export default function StatisticsModal({
   open,
   onClose,
+  city,
 }: {
   open: boolean;
   onClose: () => void;
+  city: string | null;
 }) {
   const [stats, setStats] = useState<Stats>({
     total: 0,
@@ -274,6 +276,7 @@ async function loadStats() {
       <StatusTransitionModal
         open={openStatusTransition}
         onClose={() => setOpenStatusTransition(false)}
+        city={city}
       />
       
     </Modal>

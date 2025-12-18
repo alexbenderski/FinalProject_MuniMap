@@ -30,3 +30,11 @@ export async function saveOrUpdateAnomaliesToDB(anomalies: Anomaly[]) {
 
   console.log(`✅ Saved/Updated ${anomalies.length} anomalies`);
 }
+
+export async function getAnomaliesFromDB(): Promise<Anomaly[]> {
+  const snapshot = await db.ref("Anomalies").once("value");
+  if (!snapshot.exists()) return [];
+  
+  const anomaliesData = snapshot.val();
+  return Object.values(anomaliesData) as Anomaly[];
+}

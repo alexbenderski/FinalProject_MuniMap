@@ -7,7 +7,7 @@ import {
   InfoWindow,//show a window pop up when click on the icons
   useJsApiLoader,//special hook that loads the js file of the google maps and ensures that api loaded before the map drawing
 } from "@react-google-maps/api";
-import { fetchCitiesFromLocal, fetchReports } from "@/lib/client/fetchers";
+import { fetchCitiesFromLocal, fetchReports} from "@/lib/client/fetchers";
 import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
 import { Report, City} from "@/lib/types";
 import { useCityBoundary } from "@/lib/client/hooks/useCityBoundary";
@@ -32,6 +32,7 @@ const defaultCenter = { lat: 32.794, lng: 34.989 };
 
 
 export default function MapCanvas({
+  city,
   selectedArea,
   selectedTypes,
   status,
@@ -49,6 +50,7 @@ export default function MapCanvas({
   mediaOnly: boolean;
   criticality?: string; 
   onReportsUpdate?: (reports: Report[]) => void;
+  city: string | null;
 })
 
 {
@@ -62,72 +64,37 @@ export default function MapCanvas({
   // const [cityBoundary, setCityBoundary] = useState<
   //   { lat: number; lng: number }[] | null
   // >(null); //stores array of objects , each object is like a dot. lat,lng
-  const { cityBoundary } = useCityBoundary(selectedArea, map);
+  const { cityBoundary } = useCityBoundary(city, map);
 
   const { isLoaded } = useJsApiLoader({ //loading my google maps api key so tha map could work.
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY!,
   });
 
   // 🔹 טוענים דיווחים פעם אחת בלבד בתחילת העבודה
-  useEffect(() => {
-    if (!selectedArea) {
-      setReports([]); // מנקה דיווחים קיימים כשאין אזור
+useEffect(() => {
+  if (!city) {
+    setReports([]);
     return;
-    }
-    async function loadReports() {
-      const data = await fetchReports();
-      //data look alike
-      //{
-      // "garbage": { "id1": {...}, "id2": {...} },
-      // "light": { "id3": {...} }
-      // }
-      const all: Report[] = []; //defines all array of type Report (empty)  .
-      Object.entries(data).forEach(([type, group]) => { //turn object to list of pairs [key,value]
-        //data will be like : "garbage" - key .  value -  {     rpt_1: {...}, rpt_2: {...}     } 
-        // [
-        // ["garbage", { rpt_1: {...}, rpt_2: {...} }],
-        // ["lighting", { rpt_3: {...}, rpt_7: {...} }],
-        // ]
-        //the forEach(([type, group]) => {...})
-        //  equvivalent to:
-        //  forEach((entry) => {
-        //   const type = entry[0];
-        //   const group = entry[1];
-        // })
+  }
 
-        //group is like:
-        // {
-        //   rpt_1: { area: ..., lat: ..., lng: ... },
-        //   rpt_2: { area: ..., lat: ..., lng: ... }
-        // }
-        Object.entries(group as Record<string, Omit<Report, "type" | "id">>).forEach(
-        ([id, r]) => {          //group as Record<string, Report> says to ts the desired types, that group is an object that keys are string and values are Report type
-          //Object.values(group) extracts the values without the keys 
-          // [
-            //   { area: ..., lat: ..., lng: ... },
-            //   { area: ..., lat: ..., lng: ... }
-            // ]
-          all.push({ ...r, type,id }); //r is single report, "...r,type" is like adding to r new field "type"
-          //if r = { area: "חיפה", lat: 32.8, lng: 34.9 }
-          //so after push =  { area: "חיפה", lat: 32.8, lng: 34.9, type: "garbage" }
+  async function loadReports() {
+    const data = await fetchReports();
+    const all: Report[] = [];
 
-        });
-      });
-      // all look like :
-      // [
-      //  { area: "...", type: "garbage" },
-      //  { area: "...", type: "garbage" },
-      // ]
-      
-      setReports(all.filter((r) => r.area === selectedArea));
+    Object.entries(data).forEach(([type, group]) => {
+      Object.entries(group as Record<string, Omit<Report, "type" | "id">>).forEach(
+        ([id, r]) => {
+          all.push({ ...r, type, id });
+        }
+      );
+    });
 
-      // setReports(all.filter((r) => r.area === selectedArea)); 
+    // ✅ סינון בסיסי לפי עיר
+    setReports(all.filter((r) => r.area === city));
+  }
 
-    }
-    loadReports();
-
-  }, [selectedArea]); //the [] here means this useEffect will run only once when the component is loading.
-
+  loadReports();
+}, [city]);
 
   // 🔹 סינון הדיווחים — רק אם יש אזור וגם סוג נבחר
 
@@ -190,11 +157,11 @@ useEffect(() => {
             <Polygon
               paths={cityBoundary}
               options={{
-                strokeColor: "green",
+                strokeColor: "blue",
                 strokeOpacity: 0.9,
                 strokeWeight: 2,
                 fillOpacity: 0.1,
-                fillColor: "green",
+                fillColor: "yellow",
               }}
             />
           )}

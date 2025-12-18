@@ -8,10 +8,8 @@ import { runAllDetectors } from "../lib/server/anomalyDetector";
 import {getReportsForDetector} from "../lib/server/reports-service"
  import { Anomaly } from "../lib/server/anomalyDetector/builders";
 // import { saveOrUpdateAnomaliesToDB } from "./firebaseWriter";
-import { saveOrUpdateAnomaliesToDB } from "../lib/server/anomalies-service";//no need
 import { cleanupOldAnomalies } from "../lib/server/anomalyDetector/cleanupOldAnomalies";
 import { archiveOldReports } from "../lib/server/archive-reports";
-import { exportArchivedReports } from "../lib/server/archive-export";
 
 const app = express();
 app.use(cors());

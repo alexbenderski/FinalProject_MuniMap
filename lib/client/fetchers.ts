@@ -8,10 +8,11 @@ import { set } from "firebase/database"; // נייבא את set
 
 
 export async function fetchCitiesFromLocal() {
-  const response = await fetch("/data/cities_data.txt");
+  const response = await fetch("/data/cities_municipal_boundaries.json");
   if (!response.ok) throw new Error("Failed to load file");
   return response.json();
 }
+
 
 // export async function fetchReports() {
 //   const db = getDatabase(app); //recieve the realtime db object

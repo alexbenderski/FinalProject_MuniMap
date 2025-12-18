@@ -4,6 +4,7 @@ import { fetchReports } from "@/lib/client/fetchers";
 import Modal from "@/components/dashboard/Modal";
 import { Report,FilterStatus} from "@/lib/types";
 import Image from "next/image";
+import { useAuth } from "@/components/AuthProvider";
 
 
 
@@ -49,6 +50,8 @@ export default function FiltersModal({ open, onClose, onApply }: FiltersModalPro
   });
 
   const defaultColor = "green";
+  const { permissions } = useAuth();
+  const city = permissions?.city;
 
   useEffect(() => {
     if (!open) return;
@@ -63,12 +66,17 @@ export default function FiltersModal({ open, onClose, onApply }: FiltersModalPro
         const areas = new Set<string>();
         const statusesSet = new Set<string>();
 
-        Object.values(data).forEach((group) => {
-          Object.values(group as Record<string, Report>).forEach((r) => {
-            if (r.area) areas.add(r.area);
-            if (r.status) statusesSet.add(r.status);
-          });
+      Object.values(data).forEach((group) => {
+        Object.values(group as Record<string, Report>).forEach((r) => {
+          // ✅ רק אזורים של העיר של המשתמש
+          if (r.area === city && r.area) {
+            areas.add(r.area);
+          }
+          if (r.status) {
+            statusesSet.add(r.status);
+          }
         });
+      });
 
         setLocations(Array.from(areas));
         setStatuses(Array.from(statusesSet));
@@ -131,7 +139,7 @@ export default function FiltersModal({ open, onClose, onApply }: FiltersModalPro
 
 
 
-        {/* מיקום */}
+        {/* מיקום 
         <div className="mb-3">
           <label className="font-semibold block mb-2">Location:</label>
           <select
@@ -147,7 +155,7 @@ export default function FiltersModal({ open, onClose, onApply }: FiltersModalPro
             ))}
           </select>
         </div>
-
+*/}
         {/* סטטוס */}
         <div className="mb-3">
           <label className="font-semibold block mb-2">Status:</label>

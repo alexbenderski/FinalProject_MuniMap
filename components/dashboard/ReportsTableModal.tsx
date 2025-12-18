@@ -756,8 +756,7 @@ return (
                 alert("No reports selected.");
                 return;
               }
-              // setReportsToShow(selected);
-              setReportsToShow(filteredRows);
+              setReportsToShow(selected);
               setMapOpen(true);
             }}
           >
@@ -932,8 +931,7 @@ return (
         <ReportsMapModal
           open={mapOpen}
           onClose={() => setMapOpen(false)}
-          // reports={reportsToShow}
-          reports={filteredRows}
+          reports={reportsToShow}
           criticality={filters.criticality}
           selectedArea={selectedArea}
         />
@@ -958,53 +956,45 @@ return (
         }}
       />
       )}
-            {/* 🔗 חלון הלינק שנוצר */}
-{linkModalOpen && (
-  <Modal title="Generated Route Links" onClose={() => setLinkModalOpen(false)}>
-    <div className="p-6 text-center">
-      <p className="text-gray-700 text-sm mb-4">
-        נוצרו שני לינקים – אחד עם מזהים לצפייה, ואחד נקי לניווט בפועל.
-      </p>
-       <p className="text-red-600 font-bold   mb-4">
-       !!! בפאלפון שלכם google maps ב GPS נא לדאוג להפעיל !!!
-      </p>
+         { /* 🔗 חלון הלינק שנוצר */}
+          {linkModalOpen && (
+            <Modal title="Generated Route Links" onClose={() => setLinkModalOpen(false)}>
+              <div className="p-6 text-center">
+                <p className="text-gray-700 text-sm mb-4">
+                  נוצרו שני לינקים – אחד עם מזהים לצפייה, ואחד נקי לניווט בפועל.
+                </p>
+                <p className="text-red-600 font-bold mb-4">
+                  !!! בפאלפון שלכם google maps ב GPS נא לדאוג להפעיל !!!
+                </p>
 
-      {/* לינק עם מזהים */}
-      <div className="mb-5">
-        <h3 className="font-semibold mb-1">🔹 עם מזהים (לצפייה בלבד)</h3>
-        <a
-          href={generatedLabeledLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline font-medium break-all"
-        >
-          {generatedLabeledLink}
-        </a>
-      </div>
+                {/* לינק עם מזהים */}
+                <div className="mb-5">
+                  <h3 className="font-semibold mb-1">🔹 עם מזהים (לצפייה בלבד)</h3>
+                  <button
+                    onClick={() => window.open(generatedLabeledLink, "_blank")}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
+                  >
+                    Open Labeled Route
+                  </button>
+                </div>
 
-      {/* לינק נקי */}
-      <div>
-        <h3 className="font-semibold mb-1">🔹 לינק נקי (לניווט אמיתי)</h3>
-        <a
-          href={generatedCleanLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-green-600 underline font-medium break-all"
-        >
-          {generatedCleanLink}
-        </a>
-      </div>
+                {/* לינק נקי */}
+                <div className="mb-5">
+                  <h3 className="font-semibold mb-1">🔹 לינק נקי (לניווט אמיתי)</h3>
+                  <button
+                    onClick={() => window.open(generatedCleanLink, "_blank")}
+                    className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded"
+                  >
+                    Open Clean Route
+                  </button>
+                </div>
 
-      <p className="text-xs text-gray-500 mt-5">
-        * שני הלינקים הועתקו אוטומטית ללוח. ניתן לשלוח לעובדים להדבקה והפעלה.
-      </p>
-    </div>
-  </Modal>
-)}
-
-
+                <p className="text-xs text-gray-500 mt-5">
+                  * שני הלינקים הועתקו אוטומטית ללוח. ניתן לשלוח לעובדים להדבקה והפעלה.
+                </p>
+              </div>
+            </Modal>
+          )}
     </>
-    
   );
-  
 }
