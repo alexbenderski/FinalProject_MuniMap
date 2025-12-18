@@ -22,6 +22,8 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
   }>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [heatmapData, setHeatmapData] = useState<Record<string, Record<string, { avgDays: number; count: number }>>>({});
 
   const transitionPairs = [
     { start: "open", end: "pending" },
@@ -83,6 +85,43 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
     } finally {
       setDownloading(false);
     }
+  };
+
+  const handleShowHeatmap = async () => {
+    setShowHeatmap(true);
+    const newHeatmapData: Record<string, Record<string, { avgDays: number; count: number }>> = {};
+
+    for (const from of STATUS_ORDER) {
+      newHeatmapData[from] = {};
+      for (const to of STATUS_ORDER) {
+        if (STATUS_ORDER.indexOf(from) < STATUS_ORDER.indexOf(to)) {
+          const res = await fetch("/api/statistics/status-transition", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              monthsBack: Number(timeRange),
+              category,
+              area: city,
+              statusStart: from,
+              statusEnd: to,
+            }),
+          });
+          const data = await res.json();
+          newHeatmapData[from][to] = { avgDays: data.avgDays, count: data.count };
+        }
+      }
+    }
+
+    setHeatmapData(newHeatmapData);
+  };
+
+  const getHeatmapColor = (avgDays: number, maxDays: number = 30) => {
+    if (avgDays === 0) return "bg-gray-100";
+    const ratio = Math.min(avgDays / maxDays, 1);
+    if (ratio < 0.25) return "bg-green-100";
+    if (ratio < 0.5) return "bg-yellow-100";
+    if (ratio < 0.75) return "bg-orange-100";
+    return "bg-red-100";
   };
 
 
@@ -221,9 +260,92 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
             onClick={handleDownloadExcel}
             className="px-6 py-2 bg-green-600 text-white rounded font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            📥 {downloading ? "Downloading..." : "Download Excel"}
+            📥 {downloading ? "Downloading..." : "Full-Report (Excel)"}
+          </button>
+
+          <button
+            onClick={handleShowHeatmap}
+            className="px-6 py-2 bg-purple-600 text-white rounded font-semibold hover:bg-purple-700 flex items-center gap-2"
+          >
+            🔥 View Heatmap
           </button>
         </div>
+
+        {showHeatmap && Object.keys(heatmapData).length > 0 && (
+          <div className="mt-6 p-5 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
+            <h3 className="text-lg font-bold text-purple-900 mb-4"> Status Transition Heatmap</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="p-2 bg-purple-200 text-purple-900 font-semibold border">From \ To</th>
+                    {STATUS_ORDER.map((status) => (
+                      <th key={status} className="p-2 bg-purple-200 text-purple-900 font-semibold border text-sm">
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {STATUS_ORDER.map((fromStatus) => (
+                    <tr key={fromStatus}>
+                      <td className="p-2 bg-purple-100 text-purple-900 font-semibold border text-sm">
+                        {fromStatus.charAt(0).toUpperCase() + fromStatus.slice(1)}
+                      </td>
+                      {STATUS_ORDER.map((toStatus) => {
+                        const data = heatmapData[fromStatus]?.[toStatus];
+                        const isValid = STATUS_ORDER.indexOf(fromStatus) < STATUS_ORDER.indexOf(toStatus);
+
+                        if (!isValid) {
+                          return (
+                            <td key={`${fromStatus}-${toStatus}`} className="p-2 border bg-gray-50">
+                              -
+                            </td>
+                          );
+                        }
+
+                        return (
+                          <td
+                            key={`${fromStatus}-${toStatus}`}
+                            className={`p-3 border font-semibold text-center transition-colors ${getHeatmapColor(data?.avgDays || 0)}`}
+                            title={`${data?.avgDays.toFixed(2) || 0} days (${data?.count || 0} reports)`}
+                          >
+                            <div className="text-sm font-bold text-gray-800">{data?.avgDays.toFixed(1) || "—"}</div>
+                            <div className="text-xs text-gray-600">({data?.count || 0})</div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Legend */}
+            <div className="mt-4 flex gap-4 flex-wrap justify-center text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-green-100 border border-green-300"></div>
+                <span>0-7.5 days</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-yellow-100 border border-yellow-300"></div>
+                <span>7.5-15 days</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-orange-100 border border-orange-300"></div>
+                <span>15-22.5 days</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-red-100 border border-red-300"></div>
+                <span>22.5+ days</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-600 mt-3 text-center">
+              Values show average days to transition | Numbers in parentheses show report count
+            </p>
+          </div>
+        )}
 
         {result && (
           <div className="mt-6 p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-green-200">
