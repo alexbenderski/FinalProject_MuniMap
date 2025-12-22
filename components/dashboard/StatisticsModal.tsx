@@ -116,10 +116,10 @@ async function loadStats() {
 
   
   return (
-    <Modal title="Statistics reports and Analysis" onClose={onClose}>
-      <div className="p-4 bg-white rounded-lg max-h-[85vh] overflow-y-auto w-[950px]">
-        <h1 className="text-2xl font-bold text-center mb-6 underline">
-          Statistics reports and Analysis
+    <Modal title="📊 Statistics & Analysis Hub" onClose={onClose}>
+      <div className="p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-lg max-h-[85vh] overflow-y-auto w-[950px]">
+        <h1 className="text-3xl font-bold text-center mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          📈 Analytics Dashboard
         </h1>
 
  {/* 🔹 בורר זמן */}
@@ -183,47 +183,70 @@ async function loadStats() {
           <p className="text-center text-gray-500">Loading statistics...</p>
         ) : (
           <>
-            {/* 🔹 ארבעת המדדים באותה שורה */}
-            <div className="grid grid-cols-4 gap-4 mb-6 text-center">
-              <div className="bg-gray-50 p-4 rounded-md">
-                <h2 className="font-semibold text-lg">Total Reports</h2>
-                <p className="text-3xl font-bold mt-2">{stats.total}</p>
+            {/* 🔹 Stats Cards with Gradient */}
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              <div className="bg-gradient-to-br from-blue-400 to-blue-600 text-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow transform hover:scale-105 transition-transform">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold opacity-90">📦 Total Reports</p>
+                    <p className="text-4xl font-bold mt-2">{stats.total}</p>
+                  </div>
+                  <div className="text-5xl opacity-20">📊</div>
+                </div>
               </div>
-              <div className="bg-gray-50 p-4 rounded-md">
-                <h2 className="font-semibold text-lg">%Open</h2>
-                <p className="text-3xl font-bold mt-2 text-blue-700">{openPercent}%</p>
+              <div className="bg-gradient-to-br from-green-400 to-green-600 text-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow transform hover:scale-105 transition-transform">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold opacity-90">🟢 Open ({openPercent}%)</p>
+                    <p className="text-4xl font-bold mt-2">{stats.open}</p>
+                  </div>
+                  <div className="text-5xl opacity-20">⏳</div>
+                </div>
               </div>
-              <div className="bg-gray-50 p-4 rounded-md">
-                <h2 className="font-semibold text-lg">%Pending</h2>
-                <p className="text-3xl font-bold mt-2 text-yellow-600">{pendingPercent}%</p>
+              <div className="bg-gradient-to-br from-yellow-400 to-yellow-600 text-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow transform hover:scale-105 transition-transform">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold opacity-90">🟡 Pending ({pendingPercent}%)</p>
+                    <p className="text-4xl font-bold mt-2">{stats.pending}</p>
+                  </div>
+                  <div className="text-5xl opacity-20">⚡</div>
+                </div>
               </div>
-              <div className="bg-gray-50 p-4 rounded-md">
-                <h2 className="font-semibold text-lg">%In Progress</h2>
-                <p className="text-3xl font-bold mt-2 text-orange-600">{inProgressPercent}%</p>
+              <div className="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow transform hover:scale-105 transition-transform">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold opacity-90">🟠 In Progress ({inProgressPercent}%)</p>
+                    <p className="text-4xl font-bold mt-2">{stats.inProgress}</p>
+                  </div>
+                  <div className="text-5xl opacity-20">🔄</div>
+                </div>
               </div>
             </div>
 
-            {/* 🔹 גרף זמן פתרון אמיתי */}
-            <div className="bg-gray-50 p-5 rounded-md mb-6">
-              <h3 className="text-center font-semibold text-lg mb-2">
-                Average Time to Resolve (days)
+            {/* 🔹 Resolution Time Chart */}
+            <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border-l-4 border-green-500">
+              <h3 className="text-center font-bold text-lg mb-4 text-gray-800">
+                ⏱️ Average Time to Resolve (days)
               </h3>
-              <div className="h-[250px]">
+              <div className="h-[280px] bg-gradient-to-br from-gray-50 to-green-50 rounded-lg p-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={timeToResolveData}
                     margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis label={{ value: "Days", angle: -90, position: "insideLeft" }} />
-                    <Tooltip />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis dataKey="month" stroke="#666" />
+                    <YAxis label={{ value: "Days", angle: -90, position: "insideLeft" }} stroke="#666" />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: "#f3f4f6", border: "2px solid #3b82f6", borderRadius: "8px" }}
+                    />
                     <Line
                       type="monotone"
                       dataKey="days"
                       stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={{ r: 5 }}
+                      strokeWidth={3}
+                      dot={{ r: 6, fill: "#1e40af" }}
+                      activeDot={{ r: 8 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -232,34 +255,33 @@ async function loadStats() {
           </>
         )}
 
-        <button
+        {/* Action Buttons */}
+        <div className="flex gap-3 justify-center flex-wrap">
+          <button
             onClick={() => setGraphsModalOpen(true)}
-            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 block mx-auto"
-            >
-            Open Graphs Dashboard 📊
-        </button>
-        <button
-        onClick={() => setDetailedOpen(true)}
-            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 block mx-auto"
-            >
-            Open Detailed Statistics 📈
-        </button>
-        <button
-        onClick={() => setOpenStatusTransition(true)}
-        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 block mx-auto"
-      >
-        Analyze Status Transitions ⏱
-      </button>
-
-
-
-
-        <button
-          onClick={onClose}
-          className="mt-3 px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 block mx-auto"
-        >
-          Close
-        </button>
+            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+          >
+            📊 Open Graphs
+          </button>
+          <button
+            onClick={() => setDetailedOpen(true)}
+            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+          >
+            📈 Detailed Stats
+          </button>
+          <button
+            onClick={() => setOpenStatusTransition(true)}
+            className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-lg hover:from-indigo-600 hover:to-indigo-700 font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+          >
+            ⏱️ Status Transitions
+          </button>
+          <button
+            onClick={onClose}
+            className="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg hover:from-gray-700 hover:to-gray-800 font-semibold shadow-lg hover:shadow-xl transition-all"
+          >
+            ✕ Close
+          </button>
+        </div>
         {graphsModalOpen && (
         <GraphsModal open={graphsModalOpen} onClose={() => setGraphsModalOpen(false)} />
         )}

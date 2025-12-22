@@ -32,8 +32,10 @@ export const anomalyTemplates = {
 ישנם ${a.metrics.openCases} דיווחים שלא נסגרו במשך ${a.metrics.daysOpen} ימים בממוצע.`,
 
   geo_cluster: (a: Anomaly) =>
-    `זוהה ריכוז גיאוגרפי חריג של דיווחי ${a.category} ליד ${a.area}. 
-מרכז הכובד נמצא בקואורדינטות ${a.center?.lat}, ${a.center?.lng}.`,
+    `זוהה ריכוז גיאוגרפי חריג של ${a.metrics.totalReports} דיווחי ${a.category} באזור ${a.area}.
+מרכז האנומליה ברדיוס ${a.metrics.radiusMeters}מ' סביב קואורדינטות ${a.center?.lat?.toFixed(4)}, ${a.center?.lng?.toFixed(4)}.
+הפעילות עלתה ב-${a.metrics.pctChange}% מול ההיסטוריה (Z-score מקסימלי: ${a.metrics.maxZScore}).
+האנומליה כוללת ${a.metrics.cellsInvolved} תאי רשת צמודים עם צפיפות דיווחים חריגה.`,
 
   delay: (a: Anomaly) =>
     `נמצאה חריגה בזמני התגובה לדיווחי ${a.category} באזור ${a.area}. 

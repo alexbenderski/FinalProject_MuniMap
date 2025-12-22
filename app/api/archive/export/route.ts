@@ -19,7 +19,6 @@ type ExportReportRow = {
   email: string;
   phone: string;
   submittedBy: string;
-  deleted: boolean;
 };
 
 type StatusHistoryEntry = {
@@ -35,6 +34,29 @@ type ExportStatusRow = {
   status: string;
   updatedAt: string;
   updatedBy: string;
+};
+
+type AnomalyExportRow = {
+  AnomalyID: string;
+  EpisodeID: string;
+  Area: string;
+  Category: string;
+  Type: string;
+  Title: string;
+  Description: string;
+  GeneralMessage: string;
+  Severity: string;
+  Status: string;
+  EpisodeStartAt: string;
+  EpisodeEndAt: string;
+  FirstDetected: string;
+  LastUpdated: string;
+  CurrentAvgDays: string | number;
+  BaselineAvgDays: string | number;
+  PercentChange: string | number;
+  ZScore: string | number;
+  CurrentReports: string | number;
+  RelatedReportsCount: number;
 };
 
 function parseLocalDate(dateStr: string, endOfDay = false) {
@@ -71,6 +93,92 @@ function getResolvedTimestamp(r: Report): number | null {
   return null;
 }
 
+/* ---------- Anomalies Export Handler ---------- */
+
+async function handleAnomaliesExport(
+  startMs: number,
+  endMs: number,
+  area?: string,
+  category?: string
+) {
+  const anomaliesSnap = await db.ref("Anomalies/AnomalyEpisodes").once("value");
+  
+  if (!anomaliesSnap.exists()) {
+    return NextResponse.json({ error: "No anomalies data" }, { status: 404 });
+  }
+
+  const anomaliesRows: AnomalyExportRow[] = [];
+
+  anomaliesSnap.forEach((anomalyNode) => {
+    anomalyNode.forEach((episodeNode) => {
+      const episode = episodeNode.val();
+      const worstSnapshot = episode.worstSnapshot;
+
+      if (!worstSnapshot) return;
+
+      // No date filtering for anomalies - get all episodes
+      
+      // Filter by area (check both area field and address)
+      if (area && area !== "all") {
+        const anomalyArea = worstSnapshot.area || "";
+        const anomalyAddress = worstSnapshot.address || "";
+        if (anomalyArea !== area && !anomalyAddress.includes(area)) {
+          return;
+        }
+      }
+
+      // Filter by category
+      if (category && category !== "all" && worstSnapshot.category !== category) return;
+
+      anomaliesRows.push({
+        AnomalyID: worstSnapshot.id || "",
+        EpisodeID: episodeNode.key || "",
+        Area: worstSnapshot.area || "",
+        Category: worstSnapshot.category || "",
+        Type: worstSnapshot.type || "",
+        Title: worstSnapshot.title || "",
+        Description: worstSnapshot.description || "",
+        GeneralMessage: worstSnapshot.generalMessage || "",
+        Severity: worstSnapshot.severity || "",
+        Status: worstSnapshot.status || "",
+        EpisodeStartAt: episode.startAt ? new Date(episode.startAt).toLocaleString() : "",
+        EpisodeEndAt: episode.endAt ? new Date(episode.endAt).toLocaleString() : "",
+        FirstDetected: worstSnapshot.firstDetected ? new Date(worstSnapshot.firstDetected).toLocaleString() : "",
+        LastUpdated: worstSnapshot.lastUpdated ? new Date(worstSnapshot.lastUpdated).toLocaleString() : "",
+        CurrentAvgDays: worstSnapshot.metrics?.currentAvgDays || "",
+        BaselineAvgDays: worstSnapshot.metrics?.baselineAvgDays || "",
+        PercentChange: worstSnapshot.metrics?.pctChange || "",
+        ZScore: worstSnapshot.metrics?.zScore || "",
+        CurrentReports: worstSnapshot.metrics?.currentReports || "",
+        RelatedReportsCount: worstSnapshot.relatedReports?.length || 0,
+      });
+    });
+  });
+
+  if (anomaliesRows.length === 0) {
+    return NextResponse.json(
+      { error: "No anomalies matched filters" },
+      { status: 404 }
+    );
+  }
+
+  const workbook = XLSX.utils.book_new();
+  const anomaliesSheet = XLSX.utils.json_to_sheet(anomaliesRows);
+  XLSX.utils.book_append_sheet(workbook, anomaliesSheet, "Anomalies");
+
+  const buffer = XLSX.write(workbook, {
+    type: "buffer",
+    bookType: "xlsx",
+  });
+
+  return new NextResponse(buffer, {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": "attachment; filename=anomalies_export.xlsx",
+    },
+  });
+}
+
 /* ---------- API ---------- */
 
 export async function POST(req: NextRequest) {
@@ -92,6 +200,11 @@ export async function POST(req: NextRequest) {
 
     const startMs = parseLocalDate(fromDate);
     const endMs = parseLocalDate(toDate, true);
+
+    // Handle anomalies export
+    if (fileType === "anomalies") {
+      return await handleAnomaliesExport(startMs, endMs, area, category);
+    }
 
     const fromYear = new Date(startMs).getFullYear();
     const toYear = new Date(endMs).getFullYear();
@@ -133,7 +246,28 @@ export async function POST(req: NextRequest) {
           // פילטרים ידניים
           if (fileType === "manual") {
             if (category && category !== "all" && r.type !== category) return;
-            if (area && area !== "all" && r.area !== area) return;
+            
+            // Filter by area - check both r.area and address field
+            if (area && area !== "all") {
+              const reportArea = r.area || "";
+              const reportAddress = (r as Report).address || "";
+              
+              // Check if area matches in either field
+              if (reportArea !== area && !reportAddress.includes(area)) {
+                return;
+              }
+            }
+          }
+
+          // For "full" export, also filter by area
+          if (fileType === "full" && area && area !== "all") {
+            const reportArea = r.area || "";
+            const reportAddress = (r as Report).address || "";
+            
+            // Check if area matches in either field
+            if (reportArea !== area && !reportAddress.includes(area)) {
+              return;
+            }
           }
 
           // --- Sheet ראשי (Reports) ---
@@ -161,7 +295,6 @@ export async function POST(req: NextRequest) {
             phone: (r as Report).phone ?? "",
 
             submittedBy: (r as Report).submittedBy ?? "",
-            deleted: (r as Report).deleted ?? false,
           });
 
           // --- Sheet שני (Status History) ---

@@ -13,6 +13,7 @@ import { Report } from "@/lib/types";
 import AnomaliesModal from "@/components/dashboard/AnomaliesModal";
 import ArchivedReportsModal from "@/components/dashboard/ArchivedReportsModal";
 import { useAuth } from "@/components/AuthProvider";
+import Image from "next/image";
 
 export default function DashboardPage() {
 
@@ -34,8 +35,11 @@ export default function DashboardPage() {
   const [status, setStatus] = useState<
     "open" | "pending" | "in progress" | "resolved" | "all"
   >("all");
+  const [statusList, setStatusList] = useState<string[]>([]);
   const [mediaOnly, setMediaOnly] = useState(false);
   const [criticality, setCriticality] = useState<string>("");
+  const [criticalityList, setCriticalityList] = useState<string[]>([]);
+  const [filtersApplied, setFiltersApplied] = useState(false);
 
   // 🔹 Table
   const [reportsForTable, setReportsForTable] = useState<Report[]>([]);
@@ -54,20 +58,17 @@ export default function DashboardPage() {
       categories: selectedTypes.length ? selectedTypes.join(", ") : "—",
       dateRange:
         dateFrom || dateTo ? `${dateFrom ?? "—"} – ${dateTo ?? "—"}` : "—",
-      status: status === "all" ? "All (no resolved)" : status,
+      status: statusList.length > 0 ? statusList.join(", ") : "—",
       media: mediaOnly ? "Only with media" : "—",
-      criticality:
-        criticality === ""
-          ? "—"
-          : criticality === "green"
-          ? "חדש"
-          : criticality === "yellow"
-          ? "בינוני"
-          : criticality === "orange"
-          ? "ישן"
-          : "קריטי",
+      criticality: criticalityList.length > 0
+        ? criticalityList.map(c => 
+            c === "green" ? "New" :
+            c === "yellow" ? "Medium" :
+            c === "orange" ? "Old" : "Critical"
+          ).join(", ")
+        : "—",
     }),
-    [selectedArea, selectedTypes, dateFrom, dateTo, status, mediaOnly, criticality]
+    [selectedArea, selectedTypes, dateFrom, dateTo, statusList, mediaOnly, criticalityList]
   );
 
   // ⏳ Guards — רק אחרי כל ה-Hooks
@@ -106,24 +107,41 @@ export default function DashboardPage() {
             selectedArea={selectedArea}
             selectedTypes={selectedTypes}
             status={status}
+            statusList={statusList}
             dateFrom={dateFrom}
             dateTo={dateTo}
             mediaOnly={mediaOnly}
             criticality={criticality}
+            criticalityList={criticalityList}
+            filtersApplied={filtersApplied}
             onReportsUpdate={setReportsForTable}
           />
 
           <FiltersModal
             open={filtersOpen}
             onClose={() => setFiltersOpen(false)}
+            currentFilters={{
+              categories: selectedTypes,
+              location: selectedArea || "",
+              status: status,
+              statusList: statusList,
+              mediaOnly: mediaOnly,
+              dateFrom: dateFrom,
+              dateTo: dateTo,
+              criticality: criticality,
+              criticalityList: criticalityList,
+            }}
             onApply={(filters) => {
               setSelectedArea(filters.location || permissions?.city || null);
               setSelectedTypes(filters.categories);
               setDateFrom(filters.dateFrom);
               setDateTo(filters.dateTo);
               setStatus(filters.status);
+              setStatusList(filters.statusList || []);
               setMediaOnly(filters.mediaOnly);
               setCriticality(filters.criticality || "");
+              setCriticalityList(filters.criticalityList || []);
+              setFiltersApplied(true);
               setFiltersOpen(false);
             }}
           />
@@ -132,6 +150,15 @@ export default function DashboardPage() {
             selectedArea={selectedArea}
             setSelectedArea={() => {}}
             filterSummary={filterSummary}
+            logoImage={
+              <Image
+                src="/icons/MuniMap_LOGO.png"
+                alt="MuniMap Logo"
+                width={110}
+                height={110}
+                className="drop-shadow-lg"
+              />
+            }
           />
         </div>
 

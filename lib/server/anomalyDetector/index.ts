@@ -4,15 +4,17 @@
 import { detectHighActivity, Report } from "./detectHighActivity";
 import { Anomaly } from "./builders";
 import { detectSlowResolution } from "./detectSlowResolution";
+import { detectSpatialClusters } from "./detectSpatialClusters";
 import { saveFullAnomalySnapshot } from "./anomaly-storage";
 
 // 👈 מאפשר גם סינכרוני וגם אסינכרוני
 type Detector = (reports: Report[]) => Anomaly[] | Promise<Anomaly[]>;
 
-// אפשר להשאיר כרגע רק slow, או גם להחזיר את ה-spike
+// All registered detectors
 const DETECTORS: Detector[] = [
-  detectHighActivity,
-  detectSlowResolution,
+  detectHighActivity,      // Time-based spike detection
+  detectSlowResolution,    // SLA violation detection
+  detectSpatialClusters,   // Geographic cluster detection
 ];
 
 export async function runAllDetectors(reports: Report[]): Promise<Anomaly[]> {

@@ -64,6 +64,12 @@ export interface AnomalyUpdateSnapshot {
 }
 
 
+export interface ReportImage {
+  url: string;
+  fileName: string;
+  uploadedAt: number;
+}
+
 export interface Report {
   resolvedAt: number;
   id?: string;
@@ -80,6 +86,7 @@ export interface Report {
   email?: string;
   phone?: string;
   mediaUrl?: string;
+  images?: ReportImage[]; // New: Array of image metadata
   statusHistory: statusHistoryEntry[];
   updatedBy?: string;    
   updatedAt?: number;   

@@ -1,40 +1,39 @@
 "use client";
 import { useEffect, useState } from "react";
-import { fetchAnomalies,fetchReports } from "@/lib/client/fetchers";
+import { fetchAnomalies, fetchReports, subscribeToAnomalies } from "@/lib/client/fetchers";
 import Modal from "@/components/dashboard/Modal";
-import { Anomaly,Report } from "@/lib/types";
+import { Anomaly, Report } from "@/lib/types";
 import ReportsTableModal from "@/components/dashboard/ReportsTableModal";
 import { markAnomalyAsReviewed } from "@/lib/client/fetchers";
 import { getCurrentUserInfo } from "@/lib/client/fetchers";
 
-
-
 export default function AnomaliesModal({
-   open, onClose,
-   selectedArea,
-  }: { 
-    open: boolean;
-    onClose: () => void;
-    selectedArea: string | null;
-  }) {
+  open,
+  onClose,
+  selectedArea,
+}: {
+  open: boolean;
+  onClose: () => void;
+  selectedArea: string | null;
+}) {
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [reportsModalOpen, setReportsModalOpen] = useState(false);
   const [reportsForAnomaly, setReportsForAnomaly] = useState<Report[]>([]);
-  const [selectedAnomalyTitle, setSelectedAnomalyTitle] = useState<string>("");
   const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null);
-  const { email: currentUserEmail, safeKey: currentUserKey } = getCurrentUserInfo();
 
   useEffect(() => {
     if (!open) return;
-    async function loadAnomalies() {
-      setLoading(true);
-      const data = await fetchAnomalies();
+
+    setLoading(true);
+    // Subscribe to real-time anomalies updates
+    const unsubscribe = subscribeToAnomalies((data) => {
       setAnomalies(data);
       setLoading(false);
-    }
-    loadAnomalies();
+    });
+
+    return () => unsubscribe();
   }, [open]);
 
   if (!open) return null;
@@ -51,11 +50,18 @@ export default function AnomaliesModal({
 
 
 async function handleMarkReviewed(anomaly: Anomaly) {
+  const { safeKey } = getCurrentUserInfo();
+  
+  if (!safeKey) {
+    alert("❌ User not authenticated. Please log in first.");
+    return;
+  }
+
   try {
     const result = await markAnomalyAsReviewed(anomaly);
 
     if (result.alreadyReviewed) {
-      alert("You already reviewed this anomaly ✅");
+      alert("✅ You already reviewed this anomaly");
       return;
     }
 
@@ -64,9 +70,8 @@ async function handleMarkReviewed(anomaly: Anomaly) {
         .map((a): Anomaly => {
           if (a.id !== anomaly.id) return a;
 
-          const safeEmail =
-            result.email?.replace(/\./g, "_") ?? "unknown_user"; // 👈 בטוח גם בלי אימייל
-          const safeTimestamp = result.timestamp ?? Date.now(); // 👈 fallback
+          const safeEmail = result.email?.replace(/\./g, "_") ?? safeKey;
+          const safeTimestamp = result.timestamp ?? Date.now();
 
           return {
             ...a,
@@ -75,14 +80,13 @@ async function handleMarkReviewed(anomaly: Anomaly) {
               [safeEmail]: safeTimestamp,
             },
           };
-        }) as Anomaly[] // 👈 TypeScript מרוצה
+        }) as Anomaly[]
     );
 
-
-    alert(`Marked as reviewed by ${result.email}`);
+    alert(`✅ Marked as reviewed by ${result.email}`);
   } catch (err) {
     console.error("Error marking anomaly as reviewed:", err);
-    alert("❌ Failed to mark as reviewed. Please try again.");
+    alert(`❌ Failed to mark as reviewed: ${err instanceof Error ? err.message : 'Unknown error'}`);
   }
 }
 
@@ -91,55 +95,67 @@ async function handleMarkReviewed(anomaly: Anomaly) {
 
   
   return (
-    <Modal title="Anomalies" onClose={onClose}>
-      <div className="w-[900px] max-h-[80vh] overflow-y-auto bg-white p-4 rounded-lg shadow">
+    <Modal title="🚨 Anomalies Detection System" onClose={onClose}>
+      <div className="w-[900px] max-h-[80vh] overflow-y-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 p-4 rounded-lg shadow-lg">
         {loading ? (
-          <p className="text-center text-gray-500 py-4">Loading anomalies...</p>
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin text-4xl mb-3">⚙️</div>
+            <p className="text-gray-600 font-semibold">Loading anomalies...</p>
+          </div>
         ) : anomalies.length === 0 ? (
-          <p className="text-center text-gray-500 py-4">No anomalies found.</p>
+          <div className="text-center py-8">
+            <p className="text-2xl mb-2">✅</p>
+            <p className="text-gray-600 font-semibold">No anomalies detected. Great!</p>
+          </div>
         ) : (
           <>
-            {/* שורת חיפוש */}
-            <div className="flex justify-between items-center mb-3">
-              <input
-                type="text"
-                placeholder="חיפוש לפי כותרת / אזור / סטטוס..."
-                className="border border-gray-300 rounded-md px-3 py-1 w-1/2"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <span className="text-sm text-gray-500">
-                {filtered.length} תוצאות
-              </span>
+            {/* Search Bar */}
+            <div className="bg-white rounded-lg shadow-md p-4 mb-4 border-l-4 border-red-500">
+              <div className="flex justify-between items-center gap-3">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="🔍 Search by title / area / status..."
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-red-500 focus:outline-none transition-colors font-medium"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <div className="bg-red-100 border-2 border-red-300 rounded-lg px-4 py-2">
+                  <span className="text-sm font-bold text-red-700">
+                    📍 {filtered.length} found
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* טבלה */}
-            <table className="w-full border-collapse text-sm">
-              <thead className="bg-gray-100 border-b font-semibold sticky top-0 z-10">
-                <tr>
-                  <th className="p-2 border w-[40px]">#</th>
-                  <th className="p-2 border w-[100px] text-center">type</th>
-                  <th className="p-2 border text-right">description</th>
-                  <th className="p-2 border w-[160px] text-center">area</th>
-                  <th className="p-2 border w-[120px] text-center">num of reports</th>
-                  <th className="p-2 border w-[120px] text-center">status</th>
-                  <th className="p-2 border w-[130px] text-center">first date</th>
-                  <th className="p-2 border w-[130px] text-center">last date</th>
-                  <th className="p-2 border w-[120px] text-center">actions</th>
-                </tr>
-              </thead>
+            {/* Table with Enhanced Styling */}
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden border-t-4 border-red-500">
+              <table className="w-full border-collapse text-sm">
+                <thead className="bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold sticky top-0 z-10">
+                  <tr>
+                    <th className="p-3 text-center">#</th>
+                    <th className="p-3 text-center">📁 Type</th>
+                    <th className="p-3 text-left">📝 Description</th>
+                    <th className="p-3 text-center">📍 Area</th>
+                    <th className="p-3 text-center">📊 Reports</th>
+                    <th className="p-3 text-center">✓ Status</th>
+                    <th className="p-3 text-center">📅 First Detected</th>
+                    <th className="p-3 text-center">⏰ Last Updated</th>
+                    <th className="p-3 text-center">⚙️ Actions</th>
+                  </tr>
+                </thead>
 <tbody>
   {filtered.map((a, index) => {
     const metrics = a.metrics ?? {};
     const lastDate = a.lastUpdated;
 
-
     return (
-      <tr key={a.id} className="hover:bg-gray-50 border-b">
-        <td className="p-2 text-center font-medium">{index + 1}</td>
+      <tr key={a.id} className="border-b hover:bg-red-50 transition-colors">
+        <td className="p-3 text-center font-bold text-red-600">{index + 1}</td>
 
         {/* type icon */}
-        <td className="p-2 text-center text-lg">
+        <td className="p-3 text-center text-2xl">
           {a.category === "garbage"
             ? "🗑️"
             : a.category === "lighting"
@@ -150,73 +166,84 @@ async function handleMarkReviewed(anomaly: Anomaly) {
         </td>
 
         {/* description */}
-        <td className="p-2 text-right font-semibold">{a.description}</td>
+        <td className="p-3 font-semibold text-gray-800">{a.description}</td>
 
         {/* area */}
-        <td className="p-2 text-center text-gray-700">{a.area}</td>
+        <td className="p-3 text-center">
+          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
+            {a.area}
+          </span>
+        </td>
 
         {/* num of reports */}
-        <td className="p-2 text-center text-gray-700 font-medium">
-          {metrics.currentReports ?? a.relatedReports?.length ?? 0} דיווחים
+        <td className="p-3 text-center">
+          <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold">
+            {metrics.currentReports ?? a.relatedReports?.length ?? 0}
+          </span>
         </td>
 
         {/* status / reviewed */}
-        <td className="p-2 text-center space-y-1 flex flex-col items-center justify-center">
+        <td className="p-3 text-center">
           <button
             onClick={() => {
-              const alreadyReviewed =
-                !!(currentUserKey && a.reviewedBy?.[currentUserKey]);
-
-              if (alreadyReviewed) {
-                alert("כבר סימנת את האנומליה הזו כ־Reviewed ✅");
+              const { safeKey } = getCurrentUserInfo();
+              
+              if (!safeKey) {
+                alert("❌ User not authenticated. Please log in first.");
                 return;
               }
 
-              if (confirm("האם אתה בטוח שקראת ובדקת את האנומליה הזו?"))
+              const isReviewed = !!(a.reviewedBy && a.reviewedBy[safeKey]);
+
+              if (isReviewed) {
+                alert("✅ You already reviewed this anomaly");
+                return;
+              }
+
+              if (confirm("Have you reviewed this anomaly?")) {
                 handleMarkReviewed(a);
+              }
             }}
-            className={`rounded-md px-3 py-1 text-sm font-medium ${
-              currentUserKey && a.reviewedBy?.[currentUserKey]
-                ? "bg-green-100 text-green-700 border border-green-300 cursor-default"
-                : "bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200"
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              (() => {
+                const { safeKey } = getCurrentUserInfo();
+                const isReviewed = !!(a.reviewedBy && safeKey && a.reviewedBy[safeKey]);
+                return isReviewed
+                  ? "bg-green-200 text-green-800 border-2 border-green-400 cursor-default"
+                  : "bg-yellow-200 text-yellow-800 border-2 border-yellow-400 hover:bg-yellow-300";
+              })()
             }`}
           >
-            {currentUserKey && a.reviewedBy?.[currentUserKey]
-              ? "Already Reviewed"
-              : "Not Reviewed yet"}
+            {(() => {
+              const { safeKey } = getCurrentUserInfo();
+              const isReviewed = !!(a.reviewedBy && safeKey && a.reviewedBy[safeKey]);
+              return isReviewed ? "✅ Reviewed" : "⏳ Mark as Reviewed";
+            })()}
           </button>
         </td>
 
         {/* first date */}
-        <td className="p-2 text-center text-gray-600">
-          {new Date(a.firstDetected).toLocaleDateString("he-IL", {
-            day: "2-digit",
-            month: "2-digit",
+        <td className="p-3 text-center text-xs text-gray-700">
+          {new Date(a.firstDetected).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
             year: "2-digit",
-          })}{" "}
-          {new Date(a.firstDetected).toLocaleTimeString("he-IL", {
-            hour: "2-digit",
-            minute: "2-digit",
           })}
         </td>
 
         {/* last date */}
-        <td className="p-2 text-center text-gray-600">
-          {new Date(a.lastUpdated).toLocaleDateString("he-IL", {
-            day: "2-digit",
-            month: "2-digit",
+        <td className="p-3 text-center text-xs text-gray-700">
+          {new Date(a.lastUpdated).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
             year: "2-digit",
-          })}{" "}
-          {new Date(a.lastUpdated).toLocaleTimeString("he-IL", {
-            hour: "2-digit",
-            minute: "2-digit",
           })}
         </td>
 
         {/* actions */}
-        <td className="p-2 text-center">
+        <td className="p-3 text-center">
           <button
-            className="border border-gray-300 hover:bg-gray-200 rounded-md px-3 py-1 text-sm flex items-center gap-1 mx-auto"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-lg px-3 py-1 text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1 mx-auto"
             onClick={async () => {
               const allReports = await fetchReports();
               const related: Report[] = [];
@@ -236,28 +263,36 @@ async function handleMarkReviewed(anomaly: Anomaly) {
               setReportsModalOpen(true);
             }}
           >
-            🔍 Open Reports
+            🔍 View
           </button>
         </td>
       </tr>
     );
   })}
 </tbody>
-            </table>
+              </table>
+            </div>
           </>
         )}
       </div>
       {reportsModalOpen && selectedAnomaly && (
         <ReportsTableModal
           open={reportsModalOpen}
-          onClose={() => setReportsModalOpen(false)}
+          onClose={() => {
+            setReportsModalOpen(false);
+            // ✅ Refetch anomalies to ensure DB changes are reflected
+            (async () => {
+              const updated = await fetchAnomalies();
+              setAnomalies(updated);
+            })();
+          }}
           reports={reportsForAnomaly}
           selectedArea={selectedArea}
           onApplyFilters={() => {}}
           title={`Reports for: ${selectedAnomaly.title}`}
           anomalyDetails={selectedAnomaly}
           onReviewUpdate={(updated) => {
-            // ✅ עדכון גם ברשימת האנומליות הראשית
+            // ✅ Update the list immediately so UI reflects change
             setAnomalies((prev) =>
               prev.map((a) => (a.id === updated.id ? updated : a))
             );

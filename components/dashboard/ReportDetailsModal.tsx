@@ -2,7 +2,9 @@
 import React, { useEffect, useState } from "react";
 import { Report,FilterStatus } from "@/lib/types";
 import { updateReportInDB,softDeleteReportInDB } from "@/lib/client/fetchers";
+import { getReportImages } from "@/lib/client/storage";
 import Image from "next/image";
+import ImageViewerModal from "./ImageViewerModal";
 
 
 
@@ -43,9 +45,31 @@ export default function ReportDetailsModal({
 }: ReportDetailsModalProps) {
   const [localReport, setLocalReport] = useState<Report | null>(report);
   const [confirmAction, setConfirmAction] = useState<null | "delete" | "update">(null);
+  const [images, setImages] = useState<string[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
     useEffect(() => {
     setLocalReport(report ?? null);
+    
+    // Fetch images when report changes
+    if (report?.id) {
+      setLoadingImages(true);
+      getReportImages(report.id)
+        .then((urls) => {
+          setImages(urls);
+        })
+        .catch((err) => {
+          console.error("Failed to load images:", err);
+          setImages([]);
+        })
+        .finally(() => {
+          setLoadingImages(false);
+        });
+    } else {
+      setImages([]);
+    }
   }, [report?.id]);
 
  if (!open || !localReport) {
@@ -186,79 +210,147 @@ const handleDeleteReport = async () => {
   if (!open || !localReport) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-[700px] relative shadow-2xl">
-        {/* כפתור סגירה */}
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-8 w-[800px] max-h-[90vh] overflow-y-auto relative shadow-2xl">
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-2 right-3 text-2xl font-bold text-red-600"
+          className="absolute top-4 right-4 text-3xl font-bold text-gray-400 hover:text-red-600 transition-colors"
+          aria-label="Close"
         >
           ✕
         </button>
 
-        {/* כותרת */}
-        <h2 className="text-xl font-bold text-center mb-2">
-          Report #{localReport?.id || "—"} - {localReport?.type?.toUpperCase()}
-        </h2>
-        
-        <p className="text-center text-gray-600 mb-4">
-          Submitted on {new Date(localReport.timestamp).toLocaleString()} | Location:{" "}
-          {localReport.area}
-        </p>
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg p-6 mb-6 -mt-2 -mx-2">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-2xl font-bold">
+              📋 Report Details
+            </h2>
+            <span className={`px-4 py-1 rounded-full text-sm font-semibold ${
+              localReport.status === 'resolved' ? 'bg-green-500' :
+              localReport.status === 'in progress' ? 'bg-yellow-500' :
+              localReport.status === 'pending' ? 'bg-orange-500' :
+              'bg-red-500'
+            }`}>
+              {localReport.status.toUpperCase()}
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="bg-white/20 px-3 py-1 rounded-full">ID: #{localReport?.id}</span>
+            <span className="bg-white/20 px-3 py-1 rounded-full">📍 {localReport.area}</span>
+            <span className="bg-white/20 px-3 py-1 rounded-full">🏷️ {localReport?.type?.toUpperCase()}</span>
+          </div>
+          <p className="text-blue-100 text-sm mt-2">
+            Submitted: {new Date(localReport.timestamp).toLocaleString()}
+          </p>
+        </div>
 
-        {/* תיאור */}
-        <div className="mb-4">
-          <label className="font-semibold block mb-1">Description:</label>
+        {/* Description Section */}
+        <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+          <label className="font-semibold text-gray-700 block mb-2 flex items-center gap-2">
+            <span className="text-lg">📝</span> Description
+          </label>
           <textarea
             readOnly
-            value={localReport.description || ""}
-            className="w-full border rounded-md px-2 py-1 bg-gray-50 resize-none h-20"
+            value={localReport.description || "No description provided"}
+            className="w-full border-0 rounded-md px-3 py-2 bg-white resize-none h-24 text-gray-700 focus:outline-none"
           />
         </div>
 
-        {/* תקציר + טיימליין */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <h3 className="font-semibold mb-1">Summary</h3>
-            <div className="text-sm space-y-1">
-              <p>
-                <strong>Category:</strong> {localReport.type}
-              </p>
-              <p>
-              <strong>Address:</strong> {localReport.address || "—"}
-            </p>
-              <p>
-                <strong>Status:</strong> {localReport.status}
-              </p>
-              <p>
-                <strong>Submitted By:</strong> {localReport.submittedBy || "—"}
-              </p>
-              <p>
-                <strong>Email:</strong> {localReport.email || "—"}
-              </p>
-              <p>
-                <strong>Phone:</strong> {localReport.phone || "—"}
-              </p>
-              <p>
-                <strong>Last Updated:</strong>{" "}
-                {new Date(localReport.updatedAt || localReport.timestamp).toLocaleString()}
-              </p>
-              <p>
-                <strong>Updated By:</strong> {localReport.updatedBy || "—"}
-              </p>
+        {/* Summary and Timeline Grid */}
+        <div className="grid grid-cols-2 gap-6 mb-6">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h3 className="font-bold text-lg mb-3 text-blue-900 flex items-center gap-2">
+              <span>ℹ️</span> Report Summary
+            </h3>
+            <div className="text-sm space-y-2">
+              <div className="flex items-start gap-2">
+                <span className="font-semibold text-blue-700 min-w-[120px]">Category:</span>
+                <span className="text-gray-700">{localReport.type}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-semibold text-blue-700 min-w-[120px]">Address:</span>
+                <span className="text-gray-700">{localReport.address || "—"}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-semibold text-blue-700 min-w-[120px]">Submitted By:</span>
+                <span className="text-gray-700">{localReport.submittedBy || "—"}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-semibold text-blue-700 min-w-[120px]">Email:</span>
+                <span className="text-gray-700">{localReport.email || "—"}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-semibold text-blue-700 min-w-[120px]">Phone:</span>
+                <span className="text-gray-700">{localReport.phone || "—"}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-semibold text-blue-700 min-w-[120px]">Last Updated:</span>
+                <span className="text-gray-700">{new Date(localReport.updatedAt || localReport.timestamp).toLocaleString()}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-semibold text-blue-700 min-w-[120px]">Updated By:</span>
+                <span className="text-gray-700">{localReport.updatedBy || "—"}</span>
+              </div>
             </div>
           </div>
 
 
-          {/* טיימליין */}
-          <div>
-            <h3 className="font-semibold mb-1">Status Timeline</h3>
+          {/* Timeline */}
+          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+            <h3 className="font-bold text-lg mb-3 text-purple-900 flex items-center gap-2">
+              <span>⏱️</span> Status Timeline
+            </h3>
             {renderTimeline()}
+          </div>
+        </div>
 
-            {/* תמונה */}
-          {localReport.mediaUrl && (
+            {/* תמונות - מחוץ ל־grid */}
+          {loadingImages && (
+            <div className="mt-4 text-center text-gray-500">
+              Loading images...
+            </div>
+          )}
+
+          {!loadingImages && images.length > 0 && (
+            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+              <h3 className="font-bold text-lg mb-3 text-green-900 flex items-center gap-2">
+                <span>📷</span> Attached Images ({images.length})
+              </h3>
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setSelectedImageIndex(0);
+                    setImageViewerOpen(true);
+                  }}
+                  className="relative cursor-pointer group"
+                >
+                  <Image
+                    src={images[0]}
+                    alt="Report image"
+                    width={600}
+                    height={400}
+                    className="rounded border object-cover w-full hover:opacity-90 transition"
+                  />
+                  {images.length > 1 && (
+                    <div className="absolute top-2 right-2 bg-black/70 text-white px-3 py-1 rounded text-sm font-semibold">
+                      +{images.length - 1} more
+                    </div>
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition rounded">
+                    <span className="text-white text-lg opacity-0 group-hover:opacity-100 transition font-semibold">
+                      Click to view all
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!loadingImages && images.length === 0 && localReport.mediaUrl && (
             <div className="mt-4">
-              <h3 className="font-semibold mb-1">Attached Image</h3>
+              <h3 className="font-semibold mb-1">Attached Image (Legacy)</h3>
               <Image
                 src={localReport.mediaUrl}
                 alt={`Report ${localReport.id} image`}
@@ -268,27 +360,24 @@ const handleDeleteReport = async () => {
               />
             </div>
           )}
-        </div>
-
-        </div>
 
 
 
 
 
-        {/* כפתורים */}
-        <div className="mt-6 flex justify-end gap-3">
+        {/* Action Buttons */}
+        <div className="mt-8 flex justify-end gap-4 pt-6 border-t border-gray-200">
           <button
-            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors font-semibold shadow-md hover:shadow-lg flex items-center gap-2"
             onClick={() => setConfirmAction("delete")}
           >
-            Delete Report
+            <span>🗑️</span> Delete Report
           </button>
           <button
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-green-700 transition-all font-semibold shadow-md hover:shadow-lg flex items-center gap-2"
             onClick={() => setConfirmAction("update")}
           >
-            Update Status
+            <span>✅</span> Update Status
           </button>
         </div>
 
@@ -333,6 +422,15 @@ const handleDeleteReport = async () => {
           </div>
         )}
       </div>
+
+      {/* Image Viewer Modal */}
+      {imageViewerOpen && images.length > 0 && (
+        <ImageViewerModal
+          images={images}
+          initialIndex={selectedImageIndex}
+          onClose={() => setImageViewerOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -14,7 +14,6 @@ import { archiveOldReports } from "../lib/server/archive-reports";
 const app = express();
 app.use(cors());
 app.use(express.json());
-
 let lastAnomalies: Anomaly[] = [];
 
 app.get("/api/anomalies", (_req: Request, res: Response) => {

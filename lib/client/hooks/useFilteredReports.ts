@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Report } from "@/lib/types";
+import { getReportCriticalityType } from "@/lib/server/sla";
 
 export function useFilteredReports(
   reports: Report[],
@@ -7,30 +8,34 @@ export function useFilteredReports(
     selectedArea,
     selectedTypes,
     status,
+    statusList,
     dateFrom,
     dateTo,
     mediaOnly,
     criticality,
+    criticalityList,
   }: {
     selectedArea: string | null;
     selectedTypes: string[];
     status: "open" | "pending" | "in progress" | "resolved" | "all";
+    statusList?: string[];
     dateFrom: string | null;
     dateTo: string | null;
     mediaOnly: boolean;
     criticality?: string;
+    criticalityList?: string[];
   }
 ) {
   const filteredReports = useMemo(() => {
     return reports.filter((r) => {
-      if (r.deleted) return false;
-
       const areaMatch = !selectedArea || r.area === selectedArea;
       const typeMatch =
         selectedTypes.length === 0 || selectedTypes.includes(r.type ?? "");
 
-      const statusMatch =
-        status === "all"
+      // Handle multiple status selection
+      const statusMatch = statusList && statusList.length > 0
+        ? statusList.includes(r.status)
+        : status === "all"
           ? r.status !== "resolved"
           : r.status === status;
 
@@ -43,16 +48,14 @@ export function useFilteredReports(
 
       const mediaMatch = !mediaOnly || r.media === true;
 
-      // criticality checker
+      // Handle multiple criticality selection using actual SLA calculation
       let criticalityMatch = true;
-      if (criticality) {
-        const now = Date.now();
-        const diffDays = Math.floor((now - r.timestamp) / (1000 * 60 * 60 * 24));
-        const color =
-          diffDays <= 5 ? "green" :
-          diffDays <= 14 ? "yellow" :
-          diffDays <= 30 ? "orange" : "red";
-        criticalityMatch = color === criticality;
+      if (criticalityList && criticalityList.length > 0) {
+        const reportColor = getReportCriticalityType(r);
+        criticalityMatch = criticalityList.includes(reportColor);
+      } else if (criticality) {
+        const reportColor = getReportCriticalityType(r);
+        criticalityMatch = reportColor === criticality;
       }
 
       return (
@@ -64,7 +67,7 @@ export function useFilteredReports(
         criticalityMatch
       );
     });
-  }, [reports, selectedArea, selectedTypes, status, dateFrom, dateTo, mediaOnly, criticality]);
+  }, [reports, selectedArea, selectedTypes, status, statusList, dateFrom, dateTo, mediaOnly, criticality, criticalityList]);
 
   return { filteredReports };
 }

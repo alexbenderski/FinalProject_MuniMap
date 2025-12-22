@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Modal from "@/components/dashboard/Modal";
+import Tooltip from "@/components/dashboard/Tooltip";
 import * as XLSX from "xlsx";
 
 const STATUS_ORDER = ["open", "pending", "in progress", "resolved"];
@@ -10,6 +11,39 @@ interface Props {
   onClose: () => void;
   city: string | null;
 }
+
+const getTimeRangeLabel = (months: string) => {
+  const monthsNum = Number(months);
+  const endDate = new Date();
+  const startDate = new Date(endDate);
+  startDate.setMonth(startDate.getMonth() - monthsNum);
+  
+  const formatDateShort = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}.${month}.${year}`;
+  };
+  
+  const periodText = monthsNum === 1 ? "Last 1 month" : `Last ${monthsNum} months`;
+  const rangeText = `${formatDateShort(startDate)}-${formatDateShort(endDate)}`;
+  
+  return rangeText;
+};
+
+const getTimeRangeLabelFull = (months: string) => {
+  const monthsNum = Number(months);
+  const endDate = new Date();
+  const startDate = new Date(endDate);
+  startDate.setMonth(startDate.getMonth() - monthsNum);
+  
+  const formatDate = (date: Date) => date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  
+  const rangeText = `${formatDate(startDate)} to ${formatDate(endDate)}`;
+  const periodText = monthsNum === 1 ? "Last 1 month" : `Last ${monthsNum} months`;
+  
+  return `${periodText} (${rangeText})`;
+};
 
 export default function StatusTransitionModal({ open, onClose, city }: Props) {
   const [statusStart, setStatusStart] = useState<string | null>(null);
@@ -23,6 +57,7 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
   const [analyzing, setAnalyzing] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
   const [heatmapData, setHeatmapData] = useState<Record<string, Record<string, { avgDays: number; count: number }>>>({});
 
   const transitionPairs = [
@@ -62,7 +97,7 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
           ["From Status", pair.start],
           ["To Status", pair.end],
           ["City", city],
-          ["Time Range (months)", timeRange],
+          ["Time Range", getTimeRangeLabelFull(timeRange)],
           ["Report Category", category],
           [""],
           ["Average Days", data.avgDays.toFixed(2)],
@@ -152,8 +187,34 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
           </p>
         </div>
 
+        {/* Instructions Guide - Collapsible */}
+        <div className="bg-indigo-50 border border-indigo-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowInstructions(!showInstructions)}
+            className="w-full p-4 flex items-center justify-between hover:bg-indigo-100 transition-colors text-left"
+          >
+            <span className="text-sm font-semibold text-indigo-900 flex items-center gap-2">
+              📖 How to Analyze Report Transitions:
+              <Tooltip message="Click to expand/collapse instructions" position="top" />
+            </span>
+            <span className={`text-lg text-indigo-900 transition-transform duration-300 ${showInstructions ? "rotate-180" : ""}`}>
+              ▼
+            </span>
+          </button>
+          
+          {showInstructions && (
+            <ol className="text-xs text-indigo-800 space-y-2 list-decimal list-inside p-4 pt-0 bg-white bg-opacity-50 border-t border-indigo-200">
+              <li><span className="font-semibold">Select Time Range:</span> Choose the period you want to analyze</li>
+              <li><span className="font-semibold">Select Category:</span> Filter by report type or choose ll categories</li>
+              <li><span className="font-semibold">Select From/To Status:</span> Pick the status transition you want to examine (e.g., Open → Pending)</li>
+              <li><span className="font-semibold">Click Analyze:</span> View average time for this specific transition</li>
+              <li><span className="font-semibold">Optional:</span> Download full report or view heatmap of all transitions</li>
+            </ol>
+          )}
+        </div>
+
         {/* Select time range */}
-        <div>
+        <div className="max-w-sm mx-auto">
           <label className="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
           <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)} className="w-full p-2 border rounded">
             <option value="1">Last month</option>
@@ -161,10 +222,11 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
             <option value="6">Last 6 months</option>
             <option value="12">Last year</option>
           </select>
+          <p className="text-xs text-gray-500 mt-1">📅 {getTimeRangeLabel(timeRange)}</p>
         </div>
 
         {/* Select report type */}
-        <div>
+        <div className="max-w-sm mx-auto">
           <label className="block text-sm font-medium text-gray-700 mb-1">Report Category</label>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2 border rounded">
             <option value="all">All categories</option>
@@ -175,7 +237,7 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
         </div>
 
         {/* Select Start */}
-        <div>
+        <div className="max-w-sm mx-auto">
           <label className="block text-sm font-medium text-gray-700 mb-1">From Status</label>
           <select
             value={statusStart ?? ""}
@@ -199,7 +261,7 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
 
         {/* Select End */}
         {statusStart && (
-          <div>
+          <div className="max-w-sm mx-auto">
             <label className="block text-sm font-medium text-gray-700 mb-1">To Status</label>
             <select
               value={statusEnd ?? ""}
@@ -229,51 +291,69 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
           </div>
         )}
 
-        <div className="flex justify-center gap-3 pt-2">
-          <button
-            disabled={!statusStart || !statusEnd || analyzing}
-            onClick={async () => {
-              setAnalyzing(true);
-              const res = await fetch("/api/statistics/status-transition", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  monthsBack: Number(timeRange),
-                  category,
-                  area: city,
-                  statusStart,
-                  statusEnd,
-                }),
-              });
+        {/* Buttons Section */}
+        <div className="relative pt-4">
+          {/* Excel button positioned top right */}
+          <div className="absolute top-0 right-0">
+            <button
+              disabled={downloading}
+              onClick={handleDownloadExcel}
+              className="px-4 py-2 bg-green-600 text-white rounded font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+              title="Download complete analysis for all 6 status transitions"
+            >
+              📥 {downloading ? "Downloading..." : "Excel Report"}
+              <Tooltip message="Downloads a comprehensive Excel workbook with all 6 possible status transitions analyzed. Each transition gets its own sheet with detailed metrics." />
+            </button>
+          </div>
 
-              const data = await res.json();
-              setResult(data);
-              setAnalyzing(false);
-            }}
-            className="px-6 py-2 bg-indigo-600 text-white rounded font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {analyzing ? "Analyzing..." : "Analyze"}
-          </button>
+          {/* Center buttons */}
+          <div className="flex justify-center gap-3">
+            <button
+              disabled={!statusStart || !statusEnd || analyzing}
+              onClick={async () => {
+                setAnalyzing(true);
+                const res = await fetch("/api/statistics/status-transition", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    monthsBack: Number(timeRange),
+                    category,
+                    area: city,
+                    statusStart,
+                    statusEnd,
+                  }),
+                });
 
-          <button
-            disabled={downloading}
-            onClick={handleDownloadExcel}
-            className="px-6 py-2 bg-green-600 text-white rounded font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            📥 {downloading ? "Downloading..." : "Full-Report (Excel)"}
-          </button>
+                const data = await res.json();
+                setResult(data);
+                setAnalyzing(false);
+              }}
+              className="px-6 py-2 bg-indigo-600 text-white rounded font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              title="Analyze the selected transition"
+            >
+              {analyzing ? "Analyzing..." : "Analyze"}
+              <Tooltip message="Analyzes the average time reports take to transition from the selected 'From Status' to 'To Status'. Shows detailed metrics for this specific transition." />
+            </button>
 
-          <button
-            onClick={handleShowHeatmap}
-            className="px-6 py-2 bg-purple-600 text-white rounded font-semibold hover:bg-purple-700 flex items-center gap-2"
-          >
-            🔥 View Heatmap
-          </button>
+            <button
+              onClick={handleShowHeatmap}
+              className="px-6 py-2 bg-purple-600 text-white rounded font-semibold hover:bg-purple-700 flex items-center gap-1"
+              title="View transition matrix for all statuses"
+            >
+              🔥 View Heatmap
+              <Tooltip message="Displays a visual matrix of all 6 status transitions with color coding. Green = fast transitions, Red = slow transitions. Helps identify bottlenecks at a glance." />
+            </button>
+          </div>
         </div>
 
         {showHeatmap && Object.keys(heatmapData).length > 0 && (
           <div className="mt-6 p-5 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
-            <h3 className="text-lg font-bold text-purple-900 mb-4"> Status Transition Heatmap</h3>
+            <h3 className="text-lg font-bold text-purple-900 mb-4">
+              📊 Status Transition Heatmap
+              <span className="text-sm font-semibold text-purple-700 ml-2">
+                ({category === "all" ? "All Categories" : category.charAt(0).toUpperCase() + category.slice(1)})
+              </span>
+            </h3>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
@@ -360,7 +440,7 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
               </div>
 
               {/* Report Count */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="bg-white rounded p-3 border border-green-200">
                   <p className="text-xs text-gray-600 uppercase">Reports Analyzed</p>
                   <p className="text-2xl font-bold text-indigo-600 mt-1">{result.count}</p>
@@ -368,6 +448,10 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
                 <div className="bg-white rounded p-3 border border-green-200">
                   <p className="text-xs text-gray-600 uppercase">City</p>
                   <p className="text-lg font-semibold text-gray-700 mt-1">{city}</p>
+                </div>
+                <div className="bg-white rounded p-3 border border-green-200">
+                  <p className="text-xs text-gray-600 uppercase">Time Range</p>
+                  <p className="text-sm font-semibold text-gray-700 mt-1">{getTimeRangeLabel(timeRange)}</p>
                 </div>
               </div>
 
@@ -390,7 +474,7 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
               {/* Summary Text */}
               <div className="bg-white rounded p-3 border border-green-200">
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  <span className="font-semibold">Summary:</span> In {city}, reports take an average of{" "}
+                  <span className="font-semibold">Summary:</span> In {city} during <span className="font-bold text-green-700">{getTimeRangeLabel(timeRange)}</span>, reports take an average of{" "}
                   <span className="font-bold text-green-700">{result.avgDays.toFixed(1)} days</span> to transition from{" "}
                   <span className="uppercase text-sm font-semibold">{statusStart}</span> to{" "}
                   <span className="uppercase text-sm font-semibold">{statusEnd}</span> based on{" "}

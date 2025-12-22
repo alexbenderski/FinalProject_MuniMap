@@ -174,8 +174,8 @@ onSelect: (city: string, district: string) => void
   const [regions, setRegions] = useState<Record<string, string[]>>({});
   const [openRegion, setOpenRegion] = useState<string | null>(null);
 
-  const { permissions } = useAuth();    // ← נוספה שורה זו
-  const allowedDistrict = permissions?.district ?? null; // ← וגם זו
+  const { permissions } = useAuth();
+  const allowedCity = permissions?.city ?? null; // ← רק העיר המותרת
 
   useEffect(() => {
     async function fetchData() {
@@ -227,9 +227,7 @@ onSelect: (city: string, district: string) => void
   return (
     <div className="space-y-2">
 
-      {Object.entries(regions)
-        .filter(([district]) => !allowedDistrict || district === allowedDistrict) // ← סינון המחוז כאן
-        .map(([district, cities]) => (
+      {Object.entries(regions).map(([district, cities]) => (
           <div key={district} className="border rounded-md overflow-hidden">
             <button
               onClick={() =>

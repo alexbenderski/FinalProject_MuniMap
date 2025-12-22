@@ -1,15 +1,15 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
-import  Modal  from "@/components/dashboard/Modal";
+import Modal from "@/components/dashboard/Modal";
 import FiltersModal from "@/components/dashboard/FiltersModal";
-import { fetchReports, deleteReport } from "@/lib/client/fetchers";
-import { Report,Anomaly } from "@/lib/types";
+import { subscribeToReports, deleteReport } from "@/lib/client/fetchers";
+import { Report, Anomaly } from "@/lib/types";
 import ReportsMapModal from "@/components/dashboard/ReportsMapModal";
 import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
 import { getCurrentUserInfo } from "@/lib/client/fetchers";
 import Image from "next/image";
 import Tooltip from "@/components/dashboard/Tooltip";
-import { SLA_DAYS } from "@/lib/server/sla";  
+import { SLA_DAYS } from "@/lib/server/sla";
 import { getReportCriticalityType } from "@/lib/server/sla";
 
 interface Props {
@@ -28,8 +28,7 @@ interface ReportsTableModalProps {
   title?: string;               
   anomalyDetails?: Anomaly; // 👈 חדש — מוסיף את פרטי האנומליה
   onReviewUpdate?: (updatedAnomaly: Anomaly) => void; 
-  
-}
+  }
 
 type FiltersPayload = {
   categories: string[];
@@ -106,6 +105,7 @@ useEffect(() => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [localAnomaly, setLocalAnomaly] = useState(anomalyDetails);
+  const [anomalyDetailsOpen, setAnomalyDetailsOpen] = useState(true);
   const { email: currentUserEmail, safeKey: currentUserKey } = getCurrentUserInfo();
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [generatedCleanLink, setGeneratedCleanLink] = useState("");
@@ -114,6 +114,13 @@ useEffect(() => {
   // 🧭 ניהול מיון
   const [sortColumn, setSortColumn] = useState<string>(""); 
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  // ✅ Sync localAnomaly when anomalyDetails changes
+  useEffect(() => {
+    if (anomalyDetails) {
+      setLocalAnomaly(anomalyDetails);
+    }
+  }, [anomalyDetails]);
   
   const handleOpenDetails = (report: Report) => {
     console.log("Opening details for:", report.id, report.type);
@@ -292,35 +299,25 @@ function handleSort(column: string) {
   useEffect(() => {
     if (!open) return;
 
-    async function load() {
-      if (externalReports && externalReports.length > 0) {
-        // ✅ גם כאן נסנן אם רוצים למנוע הופעת מחוקים
-        // const filtered = externalReports.filter((r) => !r.deleted);
-        // אל תזרוק deleted — אנומליה זקוקה גם לדיווחים שאינם active
-        // const filtered = externalReports;
-        // setRows(filtered);
-        setRows(externalReports);
-        return;
-      }
+    if (externalReports && externalReports.length > 0) {
+      setRows(externalReports);
+      return;
+    }
 
-      const data = await fetchReports();
+    // Fallback: use real-time listener if no external reports provided
+    const unsubscribe = subscribeToReports((data) => {
       const all: Report[] = [];
 
       Object.entries(data).forEach(([type, group]) => {
-        Object.entries(group as Record<string, Omit<Report, "type" | "id">>).forEach(
-          ([id, report]) => {
-            all.push({ ...report, type, id });
-          }
-        );
+        Object.entries(group).forEach(([id, report]) => {
+          all.push({ ...report, type, id });
+        });
       });
 
-      // // ✅ כאן אנחנו מסננים דיווחים שמסומנים כמחוקים
-      // const activeReports = all.filter((r) => !r.deleted);
-      // setRows(activeReports);
-            setRows(all);
-    }
+      setRows(all);
+    });
 
-    load();
+    return () => unsubscribe();
   }, [open, externalReports]);
 
 
@@ -546,21 +543,25 @@ return (
     <Modal title={title ?? "Reports Table"} onClose={onClose}>
       <div className="flex flex-col bg-white rounded-lg shadow-lg max-w-[95vw] max-h-[90vh] w-[1000px] overflow-hidden">
 
-{/* פירוט האנומליה מעל הטבלה */}
+{/* Anomaly Details Section - Collapsible */}
 {localAnomaly && (
-  <div className="px-6 pt-4 pb-3 text-sm text-gray-700 leading-relaxed border-b mb-3 bg-gray-50">
+  <div className="border-b mb-3 bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-l-red-500">
+    {/* Collapsible Header */}
+    <div className="px-6 pt-4 pb-3 flex items-center justify-between cursor-pointer hover:bg-red-100 transition-colors" onClick={() => setAnomalyDetailsOpen(!anomalyDetailsOpen)}>
+      <div className="flex items-center gap-2">
+        <h2 className="font-bold text-lg text-red-700">
+          🚨 Anomaly Details
+        </h2>
+        <span className={`transform transition-transform duration-300 text-red-700 font-bold ${anomalyDetailsOpen ? 'rotate-180' : ''}`}>
+          ▼
+        </span>
+      </div>
 
-    {/* כותרת + כפתור Reviewed */}
-    <div className="flex items-center justify-between mb-3">
-      <h2 className="font-semibold text-lg text-gray-900">
-        פרטים על האנומליה:
-      </h2>
-
-      {/* כפתור סימון כ־Reviewed — נשאר זהה */}
+      {/* Mark as Reviewed Button */}
       <button
         onClick={async () => {
           if (!currentUserKey) {
-            alert("לא נמצא משתמש מחובר");
+            alert("No user found");
             return;
           }
 
@@ -568,157 +569,132 @@ return (
             !!localAnomaly.reviewedBy?.[currentUserKey];
 
           if (alreadyReviewed) {
-            alert("כבר סימנת את האנומליה הזו כ־Reviewed ✅");
+            alert("You already reviewed this anomaly ✅");
             return;
           }
 
-          if (!confirm("האם אתה בטוח שקראת ובדקת את האנומליה הזו?")) return;
+          if (!confirm("Have you reviewed this anomaly?")) return;
 
           try {
             const { markAnomalyAsReviewed } = await import("@/lib/client/fetchers");
             const result = await markAnomalyAsReviewed(localAnomaly);
 
             if (result.alreadyReviewed) {
-              alert("כבר סומנה בעבר");
+              alert("Already reviewed");
               return;
             }
 
-            setLocalAnomaly(prev => ({
-              ...prev!,
+            const updatedAnomaly = {
+              ...localAnomaly,
               reviewedBy: {
-                ...(prev?.reviewedBy ?? {}),
+                ...(localAnomaly.reviewedBy ?? {}),
                 [currentUserKey]: result.timestamp ?? Date.now(),
               },
-            }));
+            };
+
+            setLocalAnomaly(updatedAnomaly);
 
             if (onReviewUpdate) {
-              onReviewUpdate({
-                ...localAnomaly,
-                reviewedBy: {
-                  ...(localAnomaly.reviewedBy ?? {}),
-                  [currentUserKey]: result.timestamp ?? Date.now(),
-                }
-              });
+              onReviewUpdate(updatedAnomaly);
             }
 
-            alert(`סומנה כ־Reviewed על ידי ${result.email}`);
+            alert(`✅ Marked as reviewed by ${result.email}`);
           } catch (err) {
-            console.error(err);
-            alert("❌ שגיאה בעדכון המצב");
+            console.error("Error marking as reviewed:", err);
+            alert(`❌ Failed to mark as reviewed: ${err instanceof Error ? err.message : 'Unknown error'}`);
           }
         }}
-        className={`rounded-md px-3 py-1 text-sm font-medium ${
+        className={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${
           currentUserKey && localAnomaly.reviewedBy?.[currentUserKey]
-            ? "bg-green-100 text-green-700 border border-green-300 cursor-default"
-            : "bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200"
+            ? "bg-green-200 text-green-800 border-2 border-green-400 cursor-default"
+            : "bg-yellow-200 text-yellow-800 border-2 border-yellow-400 hover:bg-yellow-300"
         }`}
         disabled={!!(currentUserKey && localAnomaly.reviewedBy?.[currentUserKey])}
       >
         {currentUserKey && localAnomaly.reviewedBy?.[currentUserKey]
-          ? "✅ Already Reviewed"
-          : "❌ Not Reviewed yet"}
+          ? "✅ Reviewed"
+          : "⏳ Mark as Reviewed"}
       </button>
     </div>
 
-    {/* ⭐ מבנה שני טורים */}
-    <div className="flex gap-10 items-start">
+    {/* Collapsible Content */}
+    {anomalyDetailsOpen && (
+      <div className="px-6 pb-4 text-sm leading-relaxed">
 
-      {/* טור ימין — generalMessage */}
+    {/* Two Column Layout */}
+    <div className="flex gap-10 items-start bg-white rounded-lg p-4 border-l-4 border-l-orange-400">
+
+      {/* Left Column — generalMessage */}
       <div className="w-1/2">
         {localAnomaly.generalMessage && (
-          <p className="mt-1 mb-4 text-gray-800 leading-relaxed whitespace-pre-line">
-            {localAnomaly.generalMessage}
+          <p className="mt-1 mb-4 text-gray-800 leading-relaxed whitespace-pre-line border-l-4 border-l-blue-400 pl-3">
+            &ldquo;{localAnomaly.generalMessage}&rdquo;
           </p>
         )}
       </div>
 
-      {/* טור שמאל — רשימת הנתונים */}
+      {/* Right Column — Data List */}
       <div className="w-1/2">
-        <ul className="list-disc pl-5 space-y-1 text-gray-800">
-          <li>
-            <strong> דיווחים בחודש הנוכחי </strong>{" "}
-            {localAnomaly.metrics.currentReports}
-            <Tooltip message="current"/>
+        <ul className="space-y-2 text-gray-800">
+          <li className="flex items-center gap-2">
+            <span className="text-lg">📊</span>
+            <span><strong>Current Reports:</strong> {localAnomaly.metrics.currentReports}</span>
+            <Tooltip message="Number of reports in current period"/>
           </li>
 
-            {localAnomaly.type === "slow_response" && ( //if..
-    <li>
-            <strong> זמן הטיפול הממוצע </strong>{" "}
-            {localAnomaly.metrics.currentAvgDays}
-            <Tooltip message="ממוצע כל זמני הטיפול של הדיווחים מהסוג הזה שנסגרו בחודש הנוכחי."/>
+            {localAnomaly.type === "slow_response" && (
+    <li className="flex items-center gap-2">
+            <span className="text-lg">⏱️</span>
+            <span><strong>Avg Processing Time:</strong> {localAnomaly.metrics.currentAvgDays} days</span>
+            <Tooltip message="Average time for closed reports in current period"/>
     </li>
   )}
 
-          <li>
-            <strong>ממוצע היסטורי:</strong>{" "}
-            {localAnomaly.metrics.baselineMean}
-            <Tooltip message="כמה דיווחים היו בממוצע ב־6 חודשים קודמים באזור זה." />
+          <li className="flex items-center gap-2">
+            <span className="text-lg">📈</span>
+            <span><strong>Historical Avg:</strong> {localAnomaly.metrics.baselineMean}</span>
+            <Tooltip message="Average from past 6 months" />
           </li>
 
-          <li>
-            <strong>סטיית תקן:</strong>{" "}
-            {localAnomaly.metrics.baselineStd}
-            <Tooltip message="כמה המשתנים מפוזרים סביב הממוצע. ערך גבוה = הרבה חוסר יציבות. אם סטיית תקן היא X אז כמות הדיווחים זזה ±X מהממוצע." />
+          <li className="flex items-center gap-2">
+            <span className="text-lg">📊</span>
+            <span><strong>Std Dev:</strong> {localAnomaly.metrics.baselineStd}</span>
+            <Tooltip message="Standard deviation from average" />
           </li>
 
-          <li>
-            <strong>Threshold (סף גילוי):</strong>{" "}
-            {localAnomaly.metrics.threshold}
+          <li className="flex items-center gap-2">
+            <span className="text-lg">🎯</span>
+            <span><strong>Threshold:</strong> {localAnomaly.metrics.threshold}</span>
           <Tooltip
             message={
-              "Threshold\n" +
-              "זהו סף ההשוואה שהמערכת קובעת.\n\n" +
-
-              "Current\n" +
-              "זה הערך הנוכחי שמופיע למעלה באנומליה.\n\n" +
-
-              "כדי להבין אם יש חריגה:\n" +
-              "מסתכלים על הערך הנוכחי\n" +
-              "Current\n" +
-              "ואז משווים אותו לערך הסף\n" +
-              "Threshold\n\n" +
-
-              "אם הערך הנוכחי גדול מערך הסף — יש חריגה.\n" +
-              "אם הערך הנוכחי קטן או שווה — המצב תקין."
+              "Threshold is the detection limit.\n\n" +
+              "If Current > Threshold: Anomaly detected\n" +
+              "If Current ≤ Threshold: Normal state"
             }
           />
           </li>
 
-          <li>
-            <strong>שינוי באחוזים:</strong>{" "}
-            {localAnomaly.metrics.pctChange > 0 ? "+" : ""}
-            {localAnomaly.metrics.pctChange}%
-            <Tooltip message="כמה אחוזים הדיווחים הנוכחיים גבוהים מהממוצע." />
+          <li className="flex items-center gap-2">
+            <span className="text-lg">📉</span>
+            <span><strong>Change:</strong> {localAnomaly.metrics.pctChange > 0 ? "+" : ""}{localAnomaly.metrics.pctChange}%</span>
+            <Tooltip message="Percentage change from average" />
           </li>
 
-          <li>
-            <strong>Z-Score:</strong>{" "}
-            {localAnomaly.metrics.zScore}
-            <Tooltip
-              message={
-                "Z-Score מודד כמה רחוק נתון נמצא מהממוצע, ביחידות של סטיית תקן.\n\n" +
-                "• Z = 0 — הנתון שווה לממוצע\n" +
-                "• Z > 0 — הנתון גבוה מהממוצע\n" +
-                "• Z < 0 — הנתון נמוך מהממוצע\n\n" +
-                "מתי זה טוב?\n" +
-                "• Z נמוך — זמן טיפול קצר מהרגיל, המצב טוב.\n\n" +
-                "מתי זה רע?\n" +
-                "• Z גבוה — זמן טיפול ארוך מהממוצע, ייתכן עומס או תקלה.\n\n" +
-                "משמש לנרמול נתונים ולזיהוי חריגות."
-              }
-            />
+          <li className="flex items-center gap-2">
+            <span className="text-lg">📐</span>
+            <span><strong>Z-Score:</strong> {localAnomaly.metrics.zScore}</span>
+            <Tooltip message="Distance from average in standard deviations" />
           </li>
 
-          <li>
-            <strong>זוהה בפעם הראשונה בתאריך:</strong>{" "}
-            {new Date(localAnomaly.firstDetected).toLocaleString("he-IL")}
+          <li className="flex items-center gap-2">
+            <span className="text-lg">📅</span>
+            <span><strong>First Detected:</strong> {new Date(localAnomaly.firstDetected).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })}</span>
           </li>
 
           {localAnomaly.center && (
-            <li>
-              <strong>מרכז גיאוגרפי:</strong>{" "}
-              {localAnomaly.center.lat.toFixed(5)},{" "}
-              {localAnomaly.center.lng.toFixed(5)}
+            <li className="flex items-center gap-2">
+              <span className="text-lg">🗺️</span>
+              <span><strong>Geographic Center:</strong> {localAnomaly.center.lat.toFixed(5)}, {localAnomaly.center.lng.toFixed(5)}</span>
             </li>
           )}
 
@@ -726,18 +702,19 @@ return (
       </div>
     </div>
 
-    {/* --- רשימת מי שסקר --- */}
+    {/* Reviewed By List */}
     {localAnomaly.reviewedBy && (
-      <div className="mt-4 border-t pt-2">
-        <h3 className="font-semibold mb-1">✔️ כבר סוקר על ידי:</h3>
-        <ul className="list-disc pl-5">
+      <div className="mt-4 border-t pt-3 bg-white rounded-lg p-3 border-l-4 border-l-green-400">
+        <h3 className="font-bold mb-2 text-green-700 flex items-center gap-2">✔️ Reviewed By:</h3>
+        <ul className="space-y-1 text-sm">
           {Object.entries(localAnomaly.reviewedBy).map(([emailKey, ts]) => (
-            <li key={emailKey}>
-              {emailKey.replace(/_/g, ".")} –{" "}
-              {new Date(ts).toLocaleString("he-IL")}
+            <li key={emailKey} className="text-gray-700">
+              📝 <span className="font-mono">{emailKey.replace(/_/g, ".")}</span> – {new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })}
             </li>
           ))}
         </ul>
+      </div>
+    )}
       </div>
     )}
   </div>
@@ -746,10 +723,10 @@ return (
 
 
 
-          {/* טופ־בר */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 border-b bg-gray-50">
+          {/* Top Bar - Enhanced */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
           <button
-            className="text-blue-600 font-semibold hover:underline"
+            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-lg px-4 py-2 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
             onClick={() => {
               const selected = rows.filter(r => selectedReports.includes(r.id ?? ""));
               if (selected.length === 0) {
@@ -760,36 +737,36 @@ return (
               setMapOpen(true);
             }}
           >
-            Show all reports on map
+            📍 Show on Map
           </button>
           
             <button
-            className="text-green-600 font-semibold hover:underline ml-3"
+            className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold rounded-lg px-4 py-2 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
             onClick={handleGenerateDualLinks}
           >
-            Generate fastest route link
+            🛣️ Route Link
           </button>
             <div className="flex flex-wrap gap-2 items-center">
               <input
                 type="text"
-                placeholder="Search by Report ID..."
-                className="border px-2 py-1 rounded"
+                placeholder="🔍 Search by Report ID..."
+                className="border-2 border-gray-300 focus:border-blue-500 focus:outline-none px-3 py-2 rounded-lg font-medium transition-colors"
                 value={searchId}
                 onChange={(e) => setSearchId(e.target.value)}
               />
               <button
-                className="bg-gray-300 px-3 py-1 rounded font-semibold hover:bg-gray-400"
+                className="bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all"
                 onClick={() => setFiltersOpen(true)}
               >
-                Filter & Sort
+                🔧 Filter
               </button>
-              <button className="bg-red-400 hover:bg-red-500 px-3 py-1 rounded text-white font-semibold"
-                onClick={handleDeleteSelection} // 
+              <button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg font-bold shadow-md hover:shadow-lg transition-all"
+                onClick={handleDeleteSelection}
               >
-                Delete selection
+                🗑️ Delete
               </button>
-              <button className="ml-2 border px-2 py-1 rounded" onClick={selectAll}>
-                {selectedReports.length === filteredRows.length ? "Unselect all" : "Select all"}
+              <button className="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow-md hover:shadow-lg transition-all" onClick={selectAll}>
+                {selectedReports.length === filteredRows.length ? "📭 Unselect All" : "✅ Select All"}
               </button>
             </div>
           </div>
@@ -797,38 +774,38 @@ return (
 {/* 🔽 במקום ה־div של הטבלה + ה־footer הנפרד, נעטוף אותם יחד */}
 <div className="flex-1 overflow-y-auto flex flex-col">
 
-  {/* טבלה */}
+  {/* Table */}
   <div className="p-3 bg-white">
     <table className="w-full text-sm border-separate border-spacing-0">
-      <thead className="bg-white border-b-2 border-gray-300 font-semibold sticky top-0 z-20 shadow-sm">
+      <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold sticky top-0 z-20 shadow-lg">
         <tr>
-          <th className="p-2 border w-[40px]">✔</th>
-          <th className="p-2 border w-[90px]">Report ID</th>
-          <th className="p-2 border w-[100px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Category")}>
-            Category
+          <th className="p-3 text-center">✔</th>
+          <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors">📋 ID</th>
+          <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Category")}>
+            📁 Category
           </th>
-          <th className="p-2 border cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Description")}>
-            Description
+          <th className="p-3 text-left cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Description")}>
+            📝 Description
           </th>
-          <th className="p-2 border w-[120px] text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Criticality")}>
-            Criticality
+          <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Criticality")}>
+            ⚠️ Level
           </th>
-          <th className="p-2 border w-[150px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Timestamp")}>
-            Timestamp
+          <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Timestamp")}>
+            📅 Date
           </th>
-          <th className="p-2 border w-[120px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Location")}>
-            Location
+          <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Location")}>
+            📍 Area
           </th>
-          <th className="p-2 border w-[180px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Address")}>
-            Address
+          <th className="p-3 text-left cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Address")}>
+            🏢 Address
           </th>
-          <th className="p-2 border w-[90px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Status")}>
-            Status
+          <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Status")}>
+            ✓ Status
           </th>
-          <th className="p-2 border w-[70px] cursor-pointer hover:bg-gray-200" onClick={() => handleSort("Media")}>
-            Media
+          <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Media")}>
+            📷 Media
           </th>
-          <th className="p-2 border w-[130px]">Actions</th>
+          <th className="p-3 text-center">⚙️ Actions</th>
         </tr>
       </thead>
 
@@ -838,47 +815,69 @@ return (
           return (
             <tr
               key={rowId}
-              className={`border ${
+              className={`border-b transition-all ${
                 selectedReports.includes(rowId)
-                  ? "bg-green-100"
-                  : "hover:bg-gray-50"
+                  ? "bg-green-100 border-l-4 border-l-green-600"
+                  : "hover:bg-blue-50 border-l-4 border-l-transparent"
               }`}
             >
-              <td className="p-2 text-center">
+              <td className="p-3 text-center">
                 <input
                   type="checkbox"
                   checked={selectedReports.includes(rowId)}
                   onChange={() => toggleSelect(rowId)}
+                  className="w-4 h-4 cursor-pointer"
                 />
               </td>
-              <td className="p-2 text-center">{r.id ?? "—"}</td>
-              <td className="p-2 text-center capitalize">{r.type}</td>
-              <td className="p-2">{r.description}</td>
-              <td className="text-center">
+              <td className="p-3 text-center font-mono text-xs text-gray-700">{r.id ?? "—"}</td>
+              <td className="p-3 text-center capitalize">
+                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold">
+                  {r.type}
+                </span>
+              </td>
+              <td className="p-3 text-gray-800 font-medium">{r.description}</td>
+              <td className="p-3 text-center">
                 {r.type ? <CriticalityCell timestamp={r.timestamp} type={r.type} /> : "—"}
               </td>
-              <td className="p-2 text-center">
-                {new Date(r.timestamp).toLocaleString("he-IL")}
+              <td className="p-3 text-center text-xs text-gray-700 whitespace-nowrap">
+                {new Date(r.timestamp).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "2-digit"
+                })}
               </td>
-              <td className="p-2 text-center">{r.area}</td>
-              <td>{r.address || "—"}</td>
-              <td className="p-2 text-center">{r.status}</td>
-              <td className="p-2 text-center">{r.media ? "📷" : "—"}</td>
-              <td className="p-2 text-center space-x-2">
+              <td className="p-3 text-center">
+                <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-semibold">
+                  {r.area}
+                </span>
+              </td>
+              <td className="p-3 text-gray-700 text-sm">{r.address || "—"}</td>
+              <td className="p-3 text-center">
+                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                  r.status === "resolved" ? "bg-green-200 text-green-800" :
+                  r.status === "open" ? "bg-red-200 text-red-800" :
+                  r.status === "pending" ? "bg-yellow-200 text-yellow-800" :
+                  "bg-blue-200 text-blue-800"
+                }`}>
+                  {r.status}
+                </span>
+              </td>
+              <td className="p-3 text-center text-xl">{r.media ? "📷" : "—"}</td>
+              <td className="p-3 text-center space-x-2">
                 <button
-                  className="text-blue-600 hover:underline"
+                  className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-xs font-bold px-2 py-1 rounded-lg shadow-md hover:shadow-lg transition-all"
                   onClick={() => {
                     setReportsToShow([r]);
                     setMapOpen(true);
                   }}
                 >
-                  Show on map
+                  📍 Map
                 </button>
                 <button
-                  className="text-green-600 hover:underline"
+                  className="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs font-bold px-2 py-1 rounded-lg shadow-md hover:shadow-lg transition-all"
                   onClick={() => handleOpenDetails(r)}
                 >
-                  Open Details
+                  👁️ Details
                 </button>
               </td>
             </tr>

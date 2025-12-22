@@ -31,6 +31,9 @@ export interface Anomaly {
   firstDetected: number ;
   lastUpdated: number;
   center?: { lat: number; lng: number } | null;
+  reviewedBy?: {
+    [emailKey: string]: number; // timestamp
+  };
 }
 
 export function buildAnomalyId({

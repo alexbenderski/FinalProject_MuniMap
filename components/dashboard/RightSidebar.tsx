@@ -7,29 +7,15 @@ import { useAuth } from "../AuthProvider";
 interface RightSidebarProps {
   selectedArea: string | null;
   setSelectedArea: (a: string | null) => void;
-  // selectedTypes: string[];
-  // setSelectedTypes: React.Dispatch<React.SetStateAction<string[]>>; 
-  //React.Dispatch - a function that recieves a new value and updates the state
-  //Dispatch<SetStateAction<T>> - function that recieves new value or function that return new value
-  //setSelectedTypes: React.Dispatch<React.SetStateAction<string[]>> -
-// This is a function that updates a state of type string[],
-// and it can accept either:
-// New array directly (e.g. ["tree", "garbage"]),
-// Or a function that takes the previous value and returns a new array (e.g. (prev) => [...prev, "light"])
-// If you were to try to define only:
-// setSelectedTypes: (value: string[]) => void;
-// So React would complain about a line like:
-// setSelectedTypes((prev) => [...prev, "tree"]);
-
   filterSummary: Record<string, string>;
+  logoImage?: React.ReactNode;
 }
 
-export default function RightSidebar({ //props of the interface RightSidebarProps (destructuring..)
+export default function RightSidebar({
   selectedArea,
   setSelectedArea,
-  // selectedTypes,
-  // setSelectedTypes,
   filterSummary,
+  logoImage,
 }: RightSidebarProps) {
   const [statsOpen, setStatsOpen] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
@@ -43,15 +29,22 @@ export default function RightSidebar({ //props of the interface RightSidebarProp
   const { permissions } = useAuth();
 
   return (
-    <aside className="w-[320px] border-l bg-white flex flex-col">
-
+    <aside className="w-[320px] border-l bg-white flex flex-col overflow-hidden">
+      {/* Logo Section */}
+      {logoImage && (
+        <div className="px-2 py-4 flex justify-center  overflow-hidden  scale-130" >
+          <div className="hover:scale-105 transition-transform duration-300 cursor-pointer origin-center ">
+            {logoImage}
+          </div>
+        </div>
+      )}
 
       {/* 🔒 City lock */}
-      <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
-        <div className="text-sm text-blue-800 font-semibold">
+      <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 m-3 text-center">
+        <div className="text-sm text-blue-800 font-semibold ">
           עירייה
         </div>
-        <div className="text-lg font-bold text-blue-900 mt-1">
+        <div className="text-lg font-bold text-blue-900 mt-1 flex items-center justify-center">
           עיריית {permissions?.city}
         </div>
       </div>
@@ -69,8 +62,8 @@ export default function RightSidebar({ //props of the interface RightSidebarProp
       )}
 
       {/* סיכום הפילטרים */}
-      <div className="border-b p-3">
-        <div className="font-semibold mb-2 flex items-center gap-2">
+      <div className="flex-1 overflow-y-auto p-3 border-t">
+        <div className="font-semibold mb-2 flex items-center gap-2 justify-center">
           📊 Selected filters
         </div>
         <ul className="text-sm text-gray-700 space-y-1">
@@ -80,11 +73,6 @@ export default function RightSidebar({ //props of the interface RightSidebarProp
             </li>
           ))}
         </ul>
-        <div className="mt-3 bg-green-100 rounded-md p-2 text-sm">
-          <strong>Selected area:</strong> {selectedArea ?? "—"} <br />
-          {/* <strong>Selected district:</strong> {selectedDistrict ?? "—"} */}
-
-        </div>
       </div>
 
       {/* בחירת סוג אירוע

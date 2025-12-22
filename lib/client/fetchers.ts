@@ -82,31 +82,43 @@ export async function fetchAnomalies(): Promise<Anomaly[]> {
 }
 
 export async function markAnomalyAsReviewed(anomaly: Anomaly) {
-  const userEmail = "alex1@haifa.gov.il"; // TODO: לשים אימייל אמיתי מהאוטנטיקציה שלך
-  const emailKey = userEmail.replace(/\./g, "_");
-  const timestamp = Date.now();
-
-  // בודק אם המשתמש כבר עשה REVIEW
-  if (anomaly.reviewedBy && anomaly.reviewedBy[emailKey]) {
-    return { alreadyReviewed: true, email: userEmail };
+  const { email, safeKey } = getCurrentUserInfo();
+  
+  if (!email || !safeKey) {
+    throw new Error("User not authenticated");
   }
 
-  const anomalyPath = `Anomalies/${anomaly.firebaseKey}`;
+  // Check if user already reviewed
+  if (anomaly.reviewedBy && anomaly.reviewedBy[safeKey]) {
+    return { alreadyReviewed: true, email, timestamp: anomaly.reviewedBy[safeKey] };
+  }
+
+  if (!anomaly.firebaseKey) {
+    throw new Error("Anomaly missing firebaseKey");
+  }
+
+  const anomalyPath = `Anomalies/ActiveAnomalies/${anomaly.firebaseKey}`;
   const db = getDatabase();
   const refPath = ref(db, anomalyPath);
 
-  // עדכון בערכים הקיימים
+  const timestamp = Date.now();
+
+  // Update with the new reviewed entry
   const newEntry = {
-    [`reviewedBy/${emailKey}`]: timestamp
+    [`reviewedBy/${safeKey}`]: timestamp
   };
 
-  await update(refPath, newEntry);
-
-  return {
-    alreadyReviewed: false,
-    email: userEmail,
-    timestamp
-  };
+  try {
+    await update(refPath, newEntry);
+    return {
+      alreadyReviewed: false,
+      email,
+      timestamp
+    };
+  } catch (error) {
+    console.error("Failed to mark anomaly as reviewed:", error);
+    throw error;
+  }
 }
 
 /**
@@ -580,4 +592,75 @@ export async function hardDeleteReportInDB(reportType: string, reportId: string)
   console.log("[hardDeleteReportInDB] path:", path);
   await remove(nodeRef);
   return true;
+}
+
+// ==================== REAL-TIME LISTENERS ====================
+
+import { onValue } from "firebase/database";
+
+/**
+ * Subscribe to real-time anomalies updates
+ * @param callback Function to call when anomalies change
+ * @returns Unsubscribe function
+ */
+export function subscribeToAnomalies(
+  callback: (anomalies: Anomaly[]) => void
+): () => void {
+  const db = getDatabase(app);
+  const anomaliesRef = ref(db, "Anomalies/ActiveAnomalies");
+
+  const unsubscribe = onValue(anomaliesRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      callback([]);
+      return;
+    }
+
+    const data = snapshot.val();
+    const anomaliesArray: Anomaly[] = Object.entries(data).map(
+      ([firebaseKey, anomaly]) => ({
+        ...(anomaly as Anomaly),
+        firebaseKey,
+      })
+    );
+
+    callback(anomaliesArray);
+  });
+
+  return () => unsubscribe();
+}
+
+/**
+ * Subscribe to real-time reports updates
+ * @param callback Function to call when reports change
+ * @returns Unsubscribe function
+ */
+export function subscribeToReports(
+  callback: (reports: Record<string, Record<string, Omit<Report, "type" | "id">>>) => void
+): () => void {
+  const db = getDatabase(app);
+  const reportsRef = ref(db, "Reports");
+
+  const unsubscribe = onValue(reportsRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      callback({});
+      return;
+    }
+
+    const data = snapshot.val();
+
+    // Filter out deleted reports
+    Object.keys(data).forEach((type) => {
+      const filteredGroup = Object.fromEntries(
+        Object.entries(data[type]).filter(([, r]) => {
+          const report = r as unknown as Report;
+          return !report.deleted;
+        })
+      );
+      data[type] = filteredGroup;
+    });
+
+    callback(data);
+  });
+
+  return () => unsubscribe();
 }

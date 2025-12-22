@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { fetchAnomalies, fetchReports } from "@/lib/client/fetchers";
+import { subscribeToAnomalies, subscribeToReports } from "@/lib/client/fetchers";
 import { Anomaly, Report } from "@/lib/types";
 import ReportsTableModal from "@/components/dashboard/ReportsTableModal";
 
@@ -11,43 +11,43 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
   const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null);
   const [reportsForAnomaly, setReportsForAnomaly] = useState<Report[]>([]);
 
-  // ✅ טעינת אנומליות מהשרת
+  // ✅ Subscribe to real-time anomalies
   useEffect(() => {
-    async function loadAnomalies() {
-      setLoading(true);
-
-      const data = await fetchAnomalies();
-
-      // נתונים מגיעים כ-object → ממירים למערך
-      const list: Anomaly[] = Object.values(data || {});
-
-      // מיון לפי זמן גילוי
-      list.sort((a, b) => b.lastUpdated - a.lastUpdated);
-
-      // מגבילים ל-20 שורות
-      setAnomalies(list.slice(0, 20));
+    const unsubscribe = subscribeToAnomalies((data) => {
+      // Sort by last updated and limit to 20
+      const sorted = [...data].sort((a, b) => b.lastUpdated - a.lastUpdated);
+      setAnomalies(sorted.slice(0, 20));
       setLoading(false);
-    }
-
-    loadAnomalies();
-  }, []);
-
-  // ✅ פתיחת אנומליה: משיכת כל הדיווחים הרלוונטיים
-  const handleOpenAnomaly = async (anomaly: Anomaly) => {
-    const allReportsData = await fetchReports();
-    const related: Report[] = [];
-
-    Object.entries(allReportsData).forEach(([type, group]) => {
-      Object.entries(group as Record<string, Omit<Report, "id" | "type">>).forEach(
-        ([id, report]) => {
-          if (anomaly.relatedReports.includes(id)) {
-            related.push({ ...report, id, type });
-          }
-        }
-      );
     });
 
-    setReportsForAnomaly(related);
+    return () => unsubscribe();
+  }, []);
+
+  // ✅ Open anomaly with real-time reports
+  const handleOpenAnomaly = async (anomaly: Anomaly) => {
+    // Get the latest reports data
+    let reportsData: Record<string, Record<string, Omit<Report, "id" | "type">>> = {};
+
+    // One-time fetch to get related reports
+    const unsubscribeReports = subscribeToReports((data) => {
+      reportsData = data;
+      const related: Report[] = [];
+
+      Object.entries(reportsData).forEach(([type, group]) => {
+        Object.entries(group as Record<string, Omit<Report, "id" | "type">>).forEach(
+          ([id, report]) => {
+            if (anomaly.relatedReports.includes(id)) {
+              related.push({ ...report, id, type });
+            }
+          }
+        );
+      });
+
+      setReportsForAnomaly(related);
+    });
+
+    // Only keep the subscription briefly to get initial data
+    setTimeout(() => unsubscribeReports(), 100);
     setSelectedAnomaly(anomaly);
     setReportsModalOpen(true);
   };
@@ -64,9 +64,9 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
             <p className="text-gray-500 text-sm">אין חריגות להצגה.</p>
           ) : (
             <div className="max-h-36 overflow-y-auto space-y-2">
-              {anomalies.map((a) => (
+              {anomalies.map((a, index) => (
                 <div
-                  key={a.id}
+                  key={`${a.id}-${index}`}
                   onClick={() => handleOpenAnomaly(a)}
                   className="flex justify-between items-center bg-gray-50 rounded-md px-3 py-1 hover:bg-gray-100 cursor-pointer transition"
                 >

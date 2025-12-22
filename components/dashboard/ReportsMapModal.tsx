@@ -51,8 +51,6 @@ console.log("%cRMM LOADED", "color:cyan;font-size:20px");
         console.log("visibleReports:");
 
   return reports.filter((r) => {
-    if (r.deleted) return false;
-
     // ➤ אם לא נבחר פילטר — הכל נכנס
     if (!criticality || criticality === "") return true;
 

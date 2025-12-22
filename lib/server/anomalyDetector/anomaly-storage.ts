@@ -18,6 +18,29 @@ function nextUpdateId(list: string[]): string {
   const next = (maxNum + 1).toString().padStart(4, "0");
   return `upd_${next}`;
 }
+
+// ─────────────────────────────────────────────
+// Remove undefined values from objects (Firebase requirement)
+// ─────────────────────────────────────────────
+function removeUndefinedValues(obj: unknown): unknown {
+  if (obj === null || obj === undefined) return obj;
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefinedValues(item));
+  }
+  
+  if (typeof obj === 'object') {
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      if (value !== undefined) {
+        cleaned[key] = removeUndefinedValues(value);
+      }
+    }
+    return cleaned;
+  }
+  
+  return obj;
+}
 ////////////////////////////////////////////////////////////////
 
 
@@ -38,22 +61,55 @@ export async function saveActiveAnomaly(anomaly: Anomaly) {
   if (snapshot.exists()) {
     const existing = snapshot.val();
 
-    await ref.set({
-      ...existing,
-      ...anomaly,
-      firstDetected: existing.firstDetected,   // ← שומרים על המקור!
-      lastUpdated: Date.now()
-    });
+    // Ensure all required fields are present and defined
+    const payload = {
+      id: anomaly.id,
+      category: anomaly.category,
+      type: anomaly.type,
+      area: anomaly.area,
+      title: anomaly.title,
+      description: anomaly.description,
+      severity: anomaly.severity,
+      status: anomaly.status,
+      metrics: anomaly.metrics,
+      relatedReports: anomaly.relatedReports,
+      center: anomaly.center || null,
+      generalMessage: anomaly.generalMessage || null,
+      firstDetected: existing.firstDetected || Date.now(), // ← Keep original or set if missing
+      lastUpdated: Date.now(),
+      reviewedBy: existing.reviewedBy || anomaly.reviewedBy || {}
+    };
 
+    // Remove any undefined values
+    const cleanPayload = removeUndefinedValues(payload);
+
+    await ref.set(cleanPayload);
     console.log(`🔄 Updated ActiveAnomalies/${anomaly.id}`);
 
   } else {
-    await ref.set({
-      ...anomaly,
+    // New anomaly
+    const payload = {
+      id: anomaly.id,
+      category: anomaly.category,
+      type: anomaly.type,
+      area: anomaly.area,
+      title: anomaly.title,
+      description: anomaly.description,
+      severity: anomaly.severity,
+      status: anomaly.status,
+      metrics: anomaly.metrics,
+      relatedReports: anomaly.relatedReports,
+      center: anomaly.center || null,
+      generalMessage: anomaly.generalMessage || null,
       firstDetected: Date.now(),
-      lastUpdated: Date.now()
-    });
+      lastUpdated: Date.now(),
+      reviewedBy: anomaly.reviewedBy || {}
+    };
 
+    // Remove any undefined values
+    const cleanPayload = removeUndefinedValues(payload);
+
+    await ref.set(cleanPayload);
     console.log(`🆕 Created ActiveAnomalies/${anomaly.id}`);
   }
 }
@@ -111,17 +167,18 @@ export async function archiveAnomalyEpisode(anomalyId: string) {
   const episodePayload = {
     startAt: active.firstDetected,
     endAt: active.lastUpdated,
-    worstSnapshot: worst
+    worstSnapshot: worst,
+    reviewedBy: active.reviewedBy || {}  // ← Include review tracking in episode
   };
 
   await episodesRef.child(newEpId).set(episodePayload);
 
   console.log(`📦 Archived episode ${newEpId} for ${anomalyId}`);
 
-  // ❗ מוחקים את כל העדכונים הקודמים
+  // ❗ Delete previous updates
   await updatesRef.remove();
 
-  // ❗ מוחקים את האנומליה הפעילה
+  // ❗ Delete active anomaly
   await activeRef.remove();
 
   console.log(`🧹 Cleaned ActiveAnomalies + Updates for ${anomalyId}`);
@@ -141,7 +198,7 @@ export async function saveAnomalyUpdateSnapshot(anomaly: Anomaly) {
   const updatePayload = {
     timestamp: Date.now(),
 
-    // ---- שדות כלליים ----
+    // ---- General fields ----
     id: anomaly.id,
     category: anomaly.category,
     area: anomaly.area,
@@ -153,19 +210,25 @@ export async function saveAnomalyUpdateSnapshot(anomaly: Anomaly) {
     description: anomaly.description,
     generalMessage: anomaly.generalMessage || null,
 
-    // ---- נתונים ----
+    // ---- Data ----
     metrics: anomaly.metrics,
     relatedReports: anomaly.relatedReports,
 
-    // ---- מיקום ----
+    // ---- Location ----
     center: anomaly.center || null,
 
-    // ---- תאריכים ----
+    // ---- Dates ----
     firstDetected: anomaly.firstDetected,
-    lastUpdated: anomaly.lastUpdated
+    lastUpdated: anomaly.lastUpdated,
+
+    // ---- Review tracking ----
+    reviewedBy: anomaly.reviewedBy || {}
   };
 
-  await listRef.child(newId).set(updatePayload);
+  // Remove any undefined values before saving
+  const cleanPayload = removeUndefinedValues(updatePayload);
+
+  await listRef.child(newId).set(cleanPayload);
 
   console.log(`📝 Saved FULL update snapshot ${newId} for anomaly ${anomaly.id}`);
 }
@@ -174,7 +237,7 @@ export function mergeAnomalies(existing: Anomaly, update: Anomaly): Anomaly {
   return {
     ...existing,
 
-    // ← לא מחליפים שדות "זהות"
+    // ← Don't change "identity" fields
     id: existing.id,
     category: existing.category,
     area: existing.area,
@@ -182,7 +245,7 @@ export function mergeAnomalies(existing: Anomaly, update: Anomaly): Anomaly {
     firstDetected: existing.firstDetected,
     status: existing.status,
 
-    // ← כן מעדכנים שדות משתנים
+    // ← Update changeable fields
     title: update.title,
     description: update.description,
     generalMessage: update.generalMessage,
@@ -191,6 +254,9 @@ export function mergeAnomalies(existing: Anomaly, update: Anomaly): Anomaly {
     metrics: update.metrics,
     relatedReports: update.relatedReports,
     center: update.center ?? existing.center,
+
+    // ← Preserve review history
+    reviewedBy: existing.reviewedBy || {},
 
     lastUpdated: Date.now()
   };
