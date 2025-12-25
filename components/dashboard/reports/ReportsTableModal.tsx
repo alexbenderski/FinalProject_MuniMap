@@ -1,16 +1,15 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
-import Modal from "@/components/dashboard/Modal";
-import FiltersModal from "@/components/dashboard/FiltersModal";
+import Modal from "@/components/dashboard/common/Modal";
+import FiltersModal from "@/components/dashboard/common/FiltersModal";
 import { subscribeToReports, deleteReport } from "@/lib/client/fetchers";
 import { Report, Anomaly } from "@/lib/types";
-import ReportsMapModal from "@/components/dashboard/ReportsMapModal";
-import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
+import ReportsMapModal from "@/components/dashboard/maps/ReportsMapModal";
+import ReportDetailsModal from "@/components/dashboard/reports/ReportDetailsModal";
 import { getCurrentUserInfo } from "@/lib/client/fetchers";
 import Image from "next/image";
-import Tooltip from "@/components/dashboard/Tooltip";
-import { SLA_DAYS } from "@/lib/server/sla";
 import { getReportCriticalityType } from "@/lib/server/sla";
+import Tooltip from "../common/Tooltip";
 
 interface Props {
   timestamp: number;
@@ -106,11 +105,10 @@ useEffect(() => {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [localAnomaly, setLocalAnomaly] = useState(anomalyDetails);
   const [anomalyDetailsOpen, setAnomalyDetailsOpen] = useState(true);
-  const { email: currentUserEmail, safeKey: currentUserKey } = getCurrentUserInfo();
+  const { safeKey: currentUserKey } = getCurrentUserInfo();
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [generatedCleanLink, setGeneratedCleanLink] = useState("");
   const [generatedLabeledLink, setGeneratedLabeledLink] = useState("");
-  const [generatedIds, setGeneratedIds] = useState<string[]>([]);
   // 🧭 ניהול מיון
   const [sortColumn, setSortColumn] = useState<string>(""); 
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -162,6 +160,9 @@ useEffect(() => {
 
 
 //sla version
+// Note: This function is currently unused but kept for reference
+// Use getReportCriticalityType from @/lib/server/sla instead
+/*
 function getReportCriticality(timestamp: number, type?: string) {
   const now = Date.now();
   const ageDays = Math.floor((now - timestamp) / (1000 * 60 * 60 * 24));
@@ -183,8 +184,7 @@ function getReportCriticality(timestamp: number, type?: string) {
     icon: `/icons/${color}_${type ?? "default"}.png`,
   };
 }
-
-
+*/
 
 
 
@@ -933,6 +933,7 @@ return (
           reports={reportsToShow}
           criticality={filters.criticality}
           selectedArea={selectedArea}
+          anomalyDetails={anomalyDetails}
         />
       )}
       {detailsOpen && selectedReport && (

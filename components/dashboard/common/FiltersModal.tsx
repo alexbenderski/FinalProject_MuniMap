@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { fetchReports } from "@/lib/client/fetchers";
-import Modal from "@/components/dashboard/Modal";
 import { Report,FilterStatus} from "@/lib/types";
 import { CATEGORIES, CATEGORY_LABELS } from "@/lib/categories";
 import Image from "next/image";
@@ -33,8 +32,6 @@ export type FiltersPayload = {
 export default function FiltersModal({ open, onClose, onApply, currentFilters }: FiltersModalProps) {
   // Modal title: "🔍 Advanced Filters"
   const [categories, setCategories] = useState<string[]>([]);
-  const [locations, setLocations] = useState<string[]>([]);
-  const [statuses, setStatuses] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(currentFilters?.categories || []);
   const [selectedLocation, setSelectedLocation] = useState(currentFilters?.location || "");
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(currentFilters?.statusList || []);
@@ -43,16 +40,6 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
   const [dateTo, setDateTo] = useState<string | null>(currentFilters?.dateTo || null);
   const [selectedCriticalities, setSelectedCriticalities] = useState<string[]>(currentFilters?.criticalityList || []);
   const [showAllCategories, setShowAllCategories] = useState(false);
-
-  const [filters, setFilters] = useState<FiltersPayload & { criticality: string }>({
-    categories: [],
-    location: "",
-    status: "" as FiltersPayload["status"], 
-    mediaOnly: false,
-    dateFrom: "",
-    dateTo: "",
-    criticality: "", 
-  });
 
   const defaultColor = "green";
   const { permissions } = useAuth();
@@ -109,15 +96,28 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
         });
       });
 
-        setLocations(Array.from(areas));
-        setStatuses(Array.from(statusesSet));
       } catch (err) {
         console.error("Failed to fetch filter data:", err);
       }
     }
 
     loadFilters();
-  }, [open, currentFilters]);
+  }, [open, currentFilters, city]);
+
+  // ✅ Add ESC key listener
+  useEffect(() => {
+    if (!open) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation(); // ← Prevent parent modals from closing
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open, onClose]);
 
   if (!open) return null;
 

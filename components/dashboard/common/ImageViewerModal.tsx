@@ -23,13 +23,14 @@ export default function ImageViewerModal({
       } else if (e.key === "ArrowRight") {
         handleNext();
       } else if (e.key === "Escape") {
+        e.stopPropagation(); // ← Prevent parent modals from closing
         onClose();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, images.length]);
+  }, [currentIndex, images.length, onClose]);
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % images.length);

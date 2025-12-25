@@ -1,10 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
-import Modal from "@/components/dashboard/Modal";
+import { useEffect, useState, useRef } from "react";
+import Modal from "@/components/dashboard/common/Modal";
 import { fetchDetailedStatistics, fetchReports } from "@/lib/client/fetchers";
-import { DetailedStats, TimeRange, AreaStats, CategoryStats } from "@/lib/types";
-import DetailedStatsTableModal from "@/components/dashboard/DetailedStatsTableModal";
-import Tooltip from "@/components/dashboard/Tooltip";
+import { DetailedStats, TimeRange, AreaStats, CategoryStats, Report } from "@/lib/types";
+import RealtimeClock from "../common/RealtimeClock";
+import Tooltip from "../common/Tooltip";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+
 
 interface CityHealthMetrics {
   totalOpenReports: number;
@@ -37,11 +40,6 @@ interface AgingReport {
   daysOld30: number;
 }
 
-interface Report {
-  deleted?: boolean;
-  [key: string]: unknown;
-}
-
 export default function DetailedStatsModal({
   open,
   onClose,
@@ -55,13 +53,93 @@ export default function DetailedStatsModal({
   fromDate?: string;
   toDate?: string;
 }) {
-  const [data, setData] = useState<DetailedStats | null>(null);
+  const [, setData] = useState<DetailedStats | null>(null);
   const [cityHealth, setCityHealth] = useState<CityHealthMetrics | null>(null);
   const [categoryBottlenecks, setCategoryBottlenecks] = useState<CategoryBottleneck[]>([]);
   const [statusFlow, setStatusFlow] = useState<StatusFlowMetric[]>([]);
   const [agingReports, setAgingReports] = useState<AgingReport[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tableOpen, setTableOpen] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const dashboardRef = useRef<HTMLDivElement>(null);
+
+  const downloadDashboardAsPDF = async () => {
+    if (!dashboardRef.current) return;
+    
+    setIsDownloading(true);
+    
+    try {
+      const element = dashboardRef.current;
+      
+      // Temporarily disable ALL stylesheets to prevent lab() parsing
+      const allStylesheets = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'));
+      const disabledSheets: Array<{element: Element, disabled: boolean | null, media: string | null}> = [];
+      
+      allStylesheets.forEach(sheet => {
+        if (sheet.tagName === 'LINK') {
+          const link = sheet as HTMLLinkElement;
+          disabledSheets.push({ element: link, disabled: link.disabled, media: link.media });
+          link.disabled = true;
+        } else if (sheet.tagName === 'STYLE') {
+          const style = sheet as HTMLStyleElement;
+          disabledSheets.push({ element: style, disabled: null, media: style.media });
+          style.media = 'none';
+        }
+      });
+      
+      // Small delay to let styles fully disable
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const canvas = await html2canvas(element, {
+        scale: 1,
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
+      });
+      
+      // Re-enable all stylesheets
+      disabledSheets.forEach(({ element, disabled, media }) => {
+        if (element.tagName === 'LINK') {
+          (element as HTMLLinkElement).disabled = disabled || false;
+        } else if (element.tagName === 'STYLE') {
+          (element as HTMLStyleElement).media = media || '';
+        }
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      
+      const imgWidth = pageWidth - (margin * 2);
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = margin;
+      
+      // Add first page
+      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+      heightLeft -= (pageHeight - margin * 2);
+      
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight + margin;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+        heightLeft -= (pageHeight - margin * 2);
+      }
+      
+      pdf.save(`city-health-dashboard-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   useEffect(() => {
     async function loadStats() {
@@ -74,7 +152,7 @@ export default function DetailedStatsModal({
       const categoryCounts: Record<string, number> = {};
       if (reportsData) {
         Object.entries(reportsData).forEach(([type, group]) => {
-          Object.entries(group as Record<string, Report>).forEach(([id, report]) => {
+          Object.values(group as Record<string, Report>).forEach((report) => {
             if (!report.deleted) {
               const category = type || "other";
               categoryCounts[category] = (categoryCounts[category] || 0) + 1;
@@ -253,10 +331,22 @@ export default function DetailedStatsModal({
   return (
     <Modal title="City Health Dashboard" onClose={onClose}>
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg w-[1100px] max-h-[90vh] overflow-y-auto">
+        {/* Download Button - Fixed Position */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={downloadDashboardAsPDF}
+            disabled={isDownloading || loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            📄 {isDownloading ? "Generating PDF..." : "Download Dashboard as PDF"}
+          </button>
+        </div>
+        <div ref={dashboardRef}>
         <div className="space-y-6">
           {/* Header */}
           <div className="text-center border-b-2 border-indigo-300 pb-4">
             <h2 className="text-2xl font-bold text-indigo-900">🏙️ City Health Dashboard</h2>
+            <RealtimeClock />
             <p className="text-sm text-gray-600 mt-2">
               Time Range: <span className="font-semibold">{formatTimeRange(timeRange, fromDate, toDate)}</span>
             </p>
@@ -569,15 +659,16 @@ export default function DetailedStatsModal({
               </div>
             </>
           )}
-
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="w-full mt-6 px-4 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            Close Dashboard
-          </button>
         </div>
+        </div>
+
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="w-full mt-6 px-4 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+        >
+          Close Dashboard
+        </button>
       </div>
     </Modal>
   );

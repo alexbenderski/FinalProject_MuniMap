@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Modal from "@/components/dashboard/Modal";
+import Modal from "@/components/dashboard/common/Modal";
 import { fetchReports } from "@/lib/client/fetchers";
 import { Report as DBReport, TimeRange } from "@/lib/types";
 

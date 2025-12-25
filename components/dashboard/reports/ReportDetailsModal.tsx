@@ -4,7 +4,7 @@ import { Report,FilterStatus } from "@/lib/types";
 import { updateReportInDB,softDeleteReportInDB } from "@/lib/client/fetchers";
 import { getReportImages } from "@/lib/client/storage";
 import Image from "next/image";
-import ImageViewerModal from "./ImageViewerModal";
+import ImageViewerModal from "../common/ImageViewerModal";
 
 
 
@@ -71,6 +71,21 @@ export default function ReportDetailsModal({
       setImages([]);
     }
   }, [report?.id]);
+
+  // ✅ Add ESC key listener
+  useEffect(() => {
+    if (!open) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation(); // ← Prevent parent modals from closing
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open, onClose]);
 
  if (!open || !localReport) {
   console.log("Modal not opening: open=", open, "report=", localReport);

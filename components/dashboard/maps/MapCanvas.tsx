@@ -1,21 +1,17 @@
 "use client";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   GoogleMap, //main component that draws the map, working with center,zoom levels and events handle
   Polygon, //draws bounds of some area by the lat/lng
   Marker, //for the icons
-  InfoWindow, //show a window pop up when click on the icons
   useJsApiLoader, //special hook that loads the js file of the google maps and ensures that api loaded before the map drawing
 } from "@react-google-maps/api";
-import { fetchCitiesFromLocal, subscribeToReports } from "@/lib/client/fetchers";
-import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
-import { Report, City } from "@/lib/types";
+import { subscribeToReports } from "@/lib/client/fetchers";
+import ReportDetailsModal from "@/components/dashboard/reports/ReportDetailsModal";
+import { Report } from "@/lib/types";
 import { useCityBoundary } from "@/lib/client/hooks/useCityBoundary";
 import { useFilteredReports } from "@/lib/client/hooks/useFilteredReports";
 import { getReportCriticalityType } from "@/lib/server/sla";
-import { SLA_DAYS } from "@/lib/server/sla";
-import { CATEGORY_LABELS } from "@/lib/categories";
-import { useAuth } from "@/components/AuthProvider";
 
 const containerStyle = { width: "100%", height: "100%" };
 const defaultCenter = { lat: 32.794, lng: 34.989 };
@@ -113,8 +109,6 @@ const { filteredReports } = useFilteredReports(reports, {
   criticality,
   criticalityList,
 });
-
-const { permissions } = useAuth();
 
 const prevReportsRef = useRef<Report[]>([]);
 

@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import Modal from "@/components/dashboard/Modal";
-import Tooltip from "@/components/dashboard/Tooltip";
+import Modal from "@/components/dashboard/common/Modal";
 import * as XLSX from "xlsx";
+import Tooltip from "../common/Tooltip";
 
 const STATUS_ORDER = ["open", "pending", "in progress", "resolved"];
 
@@ -25,7 +25,6 @@ const getTimeRangeLabel = (months: string) => {
     return `${day}.${month}.${year}`;
   };
   
-  const periodText = monthsNum === 1 ? "Last 1 month" : `Last ${monthsNum} months`;
   const rangeText = `${formatDateShort(startDate)}-${formatDateShort(endDate)}`;
   
   return rangeText;

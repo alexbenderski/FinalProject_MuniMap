@@ -47,9 +47,8 @@ async function runDetectionJob(): Promise<void> {
     console.error("❌ Error running detection job:", err);
   }
 }
-
-const mul = 3;
-const DAY_MS =  60 * 1000 * mul ;
+const mul = 24;
+const DAY_MS =  60 * 1000 * 60 * mul ; // 24 hours
 setInterval(runDetectionJob, DAY_MS);
 runDetectionJob();
 //setInterval(cleanupOldAnomalies, 1000 * 60 * 60 * 24);  24 hours

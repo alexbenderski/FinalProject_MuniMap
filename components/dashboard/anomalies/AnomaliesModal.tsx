@@ -1,16 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
 import { fetchAnomalies, fetchReports, subscribeToAnomalies } from "@/lib/client/fetchers";
-import Modal from "@/components/dashboard/Modal";
+import Modal from "@/components/dashboard/common/Modal";
 import { Anomaly, Report } from "@/lib/types";
-import ReportsTableModal from "@/components/dashboard/ReportsTableModal";
+import AnomalyDetailsModal from "@/components/dashboard/anomalies/AnomalyDetailsModal";
 import { markAnomalyAsReviewed } from "@/lib/client/fetchers";
 import { getCurrentUserInfo } from "@/lib/client/fetchers";
 
 export default function AnomaliesModal({
   open,
   onClose,
-  selectedArea,
 }: {
   open: boolean;
   onClose: () => void;
@@ -19,9 +18,11 @@ export default function AnomaliesModal({
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [reportsModalOpen, setReportsModalOpen] = useState(false);
+  const [anomalyDetailsOpen, setAnomalyDetailsOpen] = useState(false);
   const [reportsForAnomaly, setReportsForAnomaly] = useState<Report[]>([]);
   const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null);
+  const [sortKey, setSortKey] = useState<"type" | "reports" | "status" | "firstDetected" | "lastUpdated" | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     if (!open) return;
@@ -38,14 +39,58 @@ export default function AnomaliesModal({
 
   if (!open) return null;
 
+  const handleSort = (key: "type" | "reports" | "status" | "firstDetected" | "lastUpdated") => {
+    if (sortKey === key) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
     const filtered = anomalies.filter((a) => {
       const s = search.toLowerCase();
 
       return (
         (a.title?.toLowerCase() ?? "").includes(s) ||
+        (a.description?.toLowerCase() ?? "").includes(s) ||
         (a.area?.toLowerCase() ?? "").includes(s) ||
         (a.status?.toLowerCase() ?? "").includes(s)
       );
+    });
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      let aVal: number | Date | string = 0, bVal: number | Date | string = 0;
+
+      if (sortKey === "type") {
+        aVal = a.category || "";
+        bVal = b.category || "";
+      } else if (sortKey === "reports") {
+        aVal = a.metrics?.currentReports ?? a.relatedReports?.length ?? 0;
+        bVal = b.metrics?.currentReports ?? b.relatedReports?.length ?? 0;
+      } else if (sortKey === "status") {
+        const { safeKey } = getCurrentUserInfo();
+        aVal = (a.reviewedBy && safeKey && a.reviewedBy[safeKey]) ? 1 : 0;
+        bVal = (b.reviewedBy && safeKey && b.reviewedBy[safeKey]) ? 1 : 0;
+      } else if (sortKey === "firstDetected") {
+        aVal = new Date(a.firstDetected).getTime();
+        bVal = new Date(b.firstDetected).getTime();
+      } else if (sortKey === "lastUpdated") {
+        aVal = new Date(a.lastUpdated).getTime();
+        bVal = new Date(b.lastUpdated).getTime();
+      }
+
+      if (aVal === bVal) return 0;
+      
+      // Handle string comparison for type
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        const comparison = aVal.localeCompare(bVal);
+        return sortDir === "asc" ? comparison : -comparison;
+      }
+      
+      const comparison = aVal < bVal ? -1 : 1;
+      return sortDir === "asc" ? comparison : -comparison;
     });
 
 
@@ -135,34 +180,54 @@ async function handleMarkReviewed(anomaly: Anomaly) {
                 <thead className="bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold sticky top-0 z-10">
                   <tr>
                     <th className="p-3 text-center">#</th>
-                    <th className="p-3 text-center">📁 Type</th>
+                    <th
+                      className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
+                      onClick={() => handleSort("type")}
+                    >
+                      📁 Type {sortKey === "type" && (sortDir === "asc" ? "▲" : "▼")}
+                    </th>
                     <th className="p-3 text-left">📝 Description</th>
                     <th className="p-3 text-center">📍 Area</th>
-                    <th className="p-3 text-center">📊 Reports</th>
-                    <th className="p-3 text-center">✓ Status</th>
-                    <th className="p-3 text-center">📅 First Detected</th>
-                    <th className="p-3 text-center">⏰ Last Updated</th>
+                    <th
+                      className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
+                      onClick={() => handleSort("reports")}
+                    >
+                      📊 Reports {sortKey === "reports" && (sortDir === "asc" ? "▲" : "▼")}
+                    </th>
+                    <th
+                      className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
+                      onClick={() => handleSort("status")}
+                    >
+                      ✓ Status {sortKey === "status" && (sortDir === "asc" ? "▲" : "▼")}
+                    </th>
+                    <th
+                      className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
+                      onClick={() => handleSort("firstDetected")}
+                    >
+                      📅 First Detected {sortKey === "firstDetected" && (sortDir === "asc" ? "▲" : "▼")}
+                    </th>
+                    <th
+                      className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
+                      onClick={() => handleSort("lastUpdated")}
+                    >
+                      ⏰ Last Updated {sortKey === "lastUpdated" && (sortDir === "asc" ? "▲" : "▼")}
+                    </th>
                     <th className="p-3 text-center">⚙️ Actions</th>
                   </tr>
                 </thead>
 <tbody>
-  {filtered.map((a, index) => {
+  {sorted.map((a, index) => {
     const metrics = a.metrics ?? {};
-    const lastDate = a.lastUpdated;
 
     return (
       <tr key={a.id} className="border-b hover:bg-red-50 transition-colors">
         <td className="p-3 text-center font-bold text-red-600">{index + 1}</td>
 
-        {/* type icon */}
-        <td className="p-3 text-center text-2xl">
-          {a.category === "garbage"
-            ? "🗑️"
-            : a.category === "lighting"
-            ? "💡"
-            : a.category === "tree"
-            ? "🌳"
-            : "⚠️"}
+        {/* type name */}
+        <td className="p-3 text-center">
+          <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold capitalize">
+            {a.category || "unknown"}
+          </span>
         </td>
 
         {/* description */}
@@ -260,7 +325,7 @@ async function handleMarkReviewed(anomaly: Anomaly) {
 
               setReportsForAnomaly(related);
               setSelectedAnomaly(a);
-              setReportsModalOpen(true);
+              setAnomalyDetailsOpen(true);
             }}
           >
             🔍 View
@@ -275,22 +340,19 @@ async function handleMarkReviewed(anomaly: Anomaly) {
           </>
         )}
       </div>
-      {reportsModalOpen && selectedAnomaly && (
-        <ReportsTableModal
-          open={reportsModalOpen}
+      {anomalyDetailsOpen && selectedAnomaly && (
+        <AnomalyDetailsModal
+          open={anomalyDetailsOpen}
           onClose={() => {
-            setReportsModalOpen(false);
+            setAnomalyDetailsOpen(false);
             // ✅ Refetch anomalies to ensure DB changes are reflected
             (async () => {
               const updated = await fetchAnomalies();
               setAnomalies(updated);
             })();
           }}
+          anomaly={selectedAnomaly}
           reports={reportsForAnomaly}
-          selectedArea={selectedArea}
-          onApplyFilters={() => {}}
-          title={`Reports for: ${selectedAnomaly.title}`}
-          anomalyDetails={selectedAnomaly}
           onReviewUpdate={(updated) => {
             // ✅ Update the list immediately so UI reflects change
             setAnomalies((prev) =>

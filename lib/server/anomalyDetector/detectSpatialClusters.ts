@@ -273,6 +273,9 @@ function formClusters(
 ): SpatialCluster[] {
   const visited = new Set<string>();
   const clusters: SpatialCluster[] = [];
+  let clusterCounter = 0;
+
+  console.log(`      🔄 Starting cluster formation with ${anomalousCells.length} anomalous cells`);
 
   // Depth-first search to find connected components
   function dfs(cell: CellAnomalyScore, cluster: CellAnomalyScore[]) {
@@ -290,27 +293,38 @@ function formClusters(
     }
   }
 
-  // Build clusters using DFS
+  // Build clusters using DFS - iterate through ALL cells
   for (const cell of anomalousCells) {
-    if (visited.has(cell.cellId)) continue;
+    if (visited.has(cell.cellId)) {
+      continue; // Already part of another cluster
+    }
+
+    console.log(`      🆕 Starting new cluster from cell ${cell.cellId}`);
 
     const cluster: CellAnomalyScore[] = [];
     dfs(cell, cluster);
 
-    if (cluster.length === 0) continue;
+    if (cluster.length === 0) {
+      console.log(`      ⚠️  Empty cluster, skipping`);
+      continue;
+    }
+
+    console.log(`      ✅ Cluster has ${cluster.length} cells`);
 
     // Calculate cluster metrics
     const allReports = cluster.flatMap((c) => c.cell.reports);
     const centroidLat = mean(cluster.map((c) => c.cell.centerLat));
     const centroidLng = mean(cluster.map((c) => c.cell.centerLng));
 
-    // Calculate radius (max distance from centroid to any cell center)
+    // Calculate radius (max distance from centroid to any cell center + cell boundary offset)
     const distances = cluster.map((c) => {
       const dLat = (c.cell.centerLat - centroidLat) * 111000; // degrees to meters (latitude)
       const dLng = (c.cell.centerLng - centroidLng) * 94000; // degrees to meters (longitude at ~32°N)
       return Math.sqrt(dLat * dLat + dLng * dLng);
     });
-    const radius = Math.max(...distances, 250); // Minimum 250m radius for visualization
+    // Add half the cell size to account for reports at the edges of cells
+    const cellBoundaryOffset = (CELL_SIZE_DEGREES / 2) * 111000; // ~150m for CELL_SIZE_DEGREES = 0.003
+    const radius = Math.max(...distances, 150) + cellBoundaryOffset; // Includes cell boundaries
 
     const zScores = cluster.map((c) => c.zScore);
     const avgZScore = mean(zScores);
@@ -339,8 +353,19 @@ function formClusters(
     const category =
       Array.from(typeCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || "mixed";
 
+    // Generate deterministic ID based on location and category
+    // Using 5 decimal places (~1 meter precision) to distinguish different clusters
+    // but keep same ID if cluster appears in same location on different runs
+    const safeArea = area.replace(/\s+/g, "_");
+    const latStr = centroidLat.toFixed(5).replace(".", "_");
+    const lngStr = centroidLng.toFixed(5).replace(".", "_");
+    const uniqueId = `anom_${category}_${safeArea}_geo_${latStr}_${lngStr}`;
+    clusterCounter++;
+    
+    console.log(`      📍 Cluster ID: ${uniqueId}, centroid: (${centroidLat.toFixed(5)}, ${centroidLng.toFixed(5)}), reports: ${allReports.length}`);
+
     clusters.push({
-      id: `cluster_${centroidLat.toFixed(4)}_${centroidLng.toFixed(4)}`,
+      id: uniqueId,
       cells: cluster,
       centroid: { lat: centroidLat, lng: centroidLng },
       radius: Math.round(radius),
@@ -353,7 +378,7 @@ function formClusters(
     });
   }
 
-  console.log(`   🔗 Formed ${clusters.length} spatial clusters`);
+  console.log(`   🔗 Formed ${clusters.length} spatial clusters (visited ${visited.size} cells)`);
   return clusters;
 }
 
@@ -378,7 +403,7 @@ function buildSpatialAnomaly(cluster: SpatialCluster): Anomaly {
         100
       : 0;
 
-  return buildAnomaly({
+  const anomaly = buildAnomaly({
     category: cluster.category,
     type: "geo_cluster",
     area: cluster.area,
@@ -399,6 +424,11 @@ function buildSpatialAnomaly(cluster: SpatialCluster): Anomaly {
     center: cluster.centroid,
     severity: cluster.severity,
   });
+
+  // ✅ Override the ID with the unique cluster ID to prevent collisions
+  anomaly.id = cluster.id;
+
+  return anomaly;
 }
 
 // ============================================================================
@@ -443,17 +473,24 @@ export function detectSpatialClusters(reports: Report[], now = Date.now()): Anom
     const cells = generateGrid(categoryReports, CELL_SIZE_DEGREES);
     console.log(`   🔲 Grid cells for ${category}:`, cells.size);
     
-    // Show top cells for this category
-    const topCells = Array.from(cells.values())
-      .sort((a, b) => b.reports.length - a.reports.length)
-      .slice(0, 3);
-    topCells.forEach(cell => {
-      console.log(`      Top cell: ${cell.id} with ${cell.reports.length} reports`);
+    // Show all non-empty cells for this category
+    const nonEmptyCells = Array.from(cells.values())
+      .filter(cell => cell.reports.length > 0)
+      .sort((a, b) => b.reports.length - a.reports.length);
+    
+    console.log(`   📊 Non-empty cells: ${nonEmptyCells.length}`);
+    nonEmptyCells.forEach((cell, idx) => {
+      if (idx < 10) { // Show top 10
+        console.log(`      Cell ${idx + 1}: ${cell.id} with ${cell.reports.length} reports at (${cell.centerLat.toFixed(5)}, ${cell.centerLng.toFixed(5)})`);
+      }
     });
 
     // Score each cell for anomalies
     const scores = scoreCells(cells, now);
     console.log(`   ⚠️  Anomalous cells found:`, scores.length);
+    scores.forEach((score, idx) => {
+      console.log(`      Anomaly ${idx + 1}: Cell ${score.cellId} - ${score.timeSeries.currentCount} reports (Z=${score.zScore.toFixed(2)})`);
+    });
 
     if (scores.length === 0) {
       console.log(`   ⚠️  No anomalous cells for ${category}`);
@@ -478,10 +515,21 @@ export function detectSpatialClusters(reports: Report[], now = Date.now()): Anom
     // Form clusters from adjacent cells
     const clusters = formClusters(validatedScores, cells);
     console.log(`   🔗 Clusters formed for ${category}:`, clusters.length);
+    
+    // Log each cluster details
+    clusters.forEach((cluster, idx) => {
+      console.log(`      Cluster ${idx + 1}: ${cluster.cells.length} cells, ${cluster.totalReports} reports at (${cluster.centroid.lat.toFixed(5)}, ${cluster.centroid.lng.toFixed(5)})`);
+    });
 
     // Convert to Anomaly objects and add to results
     const categoryAnomalies = clusters.map((cluster) => buildSpatialAnomaly(cluster));
+    console.log(`   ✨ Created ${categoryAnomalies.length} anomaly objects for ${category}`);
+    categoryAnomalies.forEach((anomaly, idx) => {
+      console.log(`      Anomaly ${idx + 1}: ID=${anomaly.id}`);
+    });
+    
     allAnomalies.push(...categoryAnomalies);
+    console.log(`   📦 Total anomalies so far: ${allAnomalies.length}`);
   }
 
   // 4. Sort all anomalies by severity and Z-score

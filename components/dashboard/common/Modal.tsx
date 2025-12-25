@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 interface ModalProps {
   title?: string;
@@ -7,8 +7,39 @@ interface ModalProps {
   children: React.ReactNode;
 }
 
+// Track the currently active modal
+let activeModalCount = 0;
+
 export default function Modal({ title, onClose, children }: ModalProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const modalIdRef = useRef<number>(0);
+
+  // Assign a unique ID to this modal instance
+  useEffect(() => {
+    activeModalCount++;
+    modalIdRef.current = activeModalCount;
+
+    return () => {
+      activeModalCount--;
+    };
+  }, []);
+
+  // ✅ Add ESC key listener - only close if this is the topmost modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        // Only close if this modal is the most recently opened one
+        if (modalIdRef.current === activeModalCount) {
+          e.stopPropagation();
+          e.preventDefault();
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [onClose]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

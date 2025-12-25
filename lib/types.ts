@@ -122,6 +122,7 @@ export interface AnomalyMetrics {
   pctChange: number;
   zScore: number;
   bins: AnomalyBin[];
+  [x: string]: number | AnomalyBin[];
 }
 
 export interface Anomaly {

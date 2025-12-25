@@ -1,12 +1,11 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
-import Modal from "@/components/dashboard/Modal";
-import { GoogleMap, Marker, useJsApiLoader,Polygon } from "@react-google-maps/api";
-import { Report } from "@/lib/types";
-import ReportDetailsModal from "@/components/dashboard/ReportDetailsModal";
+import Modal from "@/components/dashboard/common/Modal";
+import { GoogleMap, Marker, useJsApiLoader, Polygon, Circle } from "@react-google-maps/api";
+import { Report, Anomaly } from "@/lib/types";
+import ReportDetailsModal from "@/components/dashboard/reports/ReportDetailsModal";
 import { useCityBoundary } from "@/lib/client/hooks/useCityBoundary";
-import { getReportCriticalityType } from "@/lib/server/sla"; // אם תעביר את הפונקציה לשם
-import { SLA_DAYS } from "@/lib/server/sla";
+import { getReportCriticalityType } from "@/lib/server/sla";
 
 interface ReportsMapModalProps {
   open: boolean;
@@ -14,7 +13,7 @@ interface ReportsMapModalProps {
   reports: Report[];
   criticality?: string;
   selectedArea: string | null;
-  
+  anomalyDetails?: Anomaly;
 }
 
 const containerStyle = { width: "1200px", height: "calc(80vh - 60px)" };
@@ -22,7 +21,7 @@ const defaultCenter = { lat: 32.794, lng: 34.989 };
 
 
 
-export default function ReportsMapModal({ open, onClose, reports, criticality, selectedArea }: ReportsMapModalProps) {
+export default function ReportsMapModal({ open, onClose, reports, criticality, selectedArea, anomalyDetails }: ReportsMapModalProps) {
 console.log("%cRMM LOADED", "color:cyan;font-size:20px");
 
 
@@ -66,6 +65,19 @@ console.log("%cRMM LOADED", "color:cyan;font-size:20px");
 
   // ✔️ safe center update
   useEffect(() => {
+    // If this is a geo_cluster anomaly, center on its centroid
+    if (anomalyDetails && anomalyDetails.type === "geo_cluster" && anomalyDetails.center) {
+      const newCenter = { lat: anomalyDetails.center.lat, lng: anomalyDetails.center.lng };
+      if (
+        Math.abs(center.lat - newCenter.lat) > 0.00001 ||
+        Math.abs(center.lng - newCenter.lng) > 0.00001
+      ) {
+        setCenter(newCenter);
+      }
+      return;
+    }
+
+    // Otherwise, center on visible reports
     if (visibleReports.length === 0) return;
 
     let newCenter;
@@ -83,7 +95,7 @@ console.log("%cRMM LOADED", "color:cyan;font-size:20px");
     ) {
       setCenter(newCenter);
     }
-  }, [visibleReports]);
+  }, [visibleReports, anomalyDetails, center.lat, center.lng]);
 
   if (!open) return null;
 
@@ -113,6 +125,21 @@ console.log("%cRMM LOADED", "color:cyan;font-size:20px");
             }}
           />
         )}
+
+          {/* 🔴 Draw circle for geo_cluster anomalies */}
+          {anomalyDetails && anomalyDetails.type === "geo_cluster" && anomalyDetails.center && (
+            <Circle
+              center={{ lat: anomalyDetails.center.lat, lng: anomalyDetails.center.lng }}
+              radius={anomalyDetails.metrics.radiusMeters as number || 250}
+              options={{
+                strokeColor: "#FF0000",
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: "#FF0000",
+                fillOpacity: 0.15,
+              }}
+            />
+          )}
 
           {visibleReports.map((r) => {
 

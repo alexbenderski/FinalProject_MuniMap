@@ -2,18 +2,21 @@
 
 import RequireAuth from "@/components/RequireAuth";
 import { useState, useMemo, useEffect } from "react";
-import TopBar from "@/components/dashboard/TopBar";
-import Modal from "@/components/dashboard/Modal";
-import RightSidebar from "@/components/dashboard/RightSidebar";
-import BottomBar from "@/components/dashboard/BottomBar";
-import MapCanvas from "@/components/dashboard/MapCanvas";
-import FiltersModal from "@/components/dashboard/FiltersModal";
-import ReportsTableModal from "@/components/dashboard/ReportsTableModal";
+import TopBar from "@/components/dashboard/layout/TopBar";
+import Modal from "@/components/dashboard/common/Modal";
+import RightSidebar from "@/components/dashboard/layout/RightSidebar";
+import BottomBar from "@/components/dashboard/layout/BottomBar";
+import MapCanvas from "@/components/dashboard/maps/MapCanvas";
+import FiltersModal from "@/components/dashboard/common/FiltersModal";
+import ReportsTableModal from "@/components/dashboard/reports/ReportsTableModal";
 import { Report } from "@/lib/types";
-import AnomaliesModal from "@/components/dashboard/AnomaliesModal";
-import ArchivedReportsModal from "@/components/dashboard/ArchivedReportsModal";
+import AnomaliesModal from "@/components/dashboard/anomalies/AnomaliesModal";
+import ArchivedReportsModal from "@/components/dashboard/reports/ArchivedReportsModal";
 import { useAuth } from "@/components/AuthProvider";
 import Image from "next/image";
+
+// 🧪 DEV TOOLS - Remove this import to disable test report generator
+import { TestReportGeneratorModal } from "@/lib/dev-tools/report-generator";
 
 export default function DashboardPage() {
 
@@ -26,6 +29,11 @@ export default function DashboardPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [anomListOpen, setAnomListOpen] = useState(false);
+
+  // 🧪 DEV TOOLS - Test Report Generator state
+  const [testGenOpen, setTestGenOpen] = useState(false);
+  const [cityBoundary, setCityBoundary] = useState<{ lat: number; lng: number }[]>([]);
+  const [cityCenter, setCityCenter] = useState<{ lat: number; lng: number } | undefined>(undefined);
 
   // 🔹 Filters
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
@@ -48,6 +56,27 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!loading && permissions?.city) {
       setSelectedArea(permissions.city);
+    }
+  }, [loading, permissions]);
+
+  // 🧪 DEV TOOLS - Load city boundary for test generator
+  useEffect(() => {
+    if (!loading && permissions?.city) {
+      fetch("/data/cities_municipal_boundaries.json")
+        .then((res) => res.json())
+        .then((data: { city: string; coordinates: { lat: number; lng: number }[] }[]) => {
+          const found = data.find((c) => c.city === permissions.city);
+          if (found && found.coordinates.length > 0) {
+            setCityBoundary(found.coordinates);
+            // Calculate center
+            const avgLat = found.coordinates.reduce((sum, p) => sum + p.lat, 0) / found.coordinates.length;
+            const avgLng = found.coordinates.reduce((sum, p) => sum + p.lng, 0) / found.coordinates.length;
+            setCityCenter({ lat: avgLat, lng: avgLng });
+          }
+        })
+        .catch(() => {
+          // Silently fail - test generator will show error if boundary missing
+        });
     }
   }, [loading, permissions]);
 
@@ -164,6 +193,15 @@ export default function DashboardPage() {
 
         <BottomBar onOpenFullList={() => setAnomListOpen(true)} />
 
+        {/* 🧪 DEV TOOLS - Test Report Generator Button */}
+        <button
+          onClick={() => setTestGenOpen(true)}
+          className="fixed bottom-4 left-4 z-40 px-4 py-2 bg-orange-500 text-white rounded-lg shadow-lg hover:bg-orange-600 font-semibold text-sm flex items-center gap-2"
+          title="Generate Test Reports (QA Tool)"
+        >
+          🧪 Generate Test Reports
+        </button>
+
         {searchOpen && (
           <ReportsTableModal
             open={searchOpen}
@@ -194,6 +232,15 @@ export default function DashboardPage() {
             selectedArea={selectedArea}
           />
         )}
+
+        {/* 🧪 DEV TOOLS - Test Report Generator Modal */}
+        <TestReportGeneratorModal
+          open={testGenOpen}
+          onClose={() => setTestGenOpen(false)}
+          cityName={permissions?.city ?? ""}
+          cityBoundary={cityBoundary}
+          defaultCenter={cityCenter}
+        />
       </div>
     </RequireAuth>
   );

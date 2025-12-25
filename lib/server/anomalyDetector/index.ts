@@ -6,6 +6,7 @@ import { Anomaly } from "./builders";
 import { detectSlowResolution } from "./detectSlowResolution";
 import { detectSpatialClusters } from "./detectSpatialClusters";
 import { saveFullAnomalySnapshot } from "./anomaly-storage";
+import { notifyGarbageAnomalyManagers } from "../email-service";
 
 // 👈 מאפשר גם סינכרוני וגם אסינכרוני
 type Detector = (reports: Report[]) => Anomaly[] | Promise<Anomaly[]>;
@@ -27,6 +28,9 @@ export async function runAllDetectors(reports: Report[]): Promise<Anomaly[]> {
     // 💾 שמירה מיידית של כל אנומליה — רק כאן!
     for (const anomaly of anomalies) {
       await saveFullAnomalySnapshot(anomaly);
+      
+      // 📧 שליחת התראת מייל למנהלי פסולת (רק אם זו אנומליית פסולת)
+      // await notifyGarbageAnomalyManagers(anomaly);
     }
     
   }

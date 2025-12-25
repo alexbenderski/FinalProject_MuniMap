@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import RegionSelector from "./RegionSelector";
-import { Report, City} from "@/lib/types";
-import StatisticsModal from "@/components/dashboard/StatisticsModal";
-import { useAuth } from "../AuthProvider";
+import StatisticsModal from "@/components/dashboard/statistics/StatisticsModal";
+import { useAuth } from "@/components/AuthProvider";
+
 
 interface RightSidebarProps {
   selectedArea: string | null;
@@ -12,13 +11,10 @@ interface RightSidebarProps {
 }
 
 export default function RightSidebar({
-  selectedArea,
-  setSelectedArea,
   filterSummary,
   logoImage,
 }: RightSidebarProps) {
   const [statsOpen, setStatsOpen] = useState(false);
-  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
 
   // // פונקציה שמוסיפה / מסירה סוג אירוע לפי לחיצה
   // const toggleType = (t: string) =>
@@ -29,7 +25,7 @@ export default function RightSidebar({
   const { permissions } = useAuth();
 
   return (
-    <aside className="w-[320px] border-l bg-white flex flex-col overflow-hidden">
+    <aside className="w-[270px] h-[465px]  border-l bg-white flex flex-col overflow-hidden">
       {/* Logo Section */}
       {logoImage && (
         <div className="px-2 py-4 flex justify-center  overflow-hidden  scale-130" >
@@ -62,11 +58,11 @@ export default function RightSidebar({
       )}
 
       {/* סיכום הפילטרים */}
-      <div className="flex-1 overflow-y-auto p-3 border-t">
-        <div className="font-semibold mb-2 flex items-center gap-2 justify-center">
+      <div className="flex-1 flex flex-col min-h-0 border-t overflow-hidden">
+        <div className="font-semibold flex items-center justify-center flex-shrink-0 p-3">
           📊 Selected filters
         </div>
-        <ul className="text-sm text-gray-700 space-y-1">
+        <ul className="text-sm text-gray-700 space-y-1 overflow-y-auto flex-1 px-3 pb-3">
           {Object.entries(filterSummary).map(([k, v]) => (
             <li key={k}>
               <strong>{k}:</strong> {v}
@@ -74,6 +70,7 @@ export default function RightSidebar({
           ))}
         </ul>
       </div>
+
 
       {/* בחירת סוג אירוע
     <div className="p-3">
