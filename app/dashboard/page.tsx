@@ -128,7 +128,7 @@ export default function DashboardPage() {
   // ================================
   return (
     <RequireAuth>
-      <div className="flex min-h-screen flex-col bg-gray-100 text-gray-900 w-full overflow-x-hidden max-h-screen overflow-y-hidden">
+      <div className="flex h-screen flex-col bg-gray-100 text-gray-900 w-full overflow-hidden">
         <TopBar
           onRefresh={() => window.location.reload()}
           onOpenFilters={() => setFiltersOpen(true)}
@@ -140,8 +140,8 @@ export default function DashboardPage() {
           onOpenArchive={() => setArchiveOpen(true)}
         />
 
-        <div className="flex flex-col lg:flex-row flex-1 w-full overflow-hidden min-h-0">
-          <div className="flex-1 min-w-0 h-[calc(100vh-280px)] lg:h-auto">
+        <div className="flex flex-col lg:flex-row flex-1 w-full overflow-hidden">
+          <div className="flex-1 min-w-0 min-h-0">
             <MapCanvas
               city={city}
               selectedArea={selectedArea}
