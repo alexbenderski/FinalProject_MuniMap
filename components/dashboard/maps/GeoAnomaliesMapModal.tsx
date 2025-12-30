@@ -28,7 +28,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAnomaliesMapModalProps) {
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY!,
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || "AIzaSyDMdI_Hjf23zqjMTvUM1VTwn1BlB-tuSfQ",
   });
 
   const [map, setMap] = useState<google.maps.Map | null>(null);

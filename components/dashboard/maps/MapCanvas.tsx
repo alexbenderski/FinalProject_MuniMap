@@ -66,7 +66,7 @@ export default function MapCanvas({
 
   const { isLoaded } = useJsApiLoader({
     //loading my google maps api key so tha map could work.
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY!,
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || "AIzaSyDMdI_Hjf23zqjMTvUM1VTwn1BlB-tuSfQ",
   });
 
   // 🔹 Subscribe to real-time reports updates

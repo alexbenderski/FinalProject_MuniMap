@@ -106,14 +106,20 @@ export default function DashboardPage() {
 
   // ⏳ Guards — רק אחרי כל ה-Hooks
   if (loading) {
-    return <div className="p-6">Loading dashboard…</div>;
+    return (
+      <RequireAuth>
+        <div className="p-6">Loading dashboard…</div>
+      </RequireAuth>
+    );
   }
 
   if (!permissions?.city) {
     return (
-      <div className="p-6 text-red-600 font-semibold">
-        No city assigned to this user
-      </div>
+      <RequireAuth>
+        <div className="p-6 text-red-600 font-semibold">
+          No city assigned to this user
+        </div>
+      </RequireAuth>
     );
   }
 

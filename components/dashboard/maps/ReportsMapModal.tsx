@@ -26,7 +26,7 @@ console.log("%cRMM LOADED", "color:cyan;font-size:20px");
 
 
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY!,
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || "AIzaSyDMdI_Hjf23zqjMTvUM1VTwn1BlB-tuSfQ",
   });
 
   const [map, setMap] = useState<google.maps.Map | null>(null);
