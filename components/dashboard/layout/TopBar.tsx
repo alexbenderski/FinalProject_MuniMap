@@ -1,3 +1,7 @@
+"use client";
+import { logOut } from "@/lib/client/auth-client";
+import { useRouter } from "next/navigation";
+
 export default function TopBar({
   onRefresh,
   onOpenFilters,
@@ -9,6 +13,13 @@ export default function TopBar({
   onOpenSearch: () => void;
   onOpenArchive: () => void;
 }) {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logOut();
+    router.replace("/");
+  };
+
   return (
     <header className="sticky top-0 z-30 flex items-center justify-center border-b bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-6 py-2.5 shadow-lg relative">
       {/* Center: Title */}
@@ -35,6 +46,12 @@ export default function TopBar({
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500 text-white font-semibold hover:bg-green-600 shadow-md hover:shadow-lg transition-all"
         >
           View Archived Reports
+        </button>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 shadow-md hover:shadow-lg transition-all"
+        >
+          🚪 Logout
         </button>
       </div>
     </header>
