@@ -25,50 +25,53 @@ export default function RightSidebar({
   const { permissions } = useAuth();
 
   return (
-    <aside className="flex w-[270px] h-auto lg:h-[465px] border-l bg-white flex-col overflow-hidden flex-shrink-0">{
-      /* Logo Section */}
-      {logoImage && (
-        <div className="px-2 py-4 flex justify-center  overflow-hidden  scale-130" >
-          <div className="hover:scale-105 transition-transform duration-300 cursor-pointer origin-center ">
-            {logoImage}
+    <aside className="flex w-[270px] h-full max-h-full border-l bg-white flex-col overflow-hidden flex-shrink-0">
+      {/* Scrollable content container */}
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+        {/* Logo Section */}
+        {logoImage && (
+          <div className="px-2 py-4 flex justify-center overflow-hidden scale-130 flex-shrink-0">
+            <div className="hover:scale-105 transition-transform duration-300 cursor-pointer origin-center">
+              {logoImage}
+            </div>
+          </div>
+        )}
+
+        {/* 🔒 City lock */}
+        <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 m-3 text-center flex-shrink-0">
+          <div className="text-sm text-blue-800 font-semibold">
+            עירייה
+          </div>
+          <div className="text-lg font-bold text-blue-900 mt-1 flex items-center justify-center">
+            עיריית {permissions?.city}
           </div>
         </div>
-      )}
 
-      {/* 🔒 City lock */}
-      <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 m-3 text-center">
-        <div className="text-sm text-blue-800 font-semibold ">
-          עירייה
+        <button
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-md mb-2 mx-3 flex-shrink-0"
+          onClick={() => setStatsOpen(true)}
+        >
+          📊 סטטיסטיקה
+        </button>
+
+        {/* המודל עצמו */}
+        {statsOpen && (
+          <StatisticsModal open={statsOpen} onClose={() => setStatsOpen(false)} city={permissions?.city ?? null} />
+        )}
+
+        {/* סיכום הפילטרים */}
+        <div className="flex-1 flex flex-col min-h-0 border-t">
+          <div className="font-semibold flex items-center justify-center flex-shrink-0 p-3">
+            📊 Selected filters
+          </div>
+          <ul className="text-sm text-gray-700 space-y-1 overflow-y-auto flex-1 px-3 pb-3">
+            {Object.entries(filterSummary).map(([k, v]) => (
+              <li key={k}>
+                <strong>{k}:</strong> {v}
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="text-lg font-bold text-blue-900 mt-1 flex items-center justify-center">
-          עיריית {permissions?.city}
-        </div>
-      </div>
-
-          <button
-        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-md mb-2"
-        onClick={() => setStatsOpen(true)}
-      >
-        📊 סטטיסטיקה
-      </button>
-
-      {/* המודל עצמו */}
-      {statsOpen && (
-        <StatisticsModal open={statsOpen} onClose={() => setStatsOpen(false)} city={permissions?.city ?? null} />
-      )}
-
-      {/* סיכום הפילטרים */}
-      <div className="flex-1 flex flex-col min-h-0 border-t overflow-hidden">
-        <div className="font-semibold flex items-center justify-center flex-shrink-0 p-3">
-          📊 Selected filters
-        </div>
-        <ul className="text-sm text-gray-700 space-y-1 overflow-y-auto flex-1 px-3 pb-3">
-          {Object.entries(filterSummary).map(([k, v]) => (
-            <li key={k}>
-              <strong>{k}:</strong> {v}
-            </li>
-          ))}
-        </ul>
       </div>
 
 
