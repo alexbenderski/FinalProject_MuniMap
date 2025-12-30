@@ -56,74 +56,74 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
 
   return (
     <>
-      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md h-38 w-full overflow-x-hidden">
-        <div className="mx-auto max-w-full px-2 sm:px-4 py-2 text-center h-full flex flex-col">
-          <h2 className="text-sm sm:text-base font-semibold mb-1">abnormality detection:</h2>
+      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md w-full overflow-hidden">
+        <div className="flex flex-col items-center justify-center h-full py-2 px-2 sm:px-4">
+          <h2 className="text-sm sm:text-base font-semibold mb-2">🔍 Abnormality Detection</h2>
 
           {loading ? (
-            <p className="text-gray-500 text-sm">טוען חריגות...</p>
+            <p className="text-gray-500 text-sm">Loading anomalies...</p>
           ) : anomalies.length === 0 ? (
-            <p className="text-gray-500 text-sm">אין חריגות להצגה.</p>
+            <p className="text-gray-500 text-sm">No anomalies to display.</p>
           ) : (
-            <div className="flex-1 overflow-y-auto space-y-2">
+            <div className="w-full max-w-3xl h-24 overflow-y-auto px-2 space-y-2 rounded-md border border-gray-200 bg-gray-50">
               {anomalies.map((a, index) => (
-                <div
-                  key={`${a.id}-${index}`}
-                  onClick={() => handleOpenAnomaly(a)}
-                  className="flex justify-between items-center bg-gray-50 rounded-md px-3 py-1 hover:bg-gray-100 cursor-pointer transition"
-                >
-                  <div className="flex flex-col text-right">
-                    {/* אייקון + כותרת */}
-                    <span className="font-medium text-sm">
-                      {a.category === "garbage"
-                        ? "🗑️"
-                        : a.category === "lighting"
-                        ? "💡"
-                        : a.category === "tree"
-                        ? "🌳"
-                        : "⚠️"}{" "}
-                      {a.title}
-                    </span>
+              <div
+                key={`${a.id}-${index}`}
+                onClick={() => handleOpenAnomaly(a)}
+                className="flex justify-between items-center bg-white rounded-md px-3 py-2 hover:bg-blue-50 cursor-pointer transition shadow-sm border border-gray-100"
+              >
+                <div className="flex flex-col text-right">
+                {/* אייקון + כותרת */}
+                <span className="font-medium text-sm">
+                  {a.category === "garbage"
+                  ? "🗑️"
+                  : a.category === "lighting"
+                  ? "💡"
+                  : a.category === "tree"
+                  ? "🌳"
+                  : "⚠️"}{" "}
+                  {a.title}
+                </span>
 
-                    {/* אזור + מספר דיווחים + חומרה */}
-                    <span className="text-xs text-gray-600">
-                      אזור: {a.area} • דיווחים: {a.metrics?.currentReports ?? "-"} •{" "}
-                      {a.severity === "high"
-                        ? "חומרה: גבוהה"
-                        : a.severity === "medium"
-                        ? "חומרה: בינונית"
-                        : "חומרה: נמוכה"}
-                    </span>
-                  </div>
-
-                  {/* זמן גילוי */}
-                  <span className="text-xs text-gray-500 whitespace-nowrap">
-                    {new Date(a.lastUpdated).toLocaleString("he-IL", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+                {/* אזור + מספר דיווחים + חומרה */}
+                <span className="text-xs text-gray-600">
+                  אזור: {a.area} • דיווחים: {a.metrics?.currentReports ?? "-"} •{" "}
+                  {a.severity === "high"
+                  ? "חומרה: גבוהה"
+                  : a.severity === "medium"
+                  ? "חומרה: בינונית"
+                  : "חומרה: נמוכה"}
+                </span>
                 </div>
+
+                {/* זמן גילוי */}
+                <span className="text-xs text-gray-500 whitespace-nowrap ml-3">
+                {new Date(a.lastUpdated).toLocaleString("he-IL", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                </span>
+              </div>
               ))}
             </div>
           )}
 
-            <div className="flex gap-2 mt-2">
+            <div className="flex gap-3 mt-3">
               <button
                 onClick={onOpenFullList}
-                className="flex-1 bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 transition"
+                className="bg-blue-500 text-white px-4 py-1.5 rounded-md text-sm font-semibold hover:bg-blue-600 transition shadow-md flex items-center gap-2"
               >
-                📋 הצג רשימה מלאה
+                📋 <span className="hidden sm:inline">הצג רשימה מלאה</span><span className="sm:hidden">Full List</span>
               </button>
               
               <button
                 onClick={() => setGeoMapOpen(true)}
-                className="flex-1 bg-purple-500 text-white px-3 py-1 rounded-md text-sm hover:bg-purple-600 transition"
+                className="bg-purple-500 text-white px-4 py-1.5 rounded-md text-sm font-semibold hover:bg-purple-600 transition shadow-md flex items-center gap-2"
               >
-                🌍 Geo Clusters Map
+                🌍 <span className="hidden sm:inline">Geo Clusters Map</span><span className="sm:hidden">Map</span>
               </button>
             </div>
         </div>
