@@ -5,6 +5,7 @@ import { Report,FilterStatus} from "@/lib/types";
 import { CATEGORIES, CATEGORY_LABELS } from "@/lib/categories";
 import Image from "next/image";
 import { useAuth } from "@/components/AuthProvider";
+import Tooltip from "./Tooltip";
 
 
 
@@ -40,6 +41,7 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
   const [dateTo, setDateTo] = useState<string | null>(currentFilters?.dateTo || null);
   const [selectedCriticalities, setSelectedCriticalities] = useState<string[]>(currentFilters?.criticalityList || []);
   const [showAllCategories, setShowAllCategories] = useState(false);
+  const [showTips, setShowTips] = useState(false);
 
   const defaultColor = "green";
   const { permissions } = useAuth();
@@ -152,7 +154,7 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
   const unselectAllCategories = () => setSelectedCategories([]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex i8ems-center justify-center z-50">
       <div className="bg-gray-200 rounded-lg p-6 w-[400px] relative shadow-xl overflow-y-auto max-h-[90vh]">
         <button
           onClick={onClose}
@@ -165,10 +167,67 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
           Sort reports:
         </h2>
 
+        {/* 💡 Tips Section - Collapsible */}
+        <div className="mb-4 border-2 border-blue-300 rounded-lg bg-blue-50">
+          <button
+            onClick={() => setShowTips(!showTips)}
+            className="w-full flex items-center justify-between p-3 hover:bg-blue-100 transition-colors rounded-lg"
+          >
+            <span className="font-semibold text-blue-900 flex items-center gap-2">
+              💡 Filter Tips & Best Practices
+            </span>
+            <span
+              className="text-xl text-blue-600 transition-transform duration-300"
+              style={{ transform: showTips ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            >
+              ▼
+            </span>
+          </button>
+
+          {showTips && (
+            <div className="p-4 space-y-3 border-t border-blue-200">
+              <div className="bg-white p-3 rounded-md border-l-4 border-red-500">
+                <p className="font-semibold text-red-700 mb-1">🚨 Critical Attention Needed:</p>
+                <p className="text-sm text-gray-700">
+                  <strong>Open + Critical</strong> - Reports in critical condition (red) that are still in "Open" status. 
+                  These require immediate attention as they've been unaddressed for too long.
+                </p>
+              </div>
+
+              <div className="bg-white p-3 rounded-md border-l-4 border-orange-500">
+                <p className="font-semibold text-orange-700 mb-1">⚠️ Delayed Progress:</p>
+                <p className="text-sm text-gray-700">
+                  <strong>Pending/In Progress + Old/Critical</strong> - Reports that have been acknowledged but are 
+                  taking too long to resolve. Check for bottlenecks or resource issues.
+                </p>
+              </div>
+
+              <div className="bg-white p-3 rounded-md border-l-4 border-green-500">
+                <p className="font-semibold text-green-700 mb-1">✅ Performance Tracking:</p>
+                <p className="text-sm text-gray-700">
+                  <strong>Resolved + New/Medium</strong> - Successfully resolved reports that were handled quickly. 
+                  Use this to identify efficient response patterns.
+                </p>
+              </div>
+
+              <div className="bg-white p-3 rounded-md border-l-4 border-blue-500">
+                <p className="font-semibold text-blue-700 mb-1">📊 Trend Analysis:</p>
+                <p className="text-sm text-gray-700">
+                  <strong>Specific Category + Critical</strong> - Identify problematic infrastructure areas by 
+                  filtering categories with high criticality levels. Helps prioritize maintenance resources.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* קטגוריות - מתרחבות */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="font-semibold">Category:</label>
+            <label className="font-semibold flex items-center">
+              Category:
+              <Tooltip message="Filter reports by infrastructure type (e.g., garbage, lighting, roads). Select multiple categories to compare issues across different areas." />
+            </label>
             <button
               onClick={() => setShowAllCategories(!showAllCategories)}
               className="text-xl text-gray-600 hover:text-gray-800 transition-transform duration-300"
@@ -204,7 +263,10 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
                   onClick={selectAllCategories}
                   className="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition-colors"
                 >
-                  Select All
+                  Select All flex items-center">
+            Status:
+            <Tooltip message="Filter by report lifecycle stage:\n• Open - New reports awaiting review\n• Pending - Acknowledged, awaiting action\n• In Progress - Currently being addressed\n• Resolved - Completed and closed" />
+          
                 </button>
                 <button
                   onClick={unselectAllCategories}
@@ -223,7 +285,10 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
                         ? "bg-green-300 border-green-600"
                         : "bg-gray-50 hover:bg-gray-100 border-gray-300"
                     }`}
-                  >
+                  > flex items-center">
+            Criticality Level:
+            <Tooltip message="Priority based on report age:\n• Green (New) - Recent reports\n• Yellow (Medium) - Moderately aged\n• Orange (Old) - Long-standing issues\n• Red (Critical) - Urgent, overdue reports" />
+          
                     <Image
                       src={`/icons/${defaultColor}_${cat.toLowerCase()}.png`}
                       alt={cat}
