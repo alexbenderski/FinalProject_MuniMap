@@ -9,7 +9,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) router.replace("/login");
+    if (!loading && !user) router.replace("/");
   }, [loading, user, router]);
 
   if (loading) return <div className="p-6">Checking session…</div>;
