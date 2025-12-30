@@ -3,6 +3,9 @@ import { db } from "@/lib/server/firebase-admin";
 import { Report } from "@/lib/types";
 import * as XLSX from "xlsx";
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 /* ---------- helpers ---------- */
 type ExportReportRow = {
   id: string;

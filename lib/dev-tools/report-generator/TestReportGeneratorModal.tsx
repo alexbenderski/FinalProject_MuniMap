@@ -46,12 +46,30 @@ export default function TestReportGeneratorModal({
   const [writeResult, setWriteResult] = useState<WriteResult | null>(null);
 
   // Form state
-  const [startDate, setStartDate] = useState<string>("");
-  const [startTime, setStartTime] = useState<string>("00:00");
-  const [endDate, setEndDate] = useState<string>("");
-  const [endTime, setEndTime] = useState<string>("23:59");
   const [endStatus, setEndStatus] = useState<EndStatus>("resolved");
   const [reportType, setReportType] = useState<Category>("garbage");
+  
+  // Time ranges for each status
+  const [openStartDate, setOpenStartDate] = useState<string>("");
+  const [openStartTime, setOpenStartTime] = useState<string>("00:00");
+  const [openEndDate, setOpenEndDate] = useState<string>("");
+  const [openEndTime, setOpenEndTime] = useState<string>("23:59");
+  
+  const [pendingStartDate, setPendingStartDate] = useState<string>("");
+  const [pendingStartTime, setPendingStartTime] = useState<string>("00:00");
+  const [pendingEndDate, setPendingEndDate] = useState<string>("");
+  const [pendingEndTime, setPendingEndTime] = useState<string>("23:59");
+  
+  const [inProgressStartDate, setInProgressStartDate] = useState<string>("");
+  const [inProgressStartTime, setInProgressStartTime] = useState<string>("00:00");
+  const [inProgressEndDate, setInProgressEndDate] = useState<string>("");
+  const [inProgressEndTime, setInProgressEndTime] = useState<string>("23:59");
+  
+  const [resolvedStartDate, setResolvedStartDate] = useState<string>("");
+  const [resolvedStartTime, setResolvedStartTime] = useState<string>("00:00");
+  const [resolvedEndDate, setResolvedEndDate] = useState<string>("");
+  const [resolvedEndTime, setResolvedEndTime] = useState<string>("23:59");
+  
   const [centerLat, setCenterLat] = useState<string>("");
   const [centerLng, setCenterLng] = useState<string>("");
   const [radius, setRadius] = useState<string>("500");
@@ -67,12 +85,29 @@ export default function TestReportGeneratorModal({
       setCenterLng(defaultCenter.lng.toFixed(6));
     }
     
-    // Set default dates (last 7 days)
+    // Set default dates (last 7 days distributed across statuses)
     if (open) {
       const now = new Date();
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      setEndDate(now.toISOString().split("T")[0]);
-      setStartDate(weekAgo.toISOString().split("T")[0]);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const sixDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+      const fourDaysAgo = new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000);
+      const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+      
+      // Open: 7 days ago to 6 days ago
+      setOpenStartDate(sevenDaysAgo.toISOString().split("T")[0]);
+      setOpenEndDate(sixDaysAgo.toISOString().split("T")[0]);
+      
+      // Pending: 6 days ago to 4 days ago
+      setPendingStartDate(sixDaysAgo.toISOString().split("T")[0]);
+      setPendingEndDate(fourDaysAgo.toISOString().split("T")[0]);
+      
+      // In Progress: 4 days ago to 2 days ago
+      setInProgressStartDate(fourDaysAgo.toISOString().split("T")[0]);
+      setInProgressEndDate(twoDaysAgo.toISOString().split("T")[0]);
+      
+      // Resolved: 2 days ago to now
+      setResolvedStartDate(twoDaysAgo.toISOString().split("T")[0]);
+      setResolvedEndDate(now.toISOString().split("T")[0]);
     }
   }, [open, defaultCenter]);
 
@@ -90,11 +125,11 @@ export default function TestReportGeneratorModal({
 
   // Build config from form
   const buildConfig = (): GeneratorConfig | null => {
-    const timeRangeStart = new Date(`${startDate}T${startTime}`).getTime();
-    const timeRangeEnd = new Date(`${endDate}T${endTime}`).getTime();
+    const openTimeRangeStart = new Date(`${openStartDate}T${openStartTime}`).getTime();
+    const openTimeRangeEnd = new Date(`${openEndDate}T${openEndTime}`).getTime();
     
-    if (isNaN(timeRangeStart) || isNaN(timeRangeEnd)) {
-      setErrors(["Invalid date/time format"]);
+    if (isNaN(openTimeRangeStart) || isNaN(openTimeRangeEnd)) {
+      setErrors(["Invalid date/time format for Open status"]);
       return null;
     }
 
@@ -108,9 +143,7 @@ export default function TestReportGeneratorModal({
       return null;
     }
 
-    return {
-      timeRangeStart,
-      timeRangeEnd,
+    const config: GeneratorConfig = {
       endStatus,
       reportType,
       clusterCenter: { lat, lng },
@@ -118,7 +151,61 @@ export default function TestReportGeneratorModal({
       count: countNum,
       cityBoundary,
       area: cityName,
+      openTimeRange: {
+        start: openTimeRangeStart,
+        end: openTimeRangeEnd,
+      },
     };
+
+    // Add pending time range if needed
+    if (endStatus === "pending" || endStatus === "in progress" || endStatus === "resolved") {
+      const pendingStart = new Date(`${pendingStartDate}T${pendingStartTime}`).getTime();
+      const pendingEnd = new Date(`${pendingEndDate}T${pendingEndTime}`).getTime();
+      
+      if (isNaN(pendingStart) || isNaN(pendingEnd)) {
+        setErrors(["Invalid date/time format for Pending status"]);
+        return null;
+      }
+      
+      config.pendingTimeRange = {
+        start: pendingStart,
+        end: pendingEnd,
+      };
+    }
+
+    // Add in progress time range if needed
+    if (endStatus === "in progress" || endStatus === "resolved") {
+      const inProgressStart = new Date(`${inProgressStartDate}T${inProgressStartTime}`).getTime();
+      const inProgressEnd = new Date(`${inProgressEndDate}T${inProgressEndTime}`).getTime();
+      
+      if (isNaN(inProgressStart) || isNaN(inProgressEnd)) {
+        setErrors(["Invalid date/time format for In Progress status"]);
+        return null;
+      }
+      
+      config.inProgressTimeRange = {
+        start: inProgressStart,
+        end: inProgressEnd,
+      };
+    }
+
+    // Add resolved time range if needed
+    if (endStatus === "resolved") {
+      const resolvedStart = new Date(`${resolvedStartDate}T${resolvedStartTime}`).getTime();
+      const resolvedEnd = new Date(`${resolvedEndDate}T${resolvedEndTime}`).getTime();
+      
+      if (isNaN(resolvedStart) || isNaN(resolvedEnd)) {
+        setErrors(["Invalid date/time format for Resolved status"]);
+        return null;
+      }
+      
+      config.resolvedTimeRange = {
+        start: resolvedStart,
+        end: resolvedEnd,
+      };
+    }
+
+    return config;
   };
 
   // Handle preview
@@ -219,45 +306,188 @@ export default function TestReportGeneratorModal({
 
               {/* Time Range */}
               <div>
-                <h3 className="font-semibold text-gray-700 mb-3">📅 Time Range</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Start Date</label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Start Time</label>
-                    <input
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">End Date</label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">End Time</label>
-                    <input
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
-                    />
+                <h3 className="font-semibold text-gray-700 mb-3">📅 Status Time Ranges</h3>
+                <p className="text-xs text-gray-500 mb-3">
+                  Configure when each status occurs. Each range must not overlap with the next status.
+                </p>
+                
+                {/* Open Status - Always visible */}
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="font-semibold text-green-700 mb-2">🟢 Open Status</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Start Date</label>
+                      <input
+                        type="date"
+                        value={openStartDate}
+                        onChange={(e) => setOpenStartDate(e.target.value)}
+                        className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Start Time</label>
+                      <input
+                        type="time"
+                        value={openStartTime}
+                        onChange={(e) => setOpenStartTime(e.target.value)}
+                        className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">End Date</label>
+                      <input
+                        type="date"
+                        value={openEndDate}
+                        onChange={(e) => setOpenEndDate(e.target.value)}
+                        className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">End Time</label>
+                      <input
+                        type="time"
+                        value={openEndTime}
+                        onChange={(e) => setOpenEndTime(e.target.value)}
+                        className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* Pending Status - Show if end status requires it */}
+                {(endStatus === "pending" || endStatus === "in progress" || endStatus === "resolved") && (
+                  <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <h4 className="font-semibold text-yellow-700 mb-2">🟡 Pending Status</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Start Date</label>
+                        <input
+                          type="date"
+                          value={pendingStartDate}
+                          onChange={(e) => setPendingStartDate(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-yellow-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Start Time</label>
+                        <input
+                          type="time"
+                          value={pendingStartTime}
+                          onChange={(e) => setPendingStartTime(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-yellow-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">End Date</label>
+                        <input
+                          type="date"
+                          value={pendingEndDate}
+                          onChange={(e) => setPendingEndDate(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-yellow-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">End Time</label>
+                        <input
+                          type="time"
+                          value={pendingEndTime}
+                          onChange={(e) => setPendingEndTime(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-yellow-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* In Progress Status - Show if end status requires it */}
+                {(endStatus === "in progress" || endStatus === "resolved") && (
+                  <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-semibold text-blue-700 mb-2">🔵 In Progress Status</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Start Date</label>
+                        <input
+                          type="date"
+                          value={inProgressStartDate}
+                          onChange={(e) => setInProgressStartDate(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Start Time</label>
+                        <input
+                          type="time"
+                          value={inProgressStartTime}
+                          onChange={(e) => setInProgressStartTime(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">End Date</label>
+                        <input
+                          type="date"
+                          value={inProgressEndDate}
+                          onChange={(e) => setInProgressEndDate(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">End Time</label>
+                        <input
+                          type="time"
+                          value={inProgressEndTime}
+                          onChange={(e) => setInProgressEndTime(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Resolved Status - Show if end status is resolved */}
+                {endStatus === "resolved" && (
+                  <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <h4 className="font-semibold text-purple-700 mb-2">🟣 Resolved Status</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Start Date</label>
+                        <input
+                          type="date"
+                          value={resolvedStartDate}
+                          onChange={(e) => setResolvedStartDate(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Start Time</label>
+                        <input
+                          type="time"
+                          value={resolvedStartTime}
+                          onChange={(e) => setResolvedStartTime(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">End Date</label>
+                        <input
+                          type="date"
+                          value={resolvedEndDate}
+                          onChange={(e) => setResolvedEndDate(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">End Time</label>
+                        <input
+                          type="time"
+                          value={resolvedEndTime}
+                          onChange={(e) => setResolvedEndTime(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Status & Type */}

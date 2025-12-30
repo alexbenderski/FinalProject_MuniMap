@@ -17,6 +17,9 @@ import Image from "next/image";
 
 // 🧪 DEV TOOLS - Remove this import to disable test report generator
 import { TestReportGeneratorModal } from "@/lib/dev-tools/report-generator";
+import { AnomalyThresholdCalculatorModal } from "@/lib/dev-tools/anomaly-threshold-calculator";
+
+export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
 
@@ -32,6 +35,7 @@ export default function DashboardPage() {
 
   // 🧪 DEV TOOLS - Test Report Generator state
   const [testGenOpen, setTestGenOpen] = useState(false);
+  const [thresholdCalcOpen, setThresholdCalcOpen] = useState(false);
   const [cityBoundary, setCityBoundary] = useState<{ lat: number; lng: number }[]>([]);
   const [cityCenter, setCityCenter] = useState<{ lat: number; lng: number } | undefined>(undefined);
 
@@ -202,6 +206,15 @@ export default function DashboardPage() {
           🧪 Generate Test Reports
         </button>
 
+        {/* 🧪 DEV TOOLS - Anomaly Threshold Calculator Button */}
+        <button
+          onClick={() => setThresholdCalcOpen(true)}
+          className="fixed bottom-4 left-56 z-40 px-4 py-2 bg-indigo-500 text-white rounded-lg shadow-lg hover:bg-indigo-600 font-semibold text-sm flex items-center gap-2"
+          title="Calculate Anomaly Thresholds (QA Tool)"
+        >
+          🎯 Anomaly Calculator
+        </button>
+
         {searchOpen && (
           <ReportsTableModal
             open={searchOpen}
@@ -240,6 +253,14 @@ export default function DashboardPage() {
           cityName={permissions?.city ?? ""}
           cityBoundary={cityBoundary}
           defaultCenter={cityCenter}
+        />
+
+        {/* 🧪 DEV TOOLS - Anomaly Threshold Calculator Modal */}
+        <AnomalyThresholdCalculatorModal
+          open={thresholdCalcOpen}
+          onClose={() => setThresholdCalcOpen(false)}
+          cityName={permissions?.city ?? ""}
+          reportType="All Types"
         />
       </div>
     </RequireAuth>

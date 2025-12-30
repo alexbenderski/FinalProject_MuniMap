@@ -14,8 +14,12 @@ This tool allows testers to quickly generate realistic test reports with:
 
 1. Click the "🧪 Generate Test Reports" button in the bottom-left corner of the dashboard
 2. Configure the test parameters:
-   - **Time Range**: Start and end dates/times for report timestamps
-   - **End Status**: The final status each report should reach
+   - **Status Time Ranges**: Define separate time ranges for each status:
+     - **Open Status**: Always required - when reports are first created
+     - **Pending Status**: Required if end status is pending/in progress/resolved
+     - **In Progress Status**: Required if end status is in progress/resolved
+     - **Resolved Status**: Required if end status is resolved
+   - **End Status**: The final status each report should reach (determines which time ranges are needed)
    - **Report Type**: Category (garbage, lighting, tree, etc.)
    - **Cluster Center**: Lat/lng coordinates for the center of the report cluster
    - **Radius**: Maximum distance from center (in meters)
@@ -23,6 +27,19 @@ This tool allows testers to quickly generate realistic test reports with:
 3. Click "Generate Preview" to see the reports before writing
 4. Review the generated reports
 5. Click "Write to Firebase" to insert them into the database
+
+## Time Range Control
+
+Each status has its own independent time range with start and end date/time:
+- **Open**: Dec 1 00:00 → Dec 2 23:59
+- **Pending**: Dec 3 00:00 → Dec 5 23:59
+- **In Progress**: Dec 6 00:00 → Dec 8 23:59
+- **Resolved**: Dec 9 00:00 → Dec 10 23:59
+
+The generator will:
+1. Validate that time ranges don't overlap (each must end before the next starts)
+2. Ensure timestamps progress forward in time
+3. Randomly select timestamps within each range for realistic variation
 
 ## Generated Report IDs
 

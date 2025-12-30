@@ -18,9 +18,12 @@ import { CATEGORIES, Category } from "@/lib/categories";
 
 export type EndStatus = "open" | "pending" | "in progress" | "resolved";
 
+export interface StatusTimeRange {
+  start: number;  // Unix timestamp (ms)
+  end: number;    // Unix timestamp (ms)
+}
+
 export interface GeneratorConfig {
-  timeRangeStart: number;   // Unix timestamp (ms)
-  timeRangeEnd: number;     // Unix timestamp (ms)
   endStatus: EndStatus;
   reportType: Category;
   clusterCenter: { lat: number; lng: number };
@@ -28,6 +31,12 @@ export interface GeneratorConfig {
   count: number;
   cityBoundary: { lat: number; lng: number }[]; // City polygon for validation
   area: string;             // City name
+  
+  // Individual time ranges for each status
+  openTimeRange: StatusTimeRange;
+  pendingTimeRange?: StatusTimeRange;    // Optional if endStatus is "open"
+  inProgressTimeRange?: StatusTimeRange; // Optional if endStatus is "open" or "pending"
+  resolvedTimeRange?: StatusTimeRange;   // Optional if endStatus is not "resolved"
 }
 
 export interface ValidationResult {
@@ -61,13 +70,55 @@ function getRequiredStatuses(endStatus: EndStatus): ReportStatus[] {
 export function validateConfig(config: GeneratorConfig): ValidationResult {
   const errors: string[] = [];
 
-  // Time range validation
-  if (config.timeRangeStart >= config.timeRangeEnd) {
-    errors.push("Start time must be before end time");
+  // Time range validation for each status
+  const validateTimeRange = (range: StatusTimeRange, name: string) => {
+    if (range.start >= range.end) {
+      errors.push(`${name}: Start time must be before end time`);
+    }
+    if (range.end > Date.now()) {
+      errors.push(`${name}: End time cannot be in the future`);
+    }
+  };
+
+  validateTimeRange(config.openTimeRange, "Open status");
+
+  // Validate required time ranges based on end status
+  const requiredStatuses = getRequiredStatuses(config.endStatus);
+  
+  if (requiredStatuses.includes("pending")) {
+    if (!config.pendingTimeRange) {
+      errors.push("Pending time range is required for this end status");
+    } else {
+      validateTimeRange(config.pendingTimeRange, "Pending status");
+      // Pending must start at or after open ends
+      if (config.pendingTimeRange.start < config.openTimeRange.end) {
+        errors.push("Pending time range must start at or after open time range ends");
+      }
+    }
   }
 
-  if (config.timeRangeEnd > Date.now()) {
-    errors.push("End time cannot be in the future");
+  if (requiredStatuses.includes("in progress")) {
+    if (!config.inProgressTimeRange) {
+      errors.push("In Progress time range is required for this end status");
+    } else {
+      validateTimeRange(config.inProgressTimeRange, "In Progress status");
+      // In progress must start at or after pending ends
+      if (config.pendingTimeRange && config.inProgressTimeRange.start < config.pendingTimeRange.end) {
+        errors.push("In Progress time range must start at or after pending time range ends");
+      }
+    }
+  }
+
+  if (requiredStatuses.includes("resolved")) {
+    if (!config.resolvedTimeRange) {
+      errors.push("Resolved time range is required for this end status");
+    } else {
+      validateTimeRange(config.resolvedTimeRange, "Resolved status");
+      // Resolved must start at or after in progress ends
+      if (config.inProgressTimeRange && config.resolvedTimeRange.start < config.inProgressTimeRange.end) {
+        errors.push("Resolved time range must start at or after in progress time range ends");
+      }
+    }
   }
 
   // Count validation
@@ -308,42 +359,25 @@ interface StatusTimestamps {
 }
 
 function generateStatusTimestamps(
-  endStatus: EndStatus,
-  rangeStart: number,
-  rangeEnd: number
+  config: GeneratorConfig
 ): StatusTimestamps {
-  const requiredStatuses = getRequiredStatuses(endStatus);
-  const statusCount = requiredStatuses.length;
+  const requiredStatuses = getRequiredStatuses(config.endStatus);
 
-  // Divide the time range into segments
-  const totalDuration = rangeEnd - rangeStart;
-  const segmentDuration = totalDuration / statusCount;
-
-  // Generate timestamps for each status
+  // Generate timestamps for each status within their specific ranges
   const timestamps: StatusTimestamps = {
-    openAt: rangeStart + randomInt(0, Math.floor(segmentDuration * 0.8)),
+    openAt: randomInt(config.openTimeRange.start, config.openTimeRange.end),
   };
 
-  let lastTime = timestamps.openAt;
-
-  if (requiredStatuses.includes("pending")) {
-    const minTime = lastTime + 60000; // At least 1 minute later
-    const maxTime = rangeStart + segmentDuration * 2;
-    timestamps.pendingAt = randomInt(minTime, Math.max(minTime + 1, maxTime));
-    lastTime = timestamps.pendingAt;
+  if (requiredStatuses.includes("pending") && config.pendingTimeRange) {
+    timestamps.pendingAt = randomInt(config.pendingTimeRange.start, config.pendingTimeRange.end);
   }
 
-  if (requiredStatuses.includes("in progress")) {
-    const minTime = lastTime + 60000;
-    const maxTime = rangeStart + segmentDuration * 3;
-    timestamps.inProgressAt = randomInt(minTime, Math.max(minTime + 1, maxTime));
-    lastTime = timestamps.inProgressAt;
+  if (requiredStatuses.includes("in progress") && config.inProgressTimeRange) {
+    timestamps.inProgressAt = randomInt(config.inProgressTimeRange.start, config.inProgressTimeRange.end);
   }
 
-  if (requiredStatuses.includes("resolved")) {
-    const minTime = lastTime + 60000;
-    const maxTime = rangeEnd;
-    timestamps.resolvedAt = randomInt(minTime, Math.max(minTime + 1, maxTime));
+  if (requiredStatuses.includes("resolved") && config.resolvedTimeRange) {
+    timestamps.resolvedAt = randomInt(config.resolvedTimeRange.start, config.resolvedTimeRange.end);
   }
 
   return timestamps;
@@ -417,11 +451,7 @@ export function generateReports(config: GeneratorConfig): { reports: GeneratedRe
     }
 
     // Generate timestamps
-    const timestamps = generateStatusTimestamps(
-      config.endStatus,
-      config.timeRangeStart,
-      config.timeRangeEnd
-    );
+    const timestamps = generateStatusTimestamps(config);
 
     // Validate timestamp progression
     const timestampEntries: { status: ReportStatus; time: number }[] = [

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/server/firebase-admin";
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 type StatusHistory = {
   status: string | number;
   updatedAt: number;

@@ -1,6 +1,9 @@
-// import { getReports } from "@/lib/server/reports-service";
+import { NextResponse } from "next/server";
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET() {
-//   const reports = await getReports();
-//   return Response.json(reports);
+  // Reports are fetched client-side from Firebase Realtime DB
+  return NextResponse.json([]);
 }

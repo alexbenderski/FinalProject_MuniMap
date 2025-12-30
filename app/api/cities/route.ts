@@ -1,6 +1,6 @@
-// import { getCities } from "@/lib/server/cities-service";
+import { NextResponse } from "next/server";
 
 export async function GET() {
-  // const cities = await getCities();
-  // return Response.json(cities);
+  // Return empty array or static data since cities are loaded from JSON file on client side
+  return NextResponse.json([]);
 }

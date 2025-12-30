@@ -19,6 +19,7 @@ export {
   validateConfig,
   STATUS_OPTIONS,
   type GeneratorConfig,
+  type StatusTimeRange,
   type EndStatus,
   type GeneratedReport,
   type ValidationResult,
