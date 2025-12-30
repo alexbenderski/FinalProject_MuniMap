@@ -113,6 +113,18 @@ export async function sendAnomalyEmail(
         <p style="margin-top: 15px;"><strong>דיווחים קשורים:</strong> ${anomaly.relatedReports.length}</p>
         <p><strong>זוהה לראשונה:</strong> ${new Date(anomaly.firstDetected).toLocaleString("he-IL")}</p>
       </div>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://astounding-cannoli-8f55f1.netlify.app/" 
+           style="display: inline-block; background-color: #1976d2; color: white; padding: 15px 40px; 
+                  text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;
+                  box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background-color 0.3s;">
+          🔗 גישה למערכת
+        </a>
+        <p style="color: #666; font-size: 14px; margin-top: 10px;">
+          לחץ על הכפתור כדי להיכנס למערכת ולטפל באנומליה
+        </p>
+      </div>
       
       <p style="color: #666; font-size: 12px;">
         הודעה זו נשלחה אוטומטית ממערכת ניהול דיווחי העירייה.

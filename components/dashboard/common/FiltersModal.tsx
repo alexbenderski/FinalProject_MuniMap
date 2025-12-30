@@ -189,8 +189,8 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
               <div className="bg-white p-3 rounded-md border-l-4 border-red-500">
                 <p className="font-semibold text-red-700 mb-1">🚨 Critical Attention Needed:</p>
                 <p className="text-sm text-gray-700">
-                  <strong>Open + Critical</strong> - Reports in critical condition (red) that are still in "Open" status. 
-                  These require immediate attention as they've been unaddressed for too long.
+                  <strong>Open + Critical</strong> - Reports in critical condition (red) that are still in &quot;Open&quot; status. 
+                  These require immediate attention as they&#39;ve been unaddressed for too long.
                 </p>
               </div>
 
@@ -263,10 +263,7 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
                   onClick={selectAllCategories}
                   className="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition-colors"
                 >
-                  Select All flex items-center">
-            Status:
-            <Tooltip message="Filter by report lifecycle stage:\n• Open - New reports awaiting review\n• Pending - Acknowledged, awaiting action\n• In Progress - Currently being addressed\n• Resolved - Completed and closed" />
-          
+                  Select All
                 </button>
                 <button
                   onClick={unselectAllCategories}
@@ -285,10 +282,7 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
                         ? "bg-green-300 border-green-600"
                         : "bg-gray-50 hover:bg-gray-100 border-gray-300"
                     }`}
-                  > flex items-center">
-            Criticality Level:
-            <Tooltip message="Priority based on report age:\n• Green (New) - Recent reports\n• Yellow (Medium) - Moderately aged\n• Orange (Old) - Long-standing issues\n• Red (Critical) - Urgent, overdue reports" />
-          
+                  >
                     <Image
                       src={`/icons/${defaultColor}_${cat.toLowerCase()}.png`}
                       alt={cat}
@@ -326,7 +320,9 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
 */}
         {/* סטטוס */}
         <div className="mb-3">
-          <label className="font-semibold block mb-2">Status:</label>
+          <label className="font-semibold block mb-2">Status:
+            <Tooltip message="The status of the report in current state, such as Open, In Progress, or Closed." />
+          </label>
 
           {/* Status Options */}
           <div className="flex flex-wrap gap-2">
@@ -348,7 +344,9 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
 
         {/* 🔹 סינון לפי קריטיות */}
         <div className="mb-3">
-          <label className="font-semibold block mb-2">Criticality Level:</label>
+            <label className="font-semibold block mb-2">Criticality Level:
+            <Tooltip message="How urgent the problem is: Green = new, Yellow = medium, Orange = old, Red = critical. Focus on red for the most urgent issues." />
+            </label>
 
           {/* Criticality Options */}
           <div className="flex flex-wrap gap-2">
