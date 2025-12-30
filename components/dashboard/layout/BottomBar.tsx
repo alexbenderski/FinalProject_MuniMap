@@ -56,7 +56,7 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
 
   return (
     <>
-      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md w-full overflow-hidden">
+      <footer className="bg-white border-t shadow-md w-full flex-shrink-0">
         <div className="flex flex-col items-center justify-center h-full py-2 px-2 sm:px-4">
           <h2 className="text-sm sm:text-base font-semibold mb-2">🔍 Abnormality Detection</h2>
 

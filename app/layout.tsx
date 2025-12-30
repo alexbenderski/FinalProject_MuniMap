@@ -40,7 +40,7 @@ export const dynamic = 'force-dynamic';
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body><AuthProvider>{children}</AuthProvider></body>
+      <body className="overflow-x-auto overflow-y-hidden"><AuthProvider>{children}</AuthProvider></body>
     </html>
   );
 }
