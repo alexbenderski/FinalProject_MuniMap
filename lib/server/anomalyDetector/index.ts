@@ -30,7 +30,7 @@ export async function runAllDetectors(reports: Report[]): Promise<Anomaly[]> {
       await saveFullAnomalySnapshot(anomaly);
       
       // 📧 שליחת התראת מייל למנהלי פסולת (רק אם זו אנומליית פסולת)
-      // await notifyGarbageAnomalyManagers(anomaly);
+      await notifyGarbageAnomalyManagers(anomaly);
     }
     
   }
