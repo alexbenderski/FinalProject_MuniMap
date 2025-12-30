@@ -125,7 +125,7 @@ useEffect(() => {
 
 
   return (
-    <div className="flex-1 relative">
+    <div className="flex-1 relative w-full h-full min-w-0">
       {!isLoaded ? (
         <div className="absolute inset-0 flex items-center justify-center text-gray-500">
           Loading map…

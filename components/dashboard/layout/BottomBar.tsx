@@ -56,9 +56,9 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
 
   return (
     <>
-      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md h-38">
-        <div className="mx-auto max-w-3xl px-4 py-2 text-center h-full flex flex-col">
-          <h2 className="text-base font-semibold mb-1">abnormality detection:</h2>
+      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md h-38 w-full overflow-x-hidden">
+        <div className="mx-auto max-w-full px-2 sm:px-4 py-2 text-center h-full flex flex-col">
+          <h2 className="text-sm sm:text-base font-semibold mb-1">abnormality detection:</h2>
 
           {loading ? (
             <p className="text-gray-500 text-sm">טוען חריגות...</p>

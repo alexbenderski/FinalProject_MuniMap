@@ -140,23 +140,41 @@ export default function DashboardPage() {
           onOpenArchive={() => setArchiveOpen(true)}
         />
 
-        <div className="flex flex-1 w-full overflow-x-hidden">
-          <MapCanvas
-            city={city}
-            selectedArea={selectedArea}
-            selectedTypes={selectedTypes}
-            status={status}
-            statusList={statusList}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            mediaOnly={mediaOnly}
-            criticality={criticality}
-            criticalityList={criticalityList}
-            filtersApplied={filtersApplied}
-            onReportsUpdate={setReportsForTable}
-          />
+        <div className="flex flex-col lg:flex-row flex-1 w-full overflow-hidden">
+          <div className="flex-1 min-w-0">
+            <MapCanvas
+              city={city}
+              selectedArea={selectedArea}
+              selectedTypes={selectedTypes}
+              status={status}
+              statusList={statusList}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              mediaOnly={mediaOnly}
+              criticality={criticality}
+              criticalityList={criticalityList}
+              filtersApplied={filtersApplied}
+              onReportsUpdate={setReportsForTable}
+            />
+          </div>
 
-          <FiltersModal
+          <RightSidebar
+            selectedArea={selectedArea}
+            setSelectedArea={() => {}}
+            filterSummary={filterSummary}
+            logoImage={
+              <Image
+                src="/icons/MuniMap_LOGO.png"
+                alt="MuniMap Logo"
+                width={110}
+                height={110}
+                className="drop-shadow-lg"
+              />
+            }
+          />
+        </div>
+
+        <FiltersModal
             open={filtersOpen}
             onClose={() => setFiltersOpen(false)}
             currentFilters={{
@@ -185,22 +203,6 @@ export default function DashboardPage() {
             }}
           />
 
-          <RightSidebar
-            selectedArea={selectedArea}
-            setSelectedArea={() => {}}
-            filterSummary={filterSummary}
-            logoImage={
-              <Image
-                src="/icons/MuniMap_LOGO.png"
-                alt="MuniMap Logo"
-                width={110}
-                height={110}
-                className="drop-shadow-lg"
-              />
-            }
-          />
-        </div>
-
         <BottomBar onOpenFullList={() => setAnomListOpen(true)} />
 
         {/* 🧪 DEV TOOLS - Test Report Generator Button */}
@@ -208,6 +210,7 @@ export default function DashboardPage() {
           onClick={() => setTestGenOpen(true)}
           className="fixed bottom-40 left-4 z-40 px-3 py-2 bg-orange-500 text-white rounded-lg shadow-lg hover:bg-orange-600 font-semibold text-xs sm:text-sm flex items-center gap-2 whitespace-nowrap"
           title="Generate Test Reports (QA Tool)"
+          style={{ marginRight: "50px" }}
         >
           🧪 <span className="hidden sm:inline">Generate Test Reports</span><span className="sm:hidden">Test Gen</span>
         </button>
@@ -215,7 +218,7 @@ export default function DashboardPage() {
         {/* 🧪 DEV TOOLS - Anomaly Threshold Calculator Button */}
         <button
           onClick={() => setThresholdCalcOpen(true)}
-          className="fixed bottom-40 left-4 sm:left-48 md:left-56 z-40 px-3 py-2 bg-indigo-500 text-white rounded-lg shadow-lg hover:bg-indigo-600 font-semibold text-xs sm:text-sm flex items-center gap-2 whitespace-nowrap mt-14 sm:mt-0"
+          className="fixed bottom-40 left-[calc(1rem+50px)] sm:left-[calc(12rem+50px)] md:left-[calc(14rem+50px)] z-40 px-3 py-2 bg-indigo-500 text-white rounded-lg shadow-lg hover:bg-indigo-600 font-semibold text-xs sm:text-sm flex items-center gap-2 whitespace-nowrap mt-14 sm:mt-0"
           title="Calculate Anomaly Thresholds (QA Tool)"
         >
           🎯 <span className="hidden sm:inline">Anomaly Calculator</span><span className="sm:hidden">Calc</span>
