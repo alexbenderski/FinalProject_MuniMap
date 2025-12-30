@@ -25,7 +25,7 @@ export default function RightSidebar({
   const { permissions } = useAuth();
 
   return (
-    <aside className="hidden lg:flex lg:w-[270px] h-auto lg:h-[465px] border-l bg-white flex-col overflow-hidden flex-shrink-0">{
+    <aside className="flex w-[270px] h-auto lg:h-[465px] border-l bg-white flex-col overflow-hidden flex-shrink-0">{
       /* Logo Section */}
       {logoImage && (
         <div className="px-2 py-4 flex justify-center  overflow-hidden  scale-130" >

@@ -140,8 +140,8 @@ export default function DashboardPage() {
           onOpenArchive={() => setArchiveOpen(true)}
         />
 
-        <div className="flex flex-col lg:flex-row flex-1 w-full overflow-hidden">
-          <div className="flex-1 min-w-0 min-h-0">
+        <div className="flex flex-row flex-1 w-full overflow-x-auto overflow-y-hidden">
+          <div className="flex-1 min-w-[300px] min-h-0">
             <MapCanvas
               city={city}
               selectedArea={selectedArea}
