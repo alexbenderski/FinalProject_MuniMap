@@ -4,10 +4,12 @@ import { useState } from "react";
 import { CATEGORIES, CATEGORY_LABELS } from "@/lib/categories";
 import { useAuth } from "@/components/AuthProvider";
 import Image from "next/image";
+import { useLanguage } from "@/lib/i18n";
 
 type FileType = "full" | "manual" | "anomalies";
 
 export default function ArchivedReportsModal() {
+  const { t } = useLanguage();
   const { permissions } = useAuth();
   const city = permissions?.city || "";
   
@@ -147,18 +149,18 @@ export default function ArchivedReportsModal() {
     <div className="w-[700px] max-h-[90vh] overflow-y-auto bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-2xl p-8 space-y-6">
       {/* Header */}
       <div className="text-center border-b-2 border-indigo-300 pb-4">
-        <h2 className="text-3xl font-bold text-gray-800 mb-2">📦 Archived Reports</h2>
-        <p className="text-sm text-gray-600">Export reports for: <span className="font-semibold text-indigo-600">{city}</span></p>
+        <h2 className="text-3xl font-bold text-gray-800 mb-2">{t("archivedReports.title")}</h2>
+        <p className="text-sm text-gray-600">{t("archivedReports.exportReportsFor")} <span className="font-semibold text-indigo-600">{city}</span></p>
       </div>
 
       {/* Date Range Section */}
       <div className="bg-white rounded-lg p-5 shadow-md">
         <label className="block text-sm font-semibold text-gray-700 mb-3">
-          📅 {fileType === "anomalies" ? "Date Range (Last 5 Years)" : "Date Range (Archived Reports - Older than 1 year)"}
+          {fileType === "anomalies" ? t("archivedReports.dateRangeAnomalies") : t("archivedReports.dateRangeArchived")}
         </label>
         <div className="flex gap-4">
           <div className="flex-1">
-            <label className="block text-xs text-gray-500 mb-1">From</label>
+            <label className="block text-xs text-gray-500 mb-1">{t("archivedReports.from")}</label>
             <input
               type="date"
               value={fromDate}
@@ -167,10 +169,10 @@ export default function ArchivedReportsModal() {
               max={maxDate}
               className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
             />
-            <p className="text-xs text-gray-400 mt-1">Min: {oldestDate}</p>
+            <p className="text-xs text-gray-400 mt-1">{t("archivedReports.min")} {oldestDate}</p>
           </div>
           <div className="flex-1">
-            <label className="block text-xs text-gray-500 mb-1">To</label>
+            <label className="block text-xs text-gray-500 mb-1">{t("archivedReports.to")}</label>
             <input
               type="date"
               value={toDate}
@@ -186,7 +188,7 @@ export default function ArchivedReportsModal() {
 
       {/* Export Type Section */}
       <div className="bg-white rounded-lg p-5 shadow-md">
-        <label className="block text-sm font-semibold text-gray-700 mb-3">📊 Export Type</label>
+        <label className="block text-sm font-semibold text-gray-700 mb-3">{t("archivedReports.exportType")}</label>
         <div className="flex gap-3">
           <button
             onClick={() => handleFileTypeChange("full")}
@@ -196,7 +198,7 @@ export default function ArchivedReportsModal() {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            📋 Full Reports
+            {t("archivedReports.fullReports")}
           </button>
           <button
             onClick={() => handleFileTypeChange("manual")}
@@ -206,7 +208,7 @@ export default function ArchivedReportsModal() {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            🎯 Manual Selection
+            {t("archivedReports.manualSelection")}
           </button>
           <button
             onClick={() => handleFileTypeChange("anomalies")}
@@ -216,7 +218,7 @@ export default function ArchivedReportsModal() {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            ⚠️ Anomalies
+            {t("archivedReports.anomalies")}
           </button>
         </div>
       </div>
@@ -225,12 +227,12 @@ export default function ArchivedReportsModal() {
       {fileType === "manual" && (
         <div className="bg-white rounded-lg p-5 shadow-md space-y-4 animate-fadeIn">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">🏷️ Categories (Select Multiple)</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">{t("archivedReports.categories")}</label>
             
             {/* Selected Categories Display */}
             {selectedCategories.length > 0 && (
               <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md max-h-24 overflow-y-auto">
-                <p className="text-xs text-gray-600 mb-2">Selected ({selectedCategories.length}):</p>
+                <p className="text-xs text-gray-600 mb-2">{t("archivedReports.selected")} ({selectedCategories.length}):</p>
                 <div className="flex flex-wrap gap-2">
                   {selectedCategories.map((cat) => (
                     <button
@@ -251,13 +253,13 @@ export default function ArchivedReportsModal() {
                 onClick={selectAllCategories}
                 className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all text-sm font-semibold"
               >
-                Select All
+                {t("archivedReports.selectAll")}
               </button>
               <button
                 onClick={unselectAllCategories}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all text-sm font-semibold"
               >
-                Unselect All
+                {t("archivedReports.unselectAll")}
               </button>
             </div>
 
@@ -294,7 +296,7 @@ export default function ArchivedReportsModal() {
         onClick={handleDownload}
         className="w-full px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold text-lg rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
       >
-        ⬇️ Download Excel Report
+        {t("archivedReports.downloadExcel")}
       </button>
 
       {/* Info Footer */}

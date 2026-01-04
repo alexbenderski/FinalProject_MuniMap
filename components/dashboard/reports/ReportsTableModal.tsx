@@ -10,6 +10,7 @@ import { getCurrentUserInfo } from "@/lib/client/fetchers";
 import Image from "next/image";
 import { getReportCriticalityType } from "@/lib/server/sla";
 import Tooltip from "../common/Tooltip";
+import { useLanguage } from "@/lib/i18n";
 
 interface Props {
   timestamp: number;
@@ -68,6 +69,7 @@ export default function ReportsTableModal({
   onReviewUpdate,
 }: ReportsTableModalProps) {
 /////////////////////////////////////////////////////////////////consts://///////////////////////
+  const { t, language } = useLanguage();
   const [rows, setRows] = useState<Report[]>([]);
   const [anomalyRows, setAnomalyRows] = useState<Report[]>([]);
 
@@ -221,13 +223,26 @@ const fakeReport: Partial<Report> = {
 
   const icon = `/icons/${crit}_${type}.png`;
 
-  const level =
-    crit === "green"  ? "חדש" :
-    crit === "yellow" ? "בינוני" :
-    crit === "orange" ? "ישן" :
-    "קריטי";
+  const levelKey =
+    crit === "green"  ? "criticality.new" :
+    crit === "yellow" ? "criticality.medium" :
+    crit === "orange" ? "criticality.old" :
+    "criticality.critical";
+
+  const { t } = useLanguage();
+  const level = t(levelKey);
 
   const [imgSrc, setImgSrc] = useState(icon);
+
+  // Color map for better contrast
+  const colorMap: Record<string, { bg: string; text: string }> = {
+    green: { bg: "bg-green-100", text: "text-green-800" },
+    yellow: { bg: "bg-yellow-100", text: "text-yellow-900" }, // Dark text for yellow background
+    orange: { bg: "bg-orange-100", text: "text-orange-800" },
+    red: { bg: "bg-red-100", text: "text-red-800" },
+  };
+
+  const colors = colorMap[crit] || { bg: "bg-gray-100", text: "text-gray-800" };
 
   return (
     <div className="flex flex-col items-center justify-center">
@@ -239,7 +254,9 @@ const fakeReport: Partial<Report> = {
         onError={() => setImgSrc(`/icons/${crit}_default.png`)}
         unoptimized
       />
-      <span style={{ color: crit, fontSize: "13px" }}>{level}</span>
+      <span className={`px-2 py-1 rounded text-xs font-bold ${colors.bg} ${colors.text}`}>
+        {level}
+      </span>
     </div>
   );
 }
@@ -295,16 +312,11 @@ function handleSort(column: string) {
 
 
 
-  // טוען דיווחים
+  // טוען דיווחים - Always use real-time subscription for live updates
   useEffect(() => {
     if (!open) return;
 
-    if (externalReports && externalReports.length > 0) {
-      setRows(externalReports);
-      return;
-    }
-
-    // Fallback: use real-time listener if no external reports provided
+    // Always subscribe to real-time updates
     const unsubscribe = subscribeToReports((data) => {
       const all: Report[] = [];
 
@@ -318,7 +330,15 @@ function handleSort(column: string) {
     });
 
     return () => unsubscribe();
-  }, [open, externalReports]);
+  }, [open]);
+
+  // Also update when external reports change (for filtered data from MapCanvas)
+  useEffect(() => {
+    if (externalReports && externalReports.length > 0) {
+      // External reports are filtered, use them for display
+      // But real-time subscription above will keep updating the full list
+    }
+  }, [externalReports]);
 
 
   
@@ -414,11 +434,11 @@ const filteredRows = useMemo(() => {
 
 async function handleDeleteSelection() {
   if (selectedReports.length === 0) {
-    alert("No reports selected.");
+    alert(t("reportsTable.noReportsSelected"));
     return;
   }
 
-  const confirmDelete = confirm(`Delete ${selectedReports.length} reports?`);
+  const confirmDelete = confirm(t("reportsTable.deleteConfirm").replace("{count}", String(selectedReports.length)));
   if (!confirmDelete) return;
 
   for (const id of selectedReports) {
@@ -431,7 +451,7 @@ async function handleDeleteSelection() {
   // הסרה גם מהטבלה המקומית
   setRows(rows.filter(r => !selectedReports.includes(r.id ?? "")));
   setSelectedReports([]);
-  alert("Selected reports deleted successfully.");
+  alert(t("reportsTable.deleteSuccess"));
 
 
 }
@@ -439,7 +459,7 @@ async function handleDeleteSelection() {
 async function handleGenerateDualLinks() {
   const selected = rows.filter((r) => selectedReports.includes(r.id ?? ""));
   if (selected.length < 2) {
-    alert("בחר לפחות שני דיווחים כדי לייצר מסלול.");
+    alert(t("reportsTable.selectTwoForRoute"));
     return;
   }
 
@@ -447,12 +467,12 @@ async function handleGenerateDualLinks() {
   const getUserLocation = (): Promise<{ lat: number; lng: number }> => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject("שירות מיקום לא נתמך בדפדפן זה.");
+        reject(t("reportsTable.locationNotSupported"));
         return;
       }
       navigator.geolocation.getCurrentPosition(
         (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => reject("⚠️ לא ניתן היה לזהות את המיקום הנוכחי שלך."),
+        () => reject(t("reportsTable.locationDetectionFailed")),
         { enableHighAccuracy: true, timeout: 10000 }
       );
     });
@@ -461,7 +481,7 @@ async function handleGenerateDualLinks() {
   let userLocation: { lat: number; lng: number } | null = null;
   try {
     userLocation = await getUserLocation();
-    alert("📍 המיקום הנוכחי נוסף למסלול!");
+    alert(t("reportsTable.locationAdded"));
   } catch (err) {
     console.warn(err);
     alert(err);
@@ -540,7 +560,7 @@ async function handleGenerateDualLinks() {
 
 return (
   <>
-    <Modal title={title ?? "Reports Table"} onClose={onClose}>
+    <Modal title={title ?? t("reportsTable.title")} onClose={onClose}>
       <div className="flex flex-col bg-white rounded-lg shadow-lg max-w-[95vw] max-h-[90vh] w-[1000px] overflow-hidden">
 
 {/* Anomaly Details Section - Collapsible */}
@@ -550,7 +570,7 @@ return (
     <div className="px-6 pt-4 pb-3 flex items-center justify-between cursor-pointer hover:bg-red-100 transition-colors" onClick={() => setAnomalyDetailsOpen(!anomalyDetailsOpen)}>
       <div className="flex items-center gap-2">
         <h2 className="font-bold text-lg text-red-700">
-          🚨 Anomaly Details
+          🚨 {t("reportsTable.anomalyDetails")}
         </h2>
         <span className={`transform transition-transform duration-300 text-red-700 font-bold ${anomalyDetailsOpen ? 'rotate-180' : ''}`}>
           ▼
@@ -561,7 +581,7 @@ return (
       <button
         onClick={async () => {
           if (!currentUserKey) {
-            alert("No user found");
+            alert(t("reportsTable.noUserFound"));
             return;
           }
 
@@ -569,18 +589,18 @@ return (
             !!localAnomaly.reviewedBy?.[currentUserKey];
 
           if (alreadyReviewed) {
-            alert("You already reviewed this anomaly ✅");
+            alert(t("reportsTable.alreadyReviewed"));
             return;
           }
 
-          if (!confirm("Have you reviewed this anomaly?")) return;
+          if (!confirm(t("reportsTable.confirmReview"))) return;
 
           try {
             const { markAnomalyAsReviewed } = await import("@/lib/client/fetchers");
             const result = await markAnomalyAsReviewed(localAnomaly);
 
             if (result.alreadyReviewed) {
-              alert("Already reviewed");
+              alert(t("reportsTable.alreadyReviewed"));
               return;
             }
 
@@ -598,10 +618,10 @@ return (
               onReviewUpdate(updatedAnomaly);
             }
 
-            alert(`✅ Marked as reviewed by ${result.email}`);
+            alert(t("reportsTable.markedAsReviewed").replace("{email}", result.email ?? ""));
           } catch (err) {
             console.error("Error marking as reviewed:", err);
-            alert(`❌ Failed to mark as reviewed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+            alert(t("reportsTable.reviewFailed").replace("{error}", err instanceof Error ? err.message : 'Unknown error'));
           }
         }}
         className={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${
@@ -612,8 +632,8 @@ return (
         disabled={!!(currentUserKey && localAnomaly.reviewedBy?.[currentUserKey])}
       >
         {currentUserKey && localAnomaly.reviewedBy?.[currentUserKey]
-          ? "✅ Reviewed"
-          : "⏳ Mark as Reviewed"}
+          ? `✅ ${t("reportsTable.reviewed")}`
+          : `⏳ ${t("reportsTable.markAsReviewed")}`}
       </button>
     </div>
 
@@ -638,63 +658,57 @@ return (
         <ul className="space-y-2 text-gray-800">
           <li className="flex items-center gap-2">
             <span className="text-lg">📊</span>
-            <span><strong>Current Reports:</strong> {localAnomaly.metrics.currentReports}</span>
-            <Tooltip message="Number of reports in current period"/>
+            <span><strong>{t("reportsTable.currentReports")}:</strong> {localAnomaly.metrics.currentReports}</span>
+            <Tooltip message={t("reportsTable.currentReportsTooltip")}/>
           </li>
 
             {localAnomaly.type === "slow_response" && (
     <li className="flex items-center gap-2">
             <span className="text-lg">⏱️</span>
-            <span><strong>Avg Processing Time:</strong> {localAnomaly.metrics.currentAvgDays} days</span>
-            <Tooltip message="Average time for closed reports in current period"/>
+            <span><strong>{t("reportsTable.avgProcessingTime")}:</strong> {localAnomaly.metrics.currentAvgDays} {t("common.days")}</span>
+            <Tooltip message={t("reportsTable.avgProcessingTimeTooltip")}/>
     </li>
   )}
 
           <li className="flex items-center gap-2">
             <span className="text-lg">📈</span>
-            <span><strong>Historical Avg:</strong> {localAnomaly.metrics.baselineMean}</span>
-            <Tooltip message="Average from past 6 months" />
+            <span><strong>{t("reportsTable.historicalAvg")}:</strong> {localAnomaly.metrics.baselineMean}</span>
+            <Tooltip message={t("reportsTable.historicalAvgTooltip")} />
           </li>
 
           <li className="flex items-center gap-2">
             <span className="text-lg">📊</span>
-            <span><strong>Std Dev:</strong> {localAnomaly.metrics.baselineStd}</span>
-            <Tooltip message="Standard deviation from average" />
+            <span><strong>{t("reportsTable.stdDev")}:</strong> {localAnomaly.metrics.baselineStd}</span>
+            <Tooltip message={t("reportsTable.stdDevTooltip")} />
           </li>
 
           <li className="flex items-center gap-2">
             <span className="text-lg">🎯</span>
-            <span><strong>Threshold:</strong> {localAnomaly.metrics.threshold}</span>
-          <Tooltip
-            message={
-              "Threshold is the detection limit.\n\n" +
-              "If Current > Threshold: Anomaly detected\n" +
-              "If Current ≤ Threshold: Normal state"
-            }
-          />
+            <span><strong>{t("reportsTable.threshold")}:</strong> {localAnomaly.metrics.threshold}</span>
+          <Tooltip message={t("reportsTable.thresholdTooltip")} />
           </li>
 
           <li className="flex items-center gap-2">
             <span className="text-lg">📉</span>
-            <span><strong>Change:</strong> {localAnomaly.metrics.pctChange > 0 ? "+" : ""}{localAnomaly.metrics.pctChange}%</span>
-            <Tooltip message="Percentage change from average" />
+            <span><strong>{t("reportsTable.change")}:</strong> {localAnomaly.metrics.pctChange > 0 ? "+" : ""}{localAnomaly.metrics.pctChange}%</span>
+            <Tooltip message={t("reportsTable.changeTooltip")} />
           </li>
 
           <li className="flex items-center gap-2">
             <span className="text-lg">📐</span>
-            <span><strong>Z-Score:</strong> {localAnomaly.metrics.zScore}</span>
-            <Tooltip message="Distance from average in standard deviations" />
+            <span><strong>{t("reportsTable.zScore")}:</strong> {localAnomaly.metrics.zScore}</span>
+            <Tooltip message={t("reportsTable.zScoreTooltip")} />
           </li>
 
           <li className="flex items-center gap-2">
             <span className="text-lg">📅</span>
-            <span><strong>First Detected:</strong> {new Date(localAnomaly.firstDetected).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })}</span>
+            <span><strong>{t("reportsTable.firstDetected")}:</strong> {new Date(localAnomaly.firstDetected).toLocaleDateString(language === "he" ? "he-IL" : "en-US", { month: "short", day: "numeric", year: "2-digit" })}</span>
           </li>
 
           {localAnomaly.center && (
             <li className="flex items-center gap-2">
               <span className="text-lg">🗺️</span>
-              <span><strong>Geographic Center:</strong> {localAnomaly.center.lat.toFixed(5)}, {localAnomaly.center.lng.toFixed(5)}</span>
+              <span><strong>{t("reportsTable.geographicCenter")}:</strong> {localAnomaly.center.lat.toFixed(5)}, {localAnomaly.center.lng.toFixed(5)}</span>
             </li>
           )}
 
@@ -705,11 +719,11 @@ return (
     {/* Reviewed By List */}
     {localAnomaly.reviewedBy && (
       <div className="mt-4 border-t pt-3 bg-white rounded-lg p-3 border-l-4 border-l-green-400">
-        <h3 className="font-bold mb-2 text-green-700 flex items-center gap-2">✔️ Reviewed By:</h3>
+        <h3 className="font-bold mb-2 text-green-700 flex items-center gap-2">✔️ {t("reportsTable.reviewedBy")}:</h3>
         <ul className="space-y-1 text-sm">
           {Object.entries(localAnomaly.reviewedBy).map(([emailKey, ts]) => (
             <li key={emailKey} className="text-gray-700">
-              📝 <span className="font-mono">{emailKey.replace(/_/g, ".")}</span> – {new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })}
+              📝 <span className="font-mono">{emailKey.replace(/_/g, ".")}</span> – {new Date(ts).toLocaleDateString(language === "he" ? "he-IL" : "en-US", { month: "short", day: "numeric", year: "2-digit" })}
             </li>
           ))}
         </ul>
@@ -725,31 +739,39 @@ return (
 
           {/* Top Bar - Enhanced */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
+          <div className="flex items-center gap-3">
           <button
             className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-lg px-4 py-2 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
             onClick={() => {
               const selected = rows.filter(r => selectedReports.includes(r.id ?? ""));
               if (selected.length === 0) {
-                alert("No reports selected.");
+                alert(t("reportsTable.noReportsSelected"));
                 return;
               }
               setReportsToShow(selected);
               setMapOpen(true);
             }}
           >
-            📍 Show on Map
+            📍 {t("reportsTable.showOnMap")}
           </button>
+          {selectedReports.length > 0 && (
+            <div className="bg-blue-600 text-white font-bold px-4 py-2 rounded-lg shadow-md flex items-center gap-2">
+              <span className="text-lg">📊</span>
+              <span>{selectedReports.length} {t("reportsTable.selected")}</span>
+            </div>
+          )}
+          </div>
           
             <button
             className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold rounded-lg px-4 py-2 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
             onClick={handleGenerateDualLinks}
           >
-            🛣️ Route Link
+            🛣️ {t("reportsTable.routeLink")}
           </button>
             <div className="flex flex-wrap gap-2 items-center">
               <input
                 type="text"
-                placeholder="🔍 Search by Report ID..."
+                placeholder={`🔍 ${t("reportsTable.searchById")}...`}
                 className="border-2 border-gray-300 focus:border-blue-500 focus:outline-none px-3 py-2 rounded-lg font-medium transition-colors"
                 value={searchId}
                 onChange={(e) => setSearchId(e.target.value)}
@@ -758,15 +780,15 @@ return (
                 className="bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all"
                 onClick={() => setFiltersOpen(true)}
               >
-                🔧 Filter
+                🔧 {t("reportsTable.filter")}
               </button>
               <button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg font-bold shadow-md hover:shadow-lg transition-all"
                 onClick={handleDeleteSelection}
               >
-                🗑️ Delete
+                🗑️ {t("reportsTable.delete")}
               </button>
               <button className="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow-md hover:shadow-lg transition-all" onClick={selectAll}>
-                {selectedReports.length === filteredRows.length ? "📭 Unselect All" : "✅ Select All"}
+                {selectedReports.length === filteredRows.length ? `📭 ${t("reportsTable.unselectAll")}` : `✅ ${t("reportsTable.selectAll")}`}
               </button>
             </div>
           </div>
@@ -780,32 +802,32 @@ return (
       <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold sticky top-0 z-20 shadow-lg">
         <tr>
           <th className="p-3 text-center">✔</th>
-          <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors">📋 ID</th>
+          <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors">📋 {t("reportsTable.columns.id")}</th>
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Category")}>
-            📁 Category
+            📁 {t("reportsTable.columns.category")}
           </th>
           <th className="p-3 text-left cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Description")}>
-            📝 Description
+            📝 {t("reportsTable.columns.description")}
           </th>
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Criticality")}>
-            ⚠️ Level
+            ⚠️ {t("reportsTable.columns.level")}
           </th>
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Timestamp")}>
-            📅 Date
+            📅 {t("reportsTable.columns.date")}
           </th>
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Location")}>
-            📍 Area
+            📍 {t("reportsTable.columns.area")}
           </th>
           <th className="p-3 text-left cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Address")}>
-            🏢 Address
+            🏢 {t("reportsTable.columns.address")}
           </th>
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Status")}>
-            ✓ Status
+            ✓ {t("reportsTable.columns.status")}
           </th>
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Media")}>
-            📷 Media
+            📷 {t("reportsTable.columns.media")}
           </th>
-          <th className="p-3 text-center">⚙️ Actions</th>
+          <th className="p-3 text-center">⚙️ {t("reportsTable.columns.actions")}</th>
         </tr>
       </thead>
 
@@ -840,7 +862,7 @@ return (
                 {r.type ? <CriticalityCell timestamp={r.timestamp} type={r.type} /> : "—"}
               </td>
               <td className="p-3 text-center text-xs text-gray-700 whitespace-nowrap">
-                {new Date(r.timestamp).toLocaleDateString("en-US", {
+                {new Date(r.timestamp).toLocaleDateString(language === "he" ? "he-IL" : "en-US", {
                   month: "short",
                   day: "numeric",
                   year: "2-digit"
@@ -856,7 +878,7 @@ return (
                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${
                   r.status === "resolved" ? "bg-green-200 text-green-800" :
                   r.status === "open" ? "bg-red-200 text-red-800" :
-                  r.status === "pending" ? "bg-yellow-200 text-yellow-800" :
+                  r.status === "pending" ? "bg-black-200 text-black-800" :
                   "bg-blue-200 text-blue-800"
                 }`}>
                   {r.status}
@@ -871,13 +893,13 @@ return (
                     setMapOpen(true);
                   }}
                 >
-                  📍 Map
+                  📍 {t("reportsTable.map")}
                 </button>
                 <button
                   className="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs font-bold px-2 py-1 rounded-lg shadow-md hover:shadow-lg transition-all"
                   onClick={() => handleOpenDetails(r)}
                 >
-                  👁️ Details
+                  👁️ {t("reportsTable.details")}
                 </button>
               </td>
             </tr>
@@ -888,19 +910,14 @@ return (
 
     {filteredRows.length === 0 && (
       <div className="text-center py-3 text-gray-500">
-        No reports found.
+        {t("reportsTable.noReportsFound")}
       </div>
     )}
   </div>
 
   {/* footer – נמצא בתוך אותו אזור גלילה, אבל עם shrink-0 */}
   <div className="border-t p-3 text-right bg-gray-50 shrink-0">
-    <button
-      onClick={onClose}
-      className="bg-gray-300 hover:bg-gray-400 px-4 py-1 rounded font-semibold"
-    >
-      Close
-    </button>
+
   </div>
 </div>
   </div>
@@ -958,39 +975,39 @@ return (
       )}
          { /* 🔗 חלון הלינק שנוצר */}
           {linkModalOpen && (
-            <Modal title="Generated Route Links" onClose={() => setLinkModalOpen(false)}>
+            <Modal title={t("reportsTable.generatedRouteLinks")} onClose={() => setLinkModalOpen(false)}>
               <div className="p-6 text-center">
                 <p className="text-gray-700 text-sm mb-4">
-                  נוצרו שני לינקים – אחד עם מזהים לצפייה, ואחד נקי לניווט בפועל.
+                  {t("reportsTable.routeLinksDescription")}
                 </p>
                 <p className="text-red-600 font-bold mb-4">
-                  !!! בפאלפון שלכם google maps ב GPS נא לדאוג להפעיל !!!
+                  {t("reportsTable.enableGpsWarning")}
                 </p>
 
                 {/* לינק עם מזהים */}
                 <div className="mb-5">
-                  <h3 className="font-semibold mb-1">🔹 עם מזהים (לצפייה בלבד)</h3>
+                  <h3 className="font-semibold mb-1">🔹 {t("reportsTable.labeledRouteTitle")}</h3>
                   <button
                     onClick={() => window.open(generatedLabeledLink, "_blank")}
                     className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
                   >
-                    Open Labeled Route
+                    {t("reportsTable.openLabeledRoute")}
                   </button>
                 </div>
 
                 {/* לינק נקי */}
                 <div className="mb-5">
-                  <h3 className="font-semibold mb-1">🔹 לינק נקי (לניווט אמיתי)</h3>
+                  <h3 className="font-semibold mb-1">🔹 {t("reportsTable.cleanRouteTitle")}</h3>
                   <button
                     onClick={() => window.open(generatedCleanLink, "_blank")}
                     className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded"
                   >
-                    Open Clean Route
+                    {t("reportsTable.openCleanRoute")}
                   </button>
                 </div>
 
                 <p className="text-xs text-gray-500 mt-5">
-                  * שני הלינקים הועתקו אוטומטית ללוח. ניתן לשלוח לעובדים להדבקה והפעלה.
+                  {t("reportsTable.linksCopiedNote")}
                 </p>
               </div>
             </Modal>

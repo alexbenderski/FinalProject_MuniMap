@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { fetchReports } from "@/lib/client/fetchers";
 import { Report,FilterStatus} from "@/lib/types";
 import { CATEGORIES, CATEGORY_LABELS } from "@/lib/categories";
 import Image from "next/image";
 import { useAuth } from "@/components/AuthProvider";
 import Tooltip from "./Tooltip";
+import { useLanguage } from "@/lib/i18n";
 
 
 
@@ -43,36 +44,42 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [showTips, setShowTips] = useState(false);
 
+  // Use ref to store currentFilters without triggering re-renders
+  const currentFiltersRef = useRef(currentFilters);
+  currentFiltersRef.current = currentFilters;
+
   const defaultColor = "green";
   const { permissions } = useAuth();
   const city = permissions?.city;
+  const { t } = useLanguage();
 
   const criticalityOptions = [
-    { value: "green", label: "New", color: "bg-green-500" },
-    { value: "yellow", label: "Medium", color: "bg-yellow-500" },
-    { value: "orange", label: "Old", color: "bg-orange-500" },
-    { value: "red", label: "Critical", color: "bg-red-500" },
+    { value: "green", labelKey: "criticality.new", color: "bg-green-500" },
+    { value: "yellow", labelKey: "criticality.medium", color: "bg-yellow-500" },
+    { value: "orange", labelKey: "criticality.old", color: "bg-orange-500" },
+    { value: "red", labelKey: "criticality.critical", color: "bg-red-500" },
   ];
 
   const statusOptions = [
-    { value: "open", label: "Open" },
-    { value: "pending", label: "Pending" },
-    { value: "in progress", label: "In Progress" },
-    { value: "resolved", label: "Resolved" },
+    { value: "open", labelKey: "status.open" },
+    { value: "pending", labelKey: "status.pending" },
+    { value: "in progress", labelKey: "status.inProgress" },
+    { value: "resolved", labelKey: "status.resolved" },
   ];
 
   useEffect(() => {
     if (!open) return;
 
-    // Restore current filters when modal opens
-    if (currentFilters) {
-      setSelectedCategories(currentFilters.categories || []);
-      setSelectedLocation(currentFilters.location || "");
-      setSelectedStatuses(currentFilters.statusList || []);
-      setMediaOnly(currentFilters.mediaOnly || false);
-      setDateFrom(currentFilters.dateFrom || null);
-      setDateTo(currentFilters.dateTo || null);
-      setSelectedCriticalities(currentFilters.criticalityList || []);
+    // Restore current filters when modal opens - use ref to avoid dependency
+    const filters = currentFiltersRef.current;
+    if (filters) {
+      setSelectedCategories(filters.categories || []);
+      setSelectedLocation(filters.location || "");
+      setSelectedStatuses(filters.statusList || []);
+      setMediaOnly(filters.mediaOnly || false);
+      setDateFrom(filters.dateFrom || null);
+      setDateTo(filters.dateTo || null);
+      setSelectedCriticalities(filters.criticalityList || []);
     }
 
     // Always use predefined categories from lib/categories.ts
@@ -104,7 +111,7 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
     }
 
     loadFilters();
-  }, [open, currentFilters, city]);
+  }, [open, city]);
 
   // ✅ Add ESC key listener
   useEffect(() => {
@@ -135,26 +142,38 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
     return oneYearAgo.toISOString().split('T')[0];
   };
 
-  const toggleCategory = (c: string) =>
-    setSelectedCategories((prev) =>
-      prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
-    );
+  const toggleCategory = (c: string) => {
+    console.log("Toggling category:", c);
+    setSelectedCategories((prev) => {
+      const newSelection = prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c];
+      console.log("New category selection:", newSelection);
+      return newSelection;
+    });
+  };
 
-  const toggleStatus = (s: string) =>
-    setSelectedStatuses((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
-    );
+  const toggleStatus = (s: string) => {
+    console.log("Toggling status:", s);
+    setSelectedStatuses((prev) => {
+      const newSelection = prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s];
+      console.log("New status selection:", newSelection);
+      return newSelection;
+    });
+  };
 
-  const toggleCriticality = (c: string) =>
-    setSelectedCriticalities((prev) =>
-      prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
-    );
+  const toggleCriticality = (c: string) => {
+    console.log("Toggling criticality:", c);
+    setSelectedCriticalities((prev) => {
+      const newSelection = prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c];
+      console.log("New criticality selection:", newSelection);
+      return newSelection;
+    });
+  };
 
   const selectAllCategories = () => setSelectedCategories([...categories]);
   const unselectAllCategories = () => setSelectedCategories([]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex i8ems-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-gray-200 rounded-lg p-6 w-[400px] relative shadow-xl overflow-y-auto max-h-[90vh]">
         <button
           onClick={onClose}
@@ -164,7 +183,7 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
         </button>
 
         <h2 className="text-xl font-bold mb-4 text-center underline">
-          Sort reports:
+          {t("filters.title")}
         </h2>
 
         {/* 💡 Tips Section - Collapsible */}
@@ -174,7 +193,7 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
             className="w-full flex items-center justify-between p-3 hover:bg-blue-100 transition-colors rounded-lg"
           >
             <span className="font-semibold text-blue-900 flex items-center gap-2">
-              💡 Filter Tips & Best Practices
+              💡 {t("filters.tipsTitle")}
             </span>
             <span
               className="text-xl text-blue-600 transition-transform duration-300"
@@ -187,46 +206,42 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
           {showTips && (
             <div className="p-4 space-y-3 border-t border-blue-200">
               <div className="bg-white p-3 rounded-md border-l-4 border-red-500">
-                <p className="font-semibold text-red-700 mb-1">🚨 Critical Attention Needed:</p>
+                <p className="font-semibold text-red-700 mb-1">🚨 {t("filters.criticalAttention")}</p>
                 <p className="text-sm text-gray-700">
-                  <strong>Open + Critical</strong> - Reports in critical condition (red) that are still in &quot;Open&quot; status. 
-                  These require immediate attention as they&#39;ve been unaddressed for too long.
+                  {t("filters.criticalAttentionDesc")}
                 </p>
               </div>
 
               <div className="bg-white p-3 rounded-md border-l-4 border-orange-500">
-                <p className="font-semibold text-orange-700 mb-1">⚠️ Delayed Progress:</p>
+                <p className="font-semibold text-orange-700 mb-1">⚠️ {t("filters.delayedProgress")}</p>
                 <p className="text-sm text-gray-700">
-                  <strong>Pending/In Progress + Old/Critical</strong> - Reports that have been acknowledged but are 
-                  taking too long to resolve. Check for bottlenecks or resource issues.
+                  {t("filters.delayedProgressDesc")}
                 </p>
               </div>
 
               <div className="bg-white p-3 rounded-md border-l-4 border-green-500">
-                <p className="font-semibold text-green-700 mb-1">✅ Performance Tracking:</p>
+                <p className="font-semibold text-green-700 mb-1">✅ {t("filters.performanceTracking")}</p>
                 <p className="text-sm text-gray-700">
-                  <strong>Resolved + New/Medium</strong> - Successfully resolved reports that were handled quickly. 
-                  Use this to identify efficient response patterns.
+                  {t("filters.performanceTrackingDesc")}
                 </p>
               </div>
 
               <div className="bg-white p-3 rounded-md border-l-4 border-blue-500">
-                <p className="font-semibold text-blue-700 mb-1">📊 Trend Analysis:</p>
+                <p className="font-semibold text-blue-700 mb-1">📊 {t("filters.trendAnalysis")}</p>
                 <p className="text-sm text-gray-700">
-                  <strong>Specific Category + Critical</strong> - Identify problematic infrastructure areas by 
-                  filtering categories with high criticality levels. Helps prioritize maintenance resources.
+                  {t("filters.trendAnalysisDesc")}
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        {/* קטגוריות - מתרחבות */}
+        {/* Categories - Expandable */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <label className="font-semibold flex items-center">
-              Category:
-              <Tooltip message="Filter reports by infrastructure type (e.g., garbage, lighting, roads). Select multiple categories to compare issues across different areas." />
+              {t("filters.category")}
+              <Tooltip message={t("filters.categoryTooltip")} />
             </label>
             <button
               onClick={() => setShowAllCategories(!showAllCategories)}
@@ -240,7 +255,7 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
           {/* Selected Categories Display */}
           {selectedCategories.length > 0 && (
             <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-md max-h-20 overflow-y-auto">
-              <p className="text-xs text-gray-600 mb-1">Selected ({selectedCategories.length}):</p>
+              <p className="text-xs text-gray-600 mb-1">{t("filters.selected")} ({selectedCategories.length}):</p>
               <div className="flex flex-wrap gap-1">
                 {selectedCategories.map((cat) => (
                   <button
@@ -248,7 +263,7 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
                     onClick={() => toggleCategory(cat)}
                     className="bg-green-300 border border-green-600 rounded-lg px-2 py-1 text-xs hover:bg-green-400 transition-colors"
                   >
-                    {cat} ✕
+                    {t(`categories.${cat}`) || cat} ✕
                   </button>
                 ))}
               </div>
@@ -263,13 +278,13 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
                   onClick={selectAllCategories}
                   className="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition-colors"
                 >
-                  Select All
+                  {t("filters.selectAll")}
                 </button>
                 <button
                   onClick={unselectAllCategories}
                   className="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition-colors"
                 >
-                  Unselect All
+                  {t("filters.unselectAll")}
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -291,7 +306,7 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
                       className="w-6 h-6 object-contain"
                       unoptimized
                     />
-                    <span className="text-sm">{CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]}</span>
+                    <span className="text-sm">{t(`categories.${cat}`) || CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]}</span>
                   </button>
                 ))}
               </div>
@@ -301,27 +316,10 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
 
 
 
-        {/* מיקום 
+        {/* Status */}
         <div className="mb-3">
-          <label className="font-semibold block mb-2">Location:</label>
-          <select
-            className="w-full border rounded px-2 py-1"
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(e.target.value)}
-          >
-            <option value="">All</option>
-            {locations.map((loc) => (
-              <option key={loc} value={loc}>
-                {loc}
-              </option>
-            ))}
-          </select>
-        </div>
-*/}
-        {/* סטטוס */}
-        <div className="mb-3">
-          <label className="font-semibold block mb-2">Status:
-            <Tooltip message="The status of the report in current state, such as Open, In Progress, or Closed." />
+          <label className="font-semibold block mb-2">{t("filters.status")}
+            <Tooltip message={t("filters.statusTooltip")} />
           </label>
 
           {/* Status Options */}
@@ -336,16 +334,16 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
                     : "bg-gray-50 hover:bg-gray-100 border-gray-300"
                 }`}
               >
-                <span className="text-sm">{option.label}</span>
+                <span className="text-sm">{t(option.labelKey)}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* 🔹 סינון לפי קריטיות */}
+        {/* Criticality filter */}
         <div className="mb-3">
-            <label className="font-semibold block mb-2">Criticality Level:
-            <Tooltip message="How urgent the problem is: Green = new, Yellow = medium, Orange = old, Red = critical. Focus on red for the most urgent issues." />
+            <label className="font-semibold block mb-2">{t("filters.criticalityLevel")}
+            <Tooltip message={t("filters.criticalityTooltip")} />
             </label>
 
           {/* Criticality Options */}
@@ -363,43 +361,54 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
                 {option.color && (
                   <div className={`w-4 h-4 rounded-full ${option.color}`}></div>
                 )}
-                <span className="text-sm">{option.label}</span>
+                <span className="text-sm">{t(option.labelKey)}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* טווח תאריכים - עם הגבלת שנה אחת */}
-        <div className="flex gap-2 mb-3">
-          <div className="flex flex-col flex-1">
-            <label className="font-semibold mb-1 text-sm">From:</label>
-            <input
-              type="date"
-              className="border rounded px-2 py-1"
-              value={dateFrom ?? ""}
-              onChange={(e) => setDateFrom(e.target.value || null)}
-              min={getMinDate()}
-              max={getMaxDate()}
-            />
-            <p className="text-xs text-gray-500 mt-1">Min: {getMinDate()}</p>
+        {/* Date range */}
+        <div className="mb-3">
+          <div className="flex gap-2">
+            <div className="flex flex-col flex-1">
+              <label className="font-semibold mb-1 text-sm">{t("common.from")}:</label>
+              <input
+                type="date"
+                className="border rounded px-2 py-1"
+                value={dateFrom ?? ""}
+                onChange={(e) => setDateFrom(e.target.value || null)}
+                min={getMinDate()}
+                max={getMaxDate()}
+                dir="ltr"
+              />
+              <p className="text-xs text-gray-500 mt-1">Min: {getMinDate()}</p>
+            </div>
+            <div className="flex flex-col flex-1">
+              <label className="font-semibold mb-1 text-sm">{t("common.to")}:</label>
+              <input
+                type="date"
+                className="border rounded px-2 py-1"
+                value={dateTo ?? ""}
+                onChange={(e) => setDateTo(e.target.value || null)}
+                min={getMinDate()}
+                max={getMaxDate()}
+                dir="ltr"
+              />
+              <p className="text-xs text-gray-500 mt-1">Max: {getMaxDate()}</p>
+            </div>
           </div>
-          <div className="flex flex-col flex-1">
-            <label className="font-semibold mb-1 text-sm">To:</label>
-            <input
-              type="date"
-              className="border rounded px-2 py-1"
-              value={dateTo ?? ""}
-              onChange={(e) => setDateTo(e.target.value || null)}
-              min={getMinDate()}
-              max={getMaxDate()}
-            />
-            <p className="text-xs text-gray-500 mt-1">Max: {getMaxDate()}</p>
-          </div>
+          
+          {/* Warning when dates are backwards */}
+          {dateFrom && dateTo && dateFrom > dateTo && (
+            <div className="mt-2 p-2 bg-yellow-100 border border-yellow-400 rounded text-sm text-yellow-800">
+              ⚠️ {t("filters.datesBackwardsWarning") || "Start date is after end date - dates will be auto-swapped when applied"}
+            </div>
+          )}
         </div>
 
-        {/* מדיה בלבד */}
+        {/* Media only */}
         <div className="flex items-center gap-2 mb-4">
-          <label className="font-semibold">Media only</label>
+          <label className="font-semibold">{t("filters.mediaOnly")}</label>
           <input
             type="checkbox"
             checked={mediaOnly}
@@ -407,7 +416,7 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
           />
         </div>
 
-        {/* כפתור אישור */}
+        {/* Accept button */}
         <button
           className={`w-full font-bold py-2 rounded transition-colors ${
             selectedCategories.length > 0 && selectedStatuses.length > 0 && selectedCriticalities.length > 0 && dateFrom && dateTo
@@ -416,24 +425,43 @@ export default function FiltersModal({ open, onClose, onApply, currentFilters }:
           }`}
           disabled={!(selectedCategories.length > 0 && selectedStatuses.length > 0 && selectedCriticalities.length > 0 && dateFrom && dateTo)}
           onClick={() => {
+            console.log("🔍 Filter Accept Button Clicked!");
+            console.log("Selected Categories:", selectedCategories);
+            console.log("Selected Statuses:", selectedStatuses);
+            console.log("Selected Criticalities:", selectedCriticalities);
+            console.log("Date From:", dateFrom);
+            console.log("Date To:", dateTo);
+            
             if (selectedCategories.length > 0 && selectedStatuses.length > 0 && selectedCriticalities.length > 0 && dateFrom && dateTo) {
-              onApply({
+              // 🔹 Auto-fix: Swap dates if they're backwards (common in RTL mode)
+              let finalDateFrom = dateFrom;
+              let finalDateTo = dateTo;
+              
+              if (dateFrom > dateTo) {
+                console.warn("⚠️ Dates were backwards - auto-swapping!");
+                finalDateFrom = dateTo;
+                finalDateTo = dateFrom;
+              }
+              
+              const filters = {
                 categories: selectedCategories,
                 location: selectedLocation,
                 status: selectedStatuses[0] as FilterStatus,
                 statusList: selectedStatuses,
                 mediaOnly,
-                dateFrom,
-                dateTo,
+                dateFrom: finalDateFrom,
+                dateTo: finalDateTo,
                 criticality: selectedCriticalities.length > 0 ? selectedCriticalities[0] : "",
                 criticalityList: selectedCriticalities,
-              });
+              };
+              console.log("🚀 Applying filters:", filters);
+              onApply(filters);
             }
           }}
         >
           {selectedCategories.length === 0 || selectedStatuses.length === 0 || selectedCriticalities.length === 0 || !dateFrom || !dateTo
-            ? "Please select Category, Status, Criticality Level, and Date Range"
-            : "ACCEPT"}
+            ? t("filters.pleaseSelect")
+            : t("filters.acceptButton")}
         </button>
       </div>
     </div>

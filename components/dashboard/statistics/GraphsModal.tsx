@@ -8,8 +8,10 @@ import { fetchGraphData, GraphTopic } from "@/lib/client/fetchers";
 import { Graph } from "@/lib/types";
 import RealtimeClock from "../common/RealtimeClock";
 import jsPDF from "jspdf";
+import { useLanguage } from "@/lib/i18n";
 
 export default function GraphsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useLanguage();
   const [graphs, setGraphs] = useState<Graph[]>([]);
   const [newGraph, setNewGraph] = useState<Partial<Graph>>({});
   const [isDownloading, setIsDownloading] = useState(false);
@@ -17,7 +19,7 @@ export default function GraphsModal({ open, onClose }: { open: boolean; onClose:
 
   const downloadGraphsAsPDF = async () => {
     if (graphs.length === 0) {
-      alert("No graphs to download");
+      alert(t("graphsModal.noGraphsToDownload"));
       return;
     }
     
@@ -184,9 +186,9 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
   };
 
   return (
-    <Modal title="Custom Graphs Dashboard" onClose={onClose}>
+    <Modal title={t("graphsModal.title")} onClose={onClose}>
       <div className="bg-white p-5 rounded-lg w-[1100px] max-h-[85vh] overflow-y-auto">
-        <h2 className="text-xl font-bold text-center mb-4">Select more options to add charts:</h2>
+        <h2 className="text-xl font-bold text-center mb-4">{t("graphsModal.selectOptions")}</h2>
             <RealtimeClock />
         {/* 🔽 בוררי אפשרויות */}
         <div className="flex flex-wrap gap-3 mb-5 justify-center items-center">
@@ -196,11 +198,11 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
             onChange={(e) => setNewGraph({ ...newGraph, category: e.target.value as Graph["category"] })}
             defaultValue=""
           >
-            <option value="" disabled>בחר קטגוריה</option>
-            <option value="garbage">פסולת</option>
-            <option value="lighting">תאורה</option>
-            <option value="tree">עצים</option>
-            <option value="hazard">hazard</option>
+            <option value="" disabled>{t("graphsModal.selectCategory")}</option>
+            <option value="garbage">{t("categories.garbage")}</option>
+            <option value="lighting">{t("categories.lighting")}</option>
+            <option value="tree">{t("categories.tree")}</option>
+            <option value="hazard">{t("categories.hazard")}</option>
 
           </select>
 
@@ -210,11 +212,11 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
             onChange={(e) => setNewGraph({ ...newGraph, timeRange: e.target.value as Graph["timeRange"] })}
             defaultValue=""
           >
-            <option value="" disabled>בחר טווח זמן</option>
-            <option value="month">חודש אחרון</option>
-            <option value="3month">3 חודשים</option>
-            <option value="6month">חצי שנה</option>
-            <option value="year">שנה אחרונה</option>
+            <option value="" disabled>{t("graphsModal.selectTimeRange")}</option>
+            <option value="month">{t("graphsModal.lastMonth")}</option>
+            <option value="3month">{t("graphsModal.threeMonths")}</option>
+            <option value="6month">{t("graphsModal.sixMonths")}</option>
+            <option value="year">{t("graphsModal.lastYear")}</option>
           </select>
 
 
@@ -231,11 +233,11 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
               });
             }}
           >
-            <option value="" disabled>בחר נושא</option>
-            <option value="frequency">תדירות לפי קטגוריה</option>
-            <option value="avgResolve">ממוצע זמן טיפול</option>
-            <option value="unresolved">לא סגורים</option>
-            <option value="resolvedVsTotal">סה״כ דיווחים מול סגורים</option>
+            <option value="" disabled>{t("graphsModal.selectTopic")}</option>
+            <option value="frequency">{t("graphsModal.frequency")}</option>
+            <option value="avgResolve">{t("graphsModal.avgResolve")}</option>
+            <option value="unresolved">{t("graphsModal.unresolved")}</option>
+            <option value="resolvedVsTotal">{t("graphsModal.resolvedVsTotal")}</option>
           </select>
 
 
@@ -251,7 +253,7 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
               });
             }}
           >
-            <option value="" disabled>בחר סוג גרף</option>
+            <option value="" disabled>{t("graphsModal.selectGraphType")}</option>
 
             {newGraph.topic &&
               allowedTypesPerTopic[newGraph.topic].map((g) => (
@@ -267,7 +269,7 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
             onClick={addGraph}
             className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
           >
-            ➕ צור גרף
+            {t("graphsModal.createGraph")}
           </button>
           
           {graphs.length > 0 && (
@@ -276,7 +278,7 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
               disabled={isDownloading}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              📄 {isDownloading ? "Generating PDF..." : "Download as PDF"}
+              📄 {isDownloading ? t("graphsModal.generatingPDF") : t("graphsModal.downloadPDF")}
             </button>
           )}
         </div>
@@ -360,7 +362,7 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
           onClick={onClose}
           className="mt-6 px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 block mx-auto"
         >
-          סגור
+          {t("graphsModal.close")}
         </button>
       </div>
     </Modal>

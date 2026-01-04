@@ -6,6 +6,7 @@ import { Anomaly, Report } from "@/lib/types";
 import AnomalyDetailsModal from "@/components/dashboard/anomalies/AnomalyDetailsModal";
 import { markAnomalyAsReviewed } from "@/lib/client/fetchers";
 import { getCurrentUserInfo } from "@/lib/client/fetchers";
+import { useLanguage } from "@/lib/i18n";
 
 export default function AnomaliesModal({
   open,
@@ -15,6 +16,7 @@ export default function AnomaliesModal({
   onClose: () => void;
   selectedArea: string | null;
 }) {
+  const { t, language } = useLanguage();
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -140,17 +142,17 @@ async function handleMarkReviewed(anomaly: Anomaly) {
 
   
   return (
-    <Modal title="🚨 Anomalies Detection System" onClose={onClose}>
+    <Modal title={`🚨 ${t("anomalies.title")}`} onClose={onClose}>
       <div className="w-[900px] max-h-[80vh] overflow-y-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 p-4 rounded-lg shadow-lg">
         {loading ? (
           <div className="text-center py-8">
             <div className="inline-block animate-spin text-4xl mb-3">⚙️</div>
-            <p className="text-gray-600 font-semibold">Loading anomalies...</p>
+            <p className="text-gray-600 font-semibold">{t("anomalies.loadingAnomalies")}</p>
           </div>
         ) : anomalies.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-2xl mb-2">✅</p>
-            <p className="text-gray-600 font-semibold">No anomalies detected. Great!</p>
+            <p className="text-gray-600 font-semibold">{t("anomalies.noAnomaliesDetected")}</p>
           </div>
         ) : (
           <>
@@ -160,7 +162,7 @@ async function handleMarkReviewed(anomaly: Anomaly) {
                 <div className="flex-1">
                   <input
                     type="text"
-                    placeholder="🔍 Search by title / area / status..."
+                    placeholder={`🔍 ${t("anomalies.searchPlaceholder")}`}
                     className="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-red-500 focus:outline-none transition-colors font-medium"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -168,7 +170,7 @@ async function handleMarkReviewed(anomaly: Anomaly) {
                 </div>
                 <div className="bg-red-100 border-2 border-red-300 rounded-lg px-4 py-2">
                   <span className="text-sm font-bold text-red-700">
-                    📍 {filtered.length} found
+                    📍 {filtered.length} {t("anomalies.found")}
                   </span>
                 </div>
               </div>
@@ -184,35 +186,35 @@ async function handleMarkReviewed(anomaly: Anomaly) {
                       className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
                       onClick={() => handleSort("type")}
                     >
-                      📁 Type {sortKey === "type" && (sortDir === "asc" ? "▲" : "▼")}
+                      📁 {t("anomalies.type")} {sortKey === "type" && (sortDir === "asc" ? "▲" : "▼")}
                     </th>
-                    <th className="p-3 text-left">📝 Description</th>
-                    <th className="p-3 text-center">📍 Area</th>
+                    <th className="p-3 text-left">📝 {t("anomalies.description")}</th>
+                    <th className="p-3 text-center">📍 {t("anomalies.area")}</th>
                     <th
                       className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
                       onClick={() => handleSort("reports")}
                     >
-                      📊 Reports {sortKey === "reports" && (sortDir === "asc" ? "▲" : "▼")}
+                      📊 {t("anomalies.reportsCount")} {sortKey === "reports" && (sortDir === "asc" ? "▲" : "▼")}
                     </th>
                     <th
                       className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
                       onClick={() => handleSort("status")}
                     >
-                      ✓ Status {sortKey === "status" && (sortDir === "asc" ? "▲" : "▼")}
+                      ✓ {t("anomalies.reviewStatus")} {sortKey === "status" && (sortDir === "asc" ? "▲" : "▼")}
                     </th>
                     <th
                       className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
                       onClick={() => handleSort("firstDetected")}
                     >
-                      📅 First Detected {sortKey === "firstDetected" && (sortDir === "asc" ? "▲" : "▼")}
+                      📅 {t("anomalies.firstDetected")} {sortKey === "firstDetected" && (sortDir === "asc" ? "▲" : "▼")}
                     </th>
                     <th
                       className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
                       onClick={() => handleSort("lastUpdated")}
                     >
-                      ⏰ Last Updated {sortKey === "lastUpdated" && (sortDir === "asc" ? "▲" : "▼")}
+                      ⏰ {t("anomalies.lastUpdated")} {sortKey === "lastUpdated" && (sortDir === "asc" ? "▲" : "▼")}
                     </th>
-                    <th className="p-3 text-center">⚙️ Actions</th>
+                    <th className="p-3 text-center">⚙️ {t("anomalies.actions")}</th>
                   </tr>
                 </thead>
 <tbody>
@@ -254,18 +256,18 @@ async function handleMarkReviewed(anomaly: Anomaly) {
               const { safeKey } = getCurrentUserInfo();
               
               if (!safeKey) {
-                alert("❌ User not authenticated. Please log in first.");
+                alert(t("anomalies.userNotAuthenticated"));
                 return;
               }
 
               const isReviewed = !!(a.reviewedBy && a.reviewedBy[safeKey]);
 
               if (isReviewed) {
-                alert("✅ You already reviewed this anomaly");
+                alert(t("anomalies.alreadyReviewedAlert"));
                 return;
               }
 
-              if (confirm("Have you reviewed this anomaly?")) {
+              if (confirm(t("reportsTable.confirmReview"))) {
                 handleMarkReviewed(a);
               }
             }}
@@ -282,14 +284,14 @@ async function handleMarkReviewed(anomaly: Anomaly) {
             {(() => {
               const { safeKey } = getCurrentUserInfo();
               const isReviewed = !!(a.reviewedBy && safeKey && a.reviewedBy[safeKey]);
-              return isReviewed ? "✅ Reviewed" : "⏳ Mark as Reviewed";
+              return isReviewed ? `✅ ${t("anomalies.reviewed")}` : `⏳ ${t("anomalies.markAsReviewed")}`;
             })()}
           </button>
         </td>
 
         {/* first date */}
         <td className="p-3 text-center text-xs text-gray-700">
-          {new Date(a.firstDetected).toLocaleDateString("en-US", {
+          {new Date(a.firstDetected).toLocaleDateString(language === "he" ? "he-IL" : "en-US", {
             month: "short",
             day: "numeric",
             year: "2-digit",
@@ -298,7 +300,7 @@ async function handleMarkReviewed(anomaly: Anomaly) {
 
         {/* last date */}
         <td className="p-3 text-center text-xs text-gray-700">
-          {new Date(a.lastUpdated).toLocaleDateString("en-US", {
+          {new Date(a.lastUpdated).toLocaleDateString(language === "he" ? "he-IL" : "en-US", {
             month: "short",
             day: "numeric",
             year: "2-digit",
@@ -328,7 +330,7 @@ async function handleMarkReviewed(anomaly: Anomaly) {
               setAnomalyDetailsOpen(true);
             }}
           >
-            🔍 View
+            🔍 {t("anomalies.viewDetails")}
           </button>
         </td>
       </tr>

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Modal from "@/components/dashboard/common/Modal";
 import { fetchReports } from "@/lib/client/fetchers";
 import { Report as DBReport, TimeRange } from "@/lib/types";
+import { useLanguage } from "@/lib/i18n";
 
 interface DetailedStatsTableModalProps {
   open: boolean;
@@ -37,6 +38,7 @@ export default function DetailedStatsTableModal({
   fromDate,
   toDate,
 }: DetailedStatsTableModalProps) {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<AggregatedRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -241,50 +243,50 @@ const renderColumns = () => {
     case "areas":
       return (
         <>
-          {th("Area", "name")}
-          {th("Total", "total")}
-          {th("Resolved", "resolved")}
-          {th("Pending", "pending")}
-          {th("In Progress", "inProgress")}
-          {th("Unresolved", "unresolved")}
-          {th("%Resolved", "resolvedPercent")}
-          {th("Avg Resolve (days)", "avgResolveDays")}
+          {th(t("detailedStats.area"), "name")}
+          {th(t("detailedStats.total"), "total")}
+          {th(t("detailedStats.resolved"), "resolved")}
+          {th(t("detailedStats.pending"), "pending")}
+          {th(t("detailedStats.inProgress"), "inProgress")}
+          {th(t("detailedStats.unresolved"), "unresolved")}
+          {th(t("detailedStats.percentResolved"), "resolvedPercent")}
+          {th(t("detailedStats.avgResolveDays"), "avgResolveDays")}
         </>
       );
 
     case "unresolved":
       return (
         <>
-          {th("Area", "name")}
-          {th("Total", "total")}
-          {th("Unresolved", "unresolved")}
-          {th("Unresolved %", "resolvedPercent")}
-          {th("Oldest Report (days)", "oldestOpenDays")}
-          {th("Avg Days Open", "avgResolveDays")}
+          {th(t("detailedStats.area"), "name")}
+          {th(t("detailedStats.total"), "total")}
+          {th(t("detailedStats.unresolved"), "unresolved")}
+          {th(t("detailedStats.unresolvedPercent"), "resolvedPercent")}
+          {th(t("detailedStats.oldestReportDays"), "oldestOpenDays")}
+          {th(t("detailedStats.avgDaysOpen"), "avgResolveDays")}
         </>
       );
 
     case "areasByResolve":
       return (
         <>
-          {th("Area", "name")}
-          {th("Total", "total")}
-          {th("Resolved", "resolved")}
-          {th("Avg Resolve (days)", "avgResolveDays")}
-          {th("%Resolved", "resolvedPercent")}
-          {th("Median Resolve (est)", "medianResolveDays")}
+          {th(t("detailedStats.area"), "name")}
+          {th(t("detailedStats.total"), "total")}
+          {th(t("detailedStats.resolved"), "resolved")}
+          {th(t("detailedStats.avgResolveDays"), "avgResolveDays")}
+          {th(t("detailedStats.percentResolved"), "resolvedPercent")}
+          {th(t("detailedStats.medianResolve"), "medianResolveDays")}
         </>
       );
 
     case "categoriesByResolve":
       return (
         <>
-          {th("Category", "name")}
-          {th("Total", "total")}
-          {th("Resolved", "resolved")}
-          {th("Unresolved", "unresolved")}
-          {th("%Resolved", "resolvedPercent")}
-          {th("Avg Resolve (days)", "avgResolveDays")}
+          {th(t("detailedStats.category"), "name")}
+          {th(t("detailedStats.total"), "total")}
+          {th(t("detailedStats.resolved"), "resolved")}
+          {th(t("detailedStats.unresolved"), "unresolved")}
+          {th(t("detailedStats.percentResolved"), "resolvedPercent")}
+          {th(t("detailedStats.avgResolveDays"), "avgResolveDays")}
         </>
       );
   }
@@ -369,20 +371,20 @@ const sortedRows = [...rows].sort((a, b) => {
   
   return (
     <Modal
-      title={`Details — ${
+      title={`${t("detailedStats.details")} — ${
         type === "areas"
-          ? "Top Areas by Number of Reports"
+          ? t("detailedStats.areas")
           : type === "unresolved"
-          ? "Top Unresolved Areas (%)"
+          ? t("detailedStats.unresolvedAreas")
           : type === "areasByResolve"
-          ? "Top Areas by Avg Resolve Time"
-          : "Top Categories by Avg Resolve Time"
+          ? t("detailedStats.areasByResolve")
+          : t("detailedStats.categoriesByResolve")
       }`}
       onClose={onClose}
     >
       <div className="bg-white p-5 rounded-lg w-[1100px] max-h-[85vh] overflow-y-auto">
         {loading ? (
-          <p className="text-center text-gray-500 py-5">Loading data...</p>
+          <p className="text-center text-gray-500 py-5">{t("detailedStats.loadingData")}</p>
         ) : (
           <table className="min-w-full table-fixed border-collapse border border-gray-300 text-sm">
             <thead className="bg-gray-100">
@@ -392,7 +394,7 @@ const sortedRows = [...rows].sort((a, b) => {
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="text-center py-4 text-gray-500">
-                    No data found.
+                    {t("detailedStats.noDataFound")}
                   </td>
                 </tr>
               ) : (

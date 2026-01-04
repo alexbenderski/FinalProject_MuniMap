@@ -1,8 +1,12 @@
 /**
  * Anomaly Threshold Calculator - Core Logic
  * 
- * Calculates how many reports are needed to trigger each anomaly type
- * based on the existing detection algorithms.
+ * MATCHES THE ACTUAL SERVER DETECTION ALGORITHMS EXACTLY
+ * 
+ * This uses the same logic as:
+ * - detectHighActivity.ts (spike detection)
+ * - detectSlowResolution.ts (slow response detection)
+ * - detectSpatialClusters.ts (geo cluster detection)
  */
 
 // ============================================
@@ -10,29 +14,36 @@
 // ============================================
 
 export type AnomalyType = "spike" | "slow_response" | "geo_cluster";
+export type ReportType = "garbage" | "lighting" | "tree" | "hazard";
 
-export interface HistoricalData {
-  monthlyReportCounts: number[];  // Last 6 months of report counts
-  monthlyAvgResolutionDays: number[];  // Last 6 months of avg resolution days
+export interface Bin {
+  ts: number;
+  count: number;
 }
 
-export interface ThresholdCalculation {
+export interface ThresholdResult {
   anomalyType: AnomalyType;
-  currentValue: number;  // Current month count or avg days
-  threshold: number;     // Minimum value to trigger anomaly
-  reportsNeeded: number; // How many more reports needed
+  reportType: ReportType;
+  area: string;
+  
+  // Current state
+  currentValue: number;
+  threshold: number;
+  isTriggered: boolean;
+  reportsNeeded: number;
+  
+  // Stats
+  baselineMean: number;
+  baselineStd: number;
+  mode: "cold" | "static" | "adaptive";
+  
+  // Breakdown
+  bins: number[];
   explanation: string;
-  details: {
-    baselineMean: number;
-    baselineStd: number;
-    zScoreTarget: number;
-    percentageTarget: number;
-    minReportsRule: number;
-  };
 }
 
 // ============================================
-// Statistical Utilities (from utils.ts)
+// EXACT COPY of calcDynamicThreshold from utils.ts
 // ============================================
 
 function mean(xs: number[]): number {
@@ -45,33 +56,32 @@ function std(xs: number[], m = mean(xs)): number {
   return Math.sqrt(v);
 }
 
-// ============================================
-// Threshold Calculation Logic
-// ============================================
-
 /**
- * Calculate dynamic threshold using the same logic as calcDynamicThreshold
- * from utils.ts
+ * EXACT COPY of calcDynamicThreshold from lib/server/anomalyDetector/utils.ts
  */
-function calcDynamicThreshold(historicalValues: number[]): {
+export function calcDynamicThreshold(bins: Bin[]): {
   threshold: number;
   baselineMean: number;
   baselineStd: number;
-  mode: string;
+  mode: "cold" | "static" | "adaptive";
 } {
-  if (historicalValues.length < 2) {
+  if (bins.length < 2) {
     return { threshold: Infinity, baselineMean: 0, baselineStd: 0, mode: "cold" };
   }
 
-  const baseSum = historicalValues.reduce((a, b) => a + b, 0);
+  const hist = bins.slice(0, -1).map(b => b.count);
+  const baseSum = hist.reduce((a, b) => a + b, 0);
+  
   if (baseSum < 10) {
-    return { threshold: 8, baselineMean: 0, baselineStd: 0, mode: "static" };
+    // DYNAMIC static mode: use historical mean * 1.3, with a minimum of 1.2
+    const μ = mean(hist.filter(v => v > 0)); // Mean of non-zero values
+    const dynamicThreshold = μ > 0 ? Math.max(μ * 1.3, 1.2) : 8;
+    return { threshold: dynamicThreshold, baselineMean: μ, baselineStd: 0, mode: "static" };
   }
 
-  const μ = mean(historicalValues);
-  const σ = std(historicalValues, μ);
+  const μ = mean(hist);
+  const σ = std(hist, μ);
   
-  // Constants from utils.ts
   const Z_K = 2.0;
   const P_MIN = 0.3;
   const C_MIN = 5;
@@ -85,181 +95,194 @@ function calcDynamicThreshold(historicalValues: number[]): {
   return { threshold, baselineMean: μ, baselineStd: σ, mode: "adaptive" };
 }
 
-/**
- * Calculate SPIKE anomaly threshold (detectHighActivity)
- * Triggers when current month report count exceeds dynamic threshold
- */
-export function calculateSpikeThreshold(data: HistoricalData): ThresholdCalculation {
-  const historicalCounts = data.monthlyReportCounts.slice(0, -1);
-  const currentCount = data.monthlyReportCounts[data.monthlyReportCounts.length - 1];
+// ============================================
+// SPIKE Calculation
+// ============================================
 
-  const { threshold, baselineMean, baselineStd, mode } = calcDynamicThreshold(historicalCounts);
-
-  const reportsNeeded = Math.max(0, Math.ceil(threshold - currentCount));
+export function calculateSpikeThreshold(
+  bins: Bin[],
+  reportType: ReportType,
+  area: string
+): ThresholdResult {
+  const currentCount = bins.length > 0 ? bins[bins.length - 1].count : 0;
+  const { threshold, baselineMean, baselineStd, mode } = calcDynamicThreshold(bins);
   
-  const μ = baselineMean;
-  const σ = baselineStd || 1;
-  const targetZScore = (threshold - μ) / σ;
-  const targetPercentage = μ ? ((threshold - μ) / μ) * 100 : 100;
-
+  const isTriggered = currentCount >= threshold;
+  const reportsNeeded = isTriggered ? 0 : Math.ceil(threshold - currentCount);
+  
+  const binCounts = bins.map(b => b.count);
+  
   let explanation = "";
   if (mode === "cold") {
-    explanation = "Not enough historical data (need at least 2 months).";
+    explanation = "❄️ COLD START: Not enough historical data (need at least 2 months).";
   } else if (mode === "static") {
-    explanation = `Low baseline activity (total=${historicalCounts.reduce((a, b) => a + b, 0)}). Static threshold of 8 reports applies.`;
+    const histSum = binCounts.slice(0, -1).reduce((a, b) => a + b, 0);
+    const μ = baselineMean || mean(binCounts.slice(0, -1).filter(v => v > 0));
+    const calculated = μ * 1.3;
+    explanation = `📊 STATIC MODE: Low historical activity (total=${histSum}).\n` +
+      `Historical mean: ${μ.toFixed(2)}\n` +
+      `Dynamic threshold: max(${μ.toFixed(2)} × 1.3, 1.2) = max(${calculated.toFixed(2)}, 1.2) = ${threshold.toFixed(2)}\n` +
+      `Need ${reportsNeeded} more reports this month.`;
   } else {
-    explanation = `Based on ${historicalCounts.length} months of data:\n` +
-      `• Baseline mean: ${μ.toFixed(1)} reports/month\n` +
-      `• Baseline std: ${σ.toFixed(1)}\n` +
-      `• Current month: ${currentCount} reports\n` +
-      `• Need: ${Math.ceil(threshold)} reports to trigger (${reportsNeeded} more)\n\n` +
-      `Threshold is max of:\n` +
-      `  - μ + 2σ = ${(μ + 2 * σ).toFixed(1)}\n` +
-      `  - μ × 1.3 = ${(μ * 1.3).toFixed(1)} (30% increase)\n` +
-      `  - μ + 5 = ${(μ + 5).toFixed(1)} (min 5 more)\n` +
-      `  - Hard minimum = 7`;
+    const μ = baselineMean;
+    const σ = baselineStd || 1;
+    explanation = `📈 ADAPTIVE: μ=${μ.toFixed(1)}, σ=${σ.toFixed(1)}\n` +
+      `Threshold=${Math.ceil(threshold)}, Current=${currentCount}\n` +
+      (isTriggered 
+        ? `✅ TRIGGERED!`
+        : `❌ Need ${reportsNeeded} more reports.`);
   }
 
   return {
     anomalyType: "spike",
+    reportType,
+    area,
     currentValue: currentCount,
-    threshold: Math.ceil(threshold),
+    threshold: mode === "cold" ? Infinity : Math.ceil(threshold),
+    isTriggered,
     reportsNeeded,
+    baselineMean,
+    baselineStd,
+    mode,
+    bins: binCounts,
     explanation,
-    details: {
-      baselineMean: μ,
-      baselineStd: σ,
-      zScoreTarget: targetZScore,
-      percentageTarget: targetPercentage,
-      minReportsRule: 7,
-    },
   };
 }
 
-/**
- * Calculate SLOW RESPONSE anomaly threshold (detectSlowResolution)
- * Triggers when average resolution time exceeds dynamic threshold
- */
-export function calculateSlowResponseThreshold(data: HistoricalData): ThresholdCalculation {
-  const historicalAvgs = data.monthlyAvgResolutionDays.slice(0, -1).filter(v => v > 0);
-  const currentAvg = data.monthlyAvgResolutionDays[data.monthlyAvgResolutionDays.length - 1];
+// ============================================
+// SLOW RESPONSE Calculation
+// ============================================
 
-  if (historicalAvgs.length < 2) {
+export function calculateSlowResponseThreshold(
+  avgDaysBins: Bin[],
+  reportType: ReportType,
+  area: string
+): ThresholdResult {
+  const currentAvg = avgDaysBins.length > 0 ? avgDaysBins[avgDaysBins.length - 1].count : 0;
+  const historyAvgs = avgDaysBins.slice(0, -1).map(b => b.count).filter(v => v > 0);
+  
+  const binValues = avgDaysBins.map(b => b.count);
+  
+  if (historyAvgs.length < 2) {
     return {
       anomalyType: "slow_response",
+      reportType,
+      area,
       currentValue: currentAvg,
       threshold: Infinity,
+      isTriggered: false,
       reportsNeeded: 0,
-      explanation: "Not enough historical data (need at least 2 months with resolved reports).",
-      details: {
-        baselineMean: 0,
-        baselineStd: 0,
-        zScoreTarget: 0,
-        percentageTarget: 0,
-        minReportsRule: 0,
-      },
+      baselineMean: 0,
+      baselineStd: 0,
+      mode: "cold",
+      bins: binValues,
+      explanation: `❄️ COLD START: Need ≥2 months with resolved reports.\n` +
+        `Currently have ${historyAvgs.length} months with data.`,
     };
   }
 
   if (currentAvg === 0) {
     return {
       anomalyType: "slow_response",
+      reportType,
+      area,
       currentValue: 0,
       threshold: Infinity,
+      isTriggered: false,
       reportsNeeded: 0,
-      explanation: "No resolved reports this month. Cannot calculate threshold.",
-      details: {
-        baselineMean: mean(historicalAvgs),
-        baselineStd: std(historicalAvgs),
-        zScoreTarget: 0,
-        percentageTarget: 0,
-        minReportsRule: 0,
-      },
+      baselineMean: mean(historyAvgs),
+      baselineStd: std(historyAvgs),
+      mode: "cold",
+      bins: binValues,
+      explanation: "⚠️ NO DATA: No resolved reports this month.",
     };
   }
 
-  const { threshold, baselineMean, baselineStd } = calcDynamicThreshold(historicalAvgs);
-
+  // Use EXACT same logic as server: calcDynamicThreshold with avgDaysBins
+  const { threshold, baselineMean, baselineStd, mode } = calcDynamicThreshold(avgDaysBins);
+  
+  const isTriggered = currentAvg >= threshold;
   const μ = baselineMean;
-  const σ = baselineStd || 1;
-  const targetZScore = (threshold - μ) / σ;
-  const targetPercentage = μ ? ((threshold - μ) / μ) * 100 : 100;
-
-  const isAnomaly = currentAvg >= threshold;
-  const explanation = `Based on ${historicalAvgs.length} months of data:\n` +
-    `• Baseline mean resolution time: ${μ.toFixed(1)} days\n` +
-    `• Baseline std: ${σ.toFixed(1)} days\n` +
-    `• Current month avg: ${currentAvg.toFixed(1)} days\n` +
-    `• Threshold: ${threshold.toFixed(1)} days\n\n` +
-    `${isAnomaly 
-      ? `✅ ANOMALY TRIGGERED! Current avg (${currentAvg.toFixed(1)}) exceeds threshold (${threshold.toFixed(1)}).`
-      : `❌ No anomaly. Current avg (${currentAvg.toFixed(1)}) below threshold (${threshold.toFixed(1)}).`
-    }\n\n` +
-    `Note: This anomaly depends on resolution times, not report count.\n` +
-    `To trigger: reports need to take ${Math.ceil(threshold)} days on average to resolve.`;
+  const σ = baselineStd;
+  
+  let explanation = "";
+  
+  if (mode === "cold") {
+    explanation = "❄️ COLD START: Not enough data.";
+  } else if (mode === "static") {
+    const histSum = historyAvgs.reduce((a, b) => a + b, 0);
+    const μ = baselineMean || mean(historyAvgs.filter(v => v > 0));
+    const calculated = μ * 1.3;
+    explanation = `📊 STATIC MODE: Low historical sum (${histSum.toFixed(2)} < 10 days).\n` +
+      `Historical mean: ${μ.toFixed(2)}d\n` +
+      `Dynamic threshold: max(${μ.toFixed(2)} × 1.3, 1.2) = max(${calculated.toFixed(2)}, 1.2) = ${threshold.toFixed(2)}d\n\n` +
+      `Historical months: [${historyAvgs.map(v => v.toFixed(2)).join(", ")}]\n` +
+      `Current: ${currentAvg.toFixed(2)}d\n` +
+      `Threshold: ${threshold.toFixed(2)}d\n\n` +
+      (isTriggered
+        ? `✅ TRIGGERED! ${currentAvg.toFixed(2)} ≥ ${threshold.toFixed(2)}`
+        : `❌ NOT TRIGGERED. Need avg ${(threshold - currentAvg).toFixed(2)}d more.`);
+  } else {
+    explanation = `📈 ADAPTIVE MODE:\n` +
+      `Historical months: [${historyAvgs.map(v => v.toFixed(2)).join(", ")}]\n` +
+      `Mean (μ): ${μ.toFixed(2)} days\n` +
+      `Std (σ): ${σ.toFixed(2)} days\n\n` +
+      `Threshold = max of:\n` +
+      `  • μ + 2σ = ${(μ + 2 * (σ || 1)).toFixed(2)}d\n` +
+      `  • μ × 1.3 = ${(μ * 1.3).toFixed(2)}d (30% slower)\n` +
+      `  • μ + 5 = ${(μ + 5).toFixed(2)}d\n` +
+      `  • Hard floor = 7d\n\n` +
+      `Final threshold: ${threshold.toFixed(2)}d\n` +
+      `Current: ${currentAvg.toFixed(2)}d\n\n` +
+      (isTriggered
+        ? `✅ TRIGGERED! ${currentAvg.toFixed(2)} ≥ ${threshold.toFixed(2)}`
+        : `❌ NOT TRIGGERED. Need avg ${(threshold - currentAvg).toFixed(2)}d more.`);
+  }
 
   return {
     anomalyType: "slow_response",
+    reportType,
+    area,
     currentValue: currentAvg,
-    threshold: threshold,
-    reportsNeeded: 0, // N/A for slow response (time-based, not count-based)
+    threshold: mode === "cold" ? Infinity : threshold,
+    isTriggered,
+    reportsNeeded: 0,
+    baselineMean: μ,
+    baselineStd: σ,
+    mode,
+    bins: binValues,
     explanation,
-    details: {
-      baselineMean: μ,
-      baselineStd: σ,
-      zScoreTarget: targetZScore,
-      percentageTarget: targetPercentage,
-      minReportsRule: 0,
-    },
   };
 }
 
-/**
- * Calculate GEO CLUSTER anomaly threshold (detectSpatialClusters)
- * Requires minimum 5 reports in a ~300m x 300m grid cell
- */
-export function calculateGeoClusterThreshold(data: HistoricalData): ThresholdCalculation {
-  const MIN_REPORTS_FOR_ANOMALY = 5;
-  const CELL_SIZE_METERS = 300;
-  
-  // For geo clusters, we need to estimate reports in a single cell
-  // This is a simplified calculation - actual detection is more complex
-  const currentMonthTotal = data.monthlyReportCounts[data.monthlyReportCounts.length - 1];
-  
-  const explanation = `Geographic clustering detection:\n\n` +
-    `• Grid cell size: ~${CELL_SIZE_METERS}m × ${CELL_SIZE_METERS}m\n` +
-    `• Minimum reports per cell: ${MIN_REPORTS_FOR_ANOMALY}\n` +
-    `• Current month total reports: ${currentMonthTotal}\n\n` +
-    `To trigger a geo cluster anomaly:\n` +
-    `1. Need at least ${MIN_REPORTS_FOR_ANOMALY} reports within a single ${CELL_SIZE_METERS}m × ${CELL_SIZE_METERS}m grid cell\n` +
-    `2. Cell must show significant increase vs its own history\n` +
-    `3. At least 15% of neighboring cells must also show elevated activity\n\n` +
-    `This depends on geographic distribution, not just total count.\n` +
-    `To test: generate ${MIN_REPORTS_FOR_ANOMALY}+ reports with same lat/lng or very close coordinates.`;
+// ============================================
+// GEO CLUSTER Calculation
+// ============================================
+
+export function calculateGeoClusterThreshold(
+  reportType: ReportType,
+  area: string,
+  reportsInCluster: number
+): ThresholdResult {
+  const MIN_REPORTS = 5;
+  const reportsNeeded = Math.max(0, MIN_REPORTS - reportsInCluster);
 
   return {
     anomalyType: "geo_cluster",
-    currentValue: currentMonthTotal,
-    threshold: MIN_REPORTS_FOR_ANOMALY,
-    reportsNeeded: Math.max(0, MIN_REPORTS_FOR_ANOMALY - currentMonthTotal),
-    explanation,
-    details: {
-      baselineMean: 0,
-      baselineStd: 0,
-      zScoreTarget: 0,
-      percentageTarget: 0,
-      minReportsRule: MIN_REPORTS_FOR_ANOMALY,
-    },
+    reportType,
+    area,
+    currentValue: reportsInCluster,
+    threshold: MIN_REPORTS,
+    isTriggered: reportsInCluster >= MIN_REPORTS,
+    reportsNeeded,
+    baselineMean: 0,
+    baselineStd: 0,
+    mode: "static",
+    bins: [],
+    explanation: `🗺️ GEO CLUSTER: Need ${MIN_REPORTS}+ reports in ~300m area.\n` +
+      `Current cluster: ${reportsInCluster} reports.\n` +
+      (reportsInCluster >= MIN_REPORTS
+        ? `✅ Could trigger if clustered!`
+        : `❌ Need ${reportsNeeded} more in same location.`),
   };
-}
-
-/**
- * Main calculation function - calculates all thresholds
- */
-export function calculateAllThresholds(data: HistoricalData): ThresholdCalculation[] {
-  return [
-    calculateSpikeThreshold(data),
-    calculateSlowResponseThreshold(data),
-    calculateGeoClusterThreshold(data),
-  ];
 }

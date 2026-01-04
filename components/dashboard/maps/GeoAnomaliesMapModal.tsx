@@ -8,6 +8,7 @@ import { subscribeToReports } from "@/lib/client/fetchers";
 import ReportDetailsModal from "@/components/dashboard/reports/ReportDetailsModal";
 import AnomalyDetailsModal from "@/components/dashboard/anomalies/AnomalyDetailsModal";
 import { getReportCriticalityType } from "@/lib/server/sla";
+import { useLanguage } from "@/lib/i18n";
 
 interface GeoAnomaliesMapModalProps {
   open: boolean;
@@ -27,6 +28,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAnomaliesMapModalProps) {
+  const { t } = useLanguage();
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || "AIzaSyDMdI_Hjf23zqjMTvUM1VTwn1BlB-tuSfQ",
   });
@@ -132,24 +134,25 @@ export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAn
   if (!open) return null;
 
   return (
-    <Modal title="🌍 Geo Cluster Anomalies Overview" onClose={onClose}>
-      <div className="w-[1200px]">
+    <Modal title={` ${t("geoAnomalies.title")} `} onClose={onClose}>
+
+      <div className="w-[1200px] ">
         {/* Category Filter Section */}
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg shadow-md mb-4">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-bold text-gray-700">🎯 Filter by Category:</h3>
+            <h3 className="text-sm font-bold text-gray-700">{t("geoAnomalies.filterByCategory")}</h3>
             <div className="flex gap-2">
               <button
                 onClick={selectAllCategories}
                 className="px-3 py-1 bg-green-500 text-white rounded-md text-xs hover:bg-green-600 transition font-semibold"
               >
-                ✓ Select All
+                {t("geoAnomalies.selectAll")}
               </button>
               <button
                 onClick={unselectAllCategories}
                 className="px-3 py-1 bg-gray-500 text-white rounded-md text-xs hover:bg-gray-600 transition font-semibold"
               >
-                ✗ Unselect All
+                {t("geoAnomalies.unselectAll")}
               </button>
             </div>
           </div>
@@ -184,9 +187,9 @@ export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAn
           
           <div className="mt-3 text-xs text-gray-600">
             {selectedCategories.length === 0 ? (
-              <span className="text-orange-600 font-semibold">⚠️ Please select at least one category to view clusters</span>
+              <span className="text-orange-600 font-semibold">{t("geoAnomalies.selectCategoryWarning")}</span>
             ) : (
-              <>Showing <span className="font-bold text-blue-600">{filteredAnomalies.length}</span> of {geoAnomalies.length} geo clusters</>
+              <>{t("geoAnomalies.showingClusters")} <span className="font-bold text-blue-600">{filteredAnomalies.length}</span> {t("geoAnomalies.ofClusters")} {geoAnomalies.length} {t("geoAnomalies.geoClusters")}</>
             )}
           </div>
         </div>
@@ -194,7 +197,7 @@ export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAn
         {/* Show Reports Toggle */}
         <div className="mb-3 bg-white p-3 rounded-lg shadow-md">
           <div className="flex items-center gap-3 mb-2">
-            <span className="text-sm font-semibold text-gray-700">📍 Display Options:</span>
+            <span className="text-sm font-semibold text-gray-700">{t("geoAnomalies.displayOptions")}</span>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -202,18 +205,18 @@ export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAn
                 onChange={(e) => setShowReports(e.target.checked)}
                 className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-700">Show Reports Inside Clusters</span>
+              <span className="text-sm text-gray-700">{t("geoAnomalies.showReportsInside")}</span>
             </label>
           </div>
           <div className="text-xs text-gray-600 space-y-1 ml-6">
-            <div>• <strong>For anomaly details:</strong> Click on the colored circle area</div>
-            <div>• <strong>For report details:</strong> Click individually on each report marker</div>
+            <div>• <strong>{t("geoAnomalies.forAnomalyDetails")}:</strong> {t("geoAnomalies.clickColoredCircle")}</div>
+            <div>• <strong>{t("geoAnomalies.forReportDetails")}:</strong> {t("geoAnomalies.clickReportMarker")}</div>
           </div>
         </div>
 
         {/* Map Section */}
         {!isLoaded ? (
-          <div className="p-10 text-center text-gray-500">Loading map...</div>
+          <div className="p-10 text-center text-gray-500">{t("geoAnomalies.loadingMap")}</div>
         ) : (
           <GoogleMap
             key={`map-${selectedCategories.join('-')}-${showReports}`}
@@ -288,7 +291,7 @@ export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAn
 
         {/* Legend */}
         <div className="mt-4 bg-gray-50 p-3 rounded-lg">
-          <h4 className="text-xs font-bold text-gray-700 mb-2">Legend:</h4>
+          <h4 className="text-xs font-bold text-gray-700 mb-2">{t("geoAnomalies.legend")}</h4>
           <div className="flex flex-wrap gap-3 text-xs">
             {Object.entries(CATEGORY_COLORS).map(([category, color]) => (
               <div key={category} className="flex items-center gap-2">

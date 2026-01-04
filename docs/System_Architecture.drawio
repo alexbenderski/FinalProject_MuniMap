@@ -1,0 +1,204 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="System Architecture" id="architecture">
+    <mxGraphModel dx="1400" dy="3100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="3100" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- CLIENT LAYER -->
+        <mxCell id="clientLayerBg" value="CLIENT LAYER" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=3;fontSize=16;fontStyle=1;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="50" y="40" width="1300" height="560" as="geometry" />
+        </mxCell>
+        
+        <!-- Next.js Web Application -->
+        <mxCell id="nextjsApp" value="Next.js Web Application&#xa;(Deployed on Netlify CDN)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1976D2;strokeWidth=2;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="90" width="1200" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Components Row -->
+        <mxCell id="loginPage" value="Login&#xa;Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#1565C0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="150" y="150" width="220" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="dashboardPage" value="Dashboard&#xa;Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#1565C0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="420" y="150" width="220" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="modalsComponents" value="Modals&#xa;Components" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#1565C0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="690" y="150" width="220" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="mapsComponents" value="Maps&#xa;Components" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#1565C0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="960" y="150" width="220" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Client-Side Firebase SDK -->
+        <mxCell id="firebaseSDK" value="Client-Side Firebase SDK&#xa;(Real-time subscriptions READ-ONLY, Authentication, Storage)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#64B5F6;strokeColor=#0D47A1;strokeWidth=2;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="320" width="1200" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Security Note -->
+        <mxCell id="securityNote" value="🔒 All Write Operations via API Routes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEB3B;strokeColor=#F57F17;strokeWidth=2;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="430" width="1200" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow from Client to API -->
+        <mxCell id="clientToApi" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#1565C0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="clientLayerBg" target="apiLayerBg">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="620" as="sourcePoint" />
+            <mxPoint x="750" y="570" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- API LAYER -->
+        <mxCell id="apiLayerBg" value="API LAYER&#xa;Secure Server-Side Processing" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=3;fontSize=16;fontStyle=1;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="50" y="640" width="1300" height="390" as="geometry" />
+        </mxCell>
+        
+        <!-- Next.js API Routes -->
+        <mxCell id="apiRoutes" value="Next.js API Routes (/api/*)&#xa;All Database Operations via Server API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;strokeWidth=2;fontSize=14;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="100" y="690" width="1200" height="290" as="geometry" />
+        </mxCell>
+        
+        <!-- First Row of API Routes -->
+        <mxCell id="apiReports" value="/reports&#xa;GET, PATCH, DELETE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCC80;strokeColor=#E65100;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="750" width="200" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="apiAnomalies" value="/anomalies&#xa;GET, PATCH" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCC80;strokeColor=#E65100;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="750" width="200" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="apiCities" value="/cities&#xa;GET" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCC80;strokeColor=#E65100;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="610" y="750" width="200" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="apiArchive" value="/archive/export&#xa;POST" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCC80;strokeColor=#E65100;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="750" width="200" height="70" as="geometry" />
+        </mxCell>
+        
+        <!-- Second Row of API Routes - Statistics -->
+        <mxCell id="apiStatsReports" value="/statistics/&#xa;reports-stats&#xa;POST" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="150" y="860" width="160" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="apiStatsResolution" value="/statistics/&#xa;resolution-time&#xa;POST" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="340" y="860" width="160" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="apiStatsGraph" value="/statistics/&#xa;graph-data&#xa;POST" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="530" y="860" width="160" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="apiStatsDetailed" value="/statistics/&#xa;detailed&#xa;POST" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="720" y="860" width="160" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="apiStatsTransition" value="/statistics/&#xa;status-transition&#xa;POST" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="910" y="860" width="160" height="70" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow from API to Server -->
+        <mxCell id="apiToServer" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#E65100;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="apiLayerBg" target="serverLayerBg">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="1110" as="sourcePoint" />
+            <mxPoint x="750" y="1060" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- SERVER LAYER -->
+        <mxCell id="serverLayerBg" value="SERVER LAYER" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=3;fontSize=16;fontStyle=1;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1110" width="1300" height="620" as="geometry" />
+        </mxCell>
+        
+        <!-- Background Detection Server -->
+        <mxCell id="detectionServer" value="Background Detection Server (Express.js)&#xa;server/index.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#7B1FA2;strokeWidth=2;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1160" width="1200" height="520" as="geometry" />
+        </mxCell>
+        
+        <!-- Anomaly Detector Engine -->
+        <mxCell id="detectorEngine" value="Anomaly Detector Engine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#6A1B9A;strokeWidth=2;fontSize=13;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1230" width="1100" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- Three Detectors -->
+        <mxCell id="detectHighActivity" value="detectHigh&#xa;Activity&#xa;(Spikes)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BA68C8;strokeColor=#4A148C;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="1290" width="260" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="detectSlowResolution" value="detectSlow&#xa;Resolution&#xa;(SLA)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BA68C8;strokeColor=#4A148C;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="1290" width="260" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="detectSpatialClusters" value="detectSpatial&#xa;Clusters&#xa;(Geographic)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BA68C8;strokeColor=#4A148C;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="910" y="1290" width="260" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Services Row -->
+        <mxCell id="emailService" value="Email Service&#xa;(nodemailer)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#6A1B9A;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="1540" width="260" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="archiveService" value="Archive Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#6A1B9A;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="1540" width="260" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cleanupService" value="Cleanup Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#6A1B9A;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="910" y="1540" width="260" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow from Server to Data -->
+        <mxCell id="serverToData" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#7B1FA2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="serverLayerBg" target="dataLayerBg">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="1810" as="sourcePoint" />
+            <mxPoint x="750" y="1760" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- DATA LAYER -->
+        <mxCell id="dataLayerBg" value="DATA LAYER&#xa;(Firebase Cloud Services)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;strokeWidth=3;fontSize=16;fontStyle=1;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1810" width="1300" height="620" as="geometry" />
+        </mxCell>
+        
+        <!-- Firebase Services -->
+        <mxCell id="realtimeDB" value="Realtime&#xa;Database" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#1B5E20;strokeWidth=2;fontSize=13;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1910" width="340" height="460" as="geometry" />
+        </mxCell>
+        
+        <!-- Realtime DB Children -->
+        <mxCell id="reportsNode" value="Reports/&#xa;{category}&#xa;/{id}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81C784;strokeColor=#1B5E20;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="160" y="1990" width="260" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="anomaliesNode" value="Anomalies/&#xa;Active&#xa;Anomalies" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81C784;strokeColor=#1B5E20;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="160" y="2110" width="260" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="archivedNode" value="Archived&#xa;Reports/&#xa;{year}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81C784;strokeColor=#1B5E20;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="160" y="2230" width="260" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Firestore -->
+        <mxCell id="firestore" value="Firestore" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#1B5E20;strokeWidth=2;fontSize=13;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="530" y="1910" width="340" height="460" as="geometry" />
+        </mxCell>
+        
+        <!-- Firestore Children -->
+        <mxCell id="usersCollection" value="users&#xa;collection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81C784;strokeColor=#1B5E20;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="570" y="1990" width="260" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Cloud Storage -->
+        <mxCell id="cloudStorage" value="Cloud Storage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#1B5E20;strokeWidth=2;fontSize=13;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="940" y="1910" width="340" height="460" as="geometry" />
+        </mxCell>
+        
+        <!-- Cloud Storage Children -->
+        <mxCell id="reportImages" value="report&#xa;images" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81C784;strokeColor=#1B5E20;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="980" y="1990" width="260" height="80" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

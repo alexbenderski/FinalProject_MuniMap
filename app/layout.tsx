@@ -34,13 +34,18 @@
 // }
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
+import { LanguageProvider } from "@/lib/i18n";
 
 export const dynamic = 'force-dynamic';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="overflow-x-auto overflow-y-hidden"><AuthProvider>{children}</AuthProvider></body>
+    <html lang="en" dir="ltr" suppressHydrationWarning>
+      <body className="overflow-x-auto overflow-y-hidden">
+        <LanguageProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </LanguageProvider>
+      </body>
     </html>
   );
 }

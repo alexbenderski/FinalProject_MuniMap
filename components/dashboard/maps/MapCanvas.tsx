@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import {
-  GoogleMap, //main component that draws the map, working with center,zoom levels and events handle
-  Polygon, //draws bounds of some area by the lat/lng
-  Marker, //for the icons
-  useJsApiLoader, //special hook that loads the js file of the google maps and ensures that api loaded before the map drawing
+  GoogleMap,
+  Polygon,
+  Marker,
+  useJsApiLoader,
 } from "@react-google-maps/api";
 import { subscribeToReports } from "@/lib/client/fetchers";
 import ReportDetailsModal from "@/components/dashboard/reports/ReportDetailsModal";
@@ -12,6 +12,7 @@ import { Report } from "@/lib/types";
 import { useCityBoundary } from "@/lib/client/hooks/useCityBoundary";
 import { useFilteredReports } from "@/lib/client/hooks/useFilteredReports";
 import { getReportCriticalityType } from "@/lib/server/sla";
+import { useLanguage } from "@/lib/i18n";
 
 const containerStyle = { width: "100%", height: "100%" };
 const defaultCenter = { lat: 32.794, lng: 34.989 };
@@ -54,10 +55,10 @@ export default function MapCanvas({
 }) {
   console.log("%cMAPCANVAS LOADED", "color:orange;font-size:20px");
 
-  //useState because this one will changes over time so when we render we want to save the states after the rendering for each.
-  const [map, setMap] = useState<google.maps.Map | null>(null); //store map instance. can used to call functions like fitbounds / panTo
-  const [reports, setReports] = useState<Report[]>([]); //array of reports from the db
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null); //report that was selected on the map
+  const { t } = useLanguage();
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   // const [cityBoundary, setCityBoundary] = useState<
   //   { lat: number; lng: number }[] | null
@@ -70,7 +71,13 @@ export default function MapCanvas({
   });
 
   // 🔹 Subscribe to real-time reports updates
+  // Use refs to avoid re-subscribing when callbacks change
+  const cityRef = useRef(city);
+  cityRef.current = city;
+  
   useEffect(() => {
+    if (!city) return;
+
     const unsubscribe = subscribeToReports((data) => {
       const all: Report[] = [];
 
@@ -82,21 +89,23 @@ export default function MapCanvas({
         );
       });
 
-      // ✅ Filter by city
-      const filtered = all.filter((r) => r.area === city);
+      // ✅ Filter by city (use ref to avoid dependency)
+      const filtered = all.filter((r) => r.area === cityRef.current);
+      console.log(`🗺️ MapCanvas: Loaded ${filtered.length} reports for ${cityRef.current}`);
       setReports(filtered);
-
-      // Notify parent of report updates
-      if (onReportsUpdate) {
-        onReportsUpdate(filtered);
-      }
+      
+      // Note: onReportsUpdate is called by the second useEffect that watches filteredReports
+      // This prevents unnecessary re-renders when only raw reports change but filtered stay same
     });
 
     return () => unsubscribe();
-  }, [city, onReportsUpdate]);
+  }, [city]); // Only re-subscribe when city changes
+
+  // 🔹 Store callback in ref to avoid triggering effect when callback identity changes
+  const onReportsUpdateRef = useRef(onReportsUpdate);
+  onReportsUpdateRef.current = onReportsUpdate;
 
   // 🔹 סינון הדיווחים — רק אם יש אזור וגם סוג נבחר
-
 
 const { filteredReports } = useFilteredReports(reports, {
   selectedArea,
@@ -117,18 +126,18 @@ useEffect(() => {
   const prev = JSON.stringify(prevReportsRef.current);
   const next = JSON.stringify(filteredReports);
 
-  if (prev !== next && onReportsUpdate) {
-    onReportsUpdate(filteredReports);
+  if (prev !== next && onReportsUpdateRef.current) {
+    onReportsUpdateRef.current(filteredReports);
     prevReportsRef.current = filteredReports;
   }
-}, [filteredReports, onReportsUpdate]);
+}, [filteredReports]); // Removed onReportsUpdate from deps - using ref instead
 
 
   return (
     <div className="flex-1 relative w-full h-full min-w-0">
       {!isLoaded ? (
         <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-          Loading map…
+          {t("dashboard.loadingMap")}
         </div>
       ) : (
         <>
@@ -152,22 +161,22 @@ useEffect(() => {
               />
             )}
 
-            {/* מציג אייקונים רק אם הפילטרים הוחלו */}
+            {/* Show filtered reports ONLY when filters are applied */}
             {filtersApplied && filteredReports.map((r) => (
-            <Marker
-              key={r.id}
-              position={{ lat: r.lat, lng: r.lng }}
-              title={r.address ? r.address : (r.area || "לא נמצאה כתובת")}
-              onClick={() => {
-                setSelectedReport(r);
-                setIsModalOpen(true);
-              }}
-              icon={{
-                url: `/icons/${getReportCriticalityType(r)}_${r.type?.toLowerCase() || "garbage"}.png`,
-                scaledSize: new google.maps.Size(22, 22),
-              }}
-            />
-          ))}
+              <Marker
+                key={r.id}
+                position={{ lat: r.lat, lng: r.lng }}
+                title={r.address ? r.address : (r.area || t("map.addressNotFound"))}
+                onClick={() => {
+                  setSelectedReport(r);
+                  setIsModalOpen(true);
+                }}
+                icon={{
+                  url: `/icons/${getReportCriticalityType(r)}_${r.type?.toLowerCase() || "garbage"}.png`,
+                  scaledSize: new google.maps.Size(22, 22),
+                }}
+              />
+            ))}
 
 
             {/* חלונית מידע */}
@@ -180,13 +189,22 @@ useEffect(() => {
             )}
           </GoogleMap>
           
-          {/* Overlay message when filters not applied */}
+          {/* Info message when filters not applied */}
           {!filtersApplied && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center bg-white/90 p-6 rounded-lg shadow-lg">
-                <p className="text-gray-700 text-lg font-semibold">Apply filters to view reports</p>
-                <p className="text-gray-500 text-sm mt-2">Select Category, Status, Criticality Level, and Date Range</p>
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 pointer-events-none z-10">
+              <div className="text-center bg-amber-500/90 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+                <p className="font-semibold">🔍 {t("map.noFiltersApplied") || "No filters applied"}</p>
+                <p className="text-xs mt-1">{t("map.applyFiltersToView") || "Apply filters to view reports on the map"}</p>
               </div>
+            </div>
+          )}
+          
+          {/* Show count when filters ARE applied */}
+          {filtersApplied && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 pointer-events-none z-10">
+                <div className="text-center bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+                <p className="font-semibold">📍 {filteredReports.length} {t("map.reportsVisible") || "reports visible"}</p>
+                </div>
             </div>
           )}
         </>

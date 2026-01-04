@@ -1,9 +1,83 @@
-import { getAnomaliesFromDB } from "@/lib/server/anomalies-service";
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/server/firebase-admin";
+import { Anomaly } from "@/lib/types";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// GET - Fetch all active anomalies
 export async function GET() {
-  const anomalies = await getAnomaliesFromDB();
-  return Response.json(anomalies);
+  try {
+    const snapshot = await db.ref("Anomalies/ActiveAnomalies").once("value");
+    
+    if (!snapshot.exists()) {
+      return NextResponse.json([]);
+    }
+
+    const data = snapshot.val();
+    const anomalies: Anomaly[] = Object.entries(data).map(
+      ([firebaseKey, anomalyData]) => ({
+        firebaseKey,
+        ...(anomalyData as Omit<Anomaly, "firebaseKey">),
+      })
+    );
+
+    // Sort by lastUpdated descending
+    anomalies.sort((a, b) => b.lastUpdated - a.lastUpdated);
+
+    return NextResponse.json(anomalies);
+  } catch (error) {
+    console.error("Error fetching anomalies:", error);
+    return NextResponse.json({ error: "Failed to fetch anomalies" }, { status: 500 });
+  }
+}
+
+// PATCH - Mark anomaly as reviewed
+export async function PATCH(req: NextRequest) {
+  try {
+    const { firebaseKey, userEmail, alreadyReviewed, existingTimestamp } = await req.json();
+
+    if (!firebaseKey || !userEmail) {
+      return NextResponse.json(
+        { error: "Missing firebaseKey or userEmail" },
+        { status: 400 }
+      );
+    }
+
+    // Check if already reviewed (passed from client)
+    if (alreadyReviewed && existingTimestamp) {
+      return NextResponse.json({
+        alreadyReviewed: true,
+        email: userEmail,
+        timestamp: existingTimestamp
+      });
+    }
+
+    const safeKey = userEmail.replace(/\./g, "_");
+    const anomalyPath = `Anomalies/ActiveAnomalies/${firebaseKey}`;
+    const nodeRef = db.ref(anomalyPath);
+
+    const snapshot = await nodeRef.once("value");
+    if (!snapshot.exists()) {
+      return NextResponse.json(
+        { error: `Anomaly not found: ${anomalyPath}` },
+        { status: 404 }
+      );
+    }
+
+    const timestamp = Date.now();
+    
+    await nodeRef.child("reviewedBy").child(safeKey).set(timestamp);
+
+    console.log("[API] Marked anomaly as reviewed:", anomalyPath, userEmail);
+
+    return NextResponse.json({
+      alreadyReviewed: false,
+      email: userEmail,
+      timestamp
+    });
+  } catch (error) {
+    console.error("Error marking anomaly as reviewed:", error);
+    return NextResponse.json({ error: "Failed to mark anomaly as reviewed" }, { status: 500 });
+  }
 }

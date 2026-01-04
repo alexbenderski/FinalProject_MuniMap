@@ -5,6 +5,8 @@ import { Anomaly, Report } from "@/lib/types";
 import { getCurrentUserInfo } from "@/lib/client/fetchers";
 import ReportsTableModal from "@/components/dashboard/reports/ReportsTableModal";
 import Tooltip from "../common/Tooltip";
+import { useLanguage } from "@/lib/i18n";
+
 
 interface AnomalyDetailsModalProps {
   open: boolean;
@@ -21,6 +23,7 @@ export default function AnomalyDetailsModal({
   reports,
   onReviewUpdate,
 }: AnomalyDetailsModalProps) {
+  const { t } = useLanguage();
   const [localAnomaly, setLocalAnomaly] = useState(anomaly);
   const [anomalyDetailsOpen, setAnomalyDetailsOpen] = useState(true);
   const [reportsTableOpen, setReportsTableOpen] = useState(false);
@@ -35,7 +38,7 @@ export default function AnomalyDetailsModal({
 
   return (
     <>
-      <Modal title="🚨 Anomaly Details" onClose={onClose}>
+      <Modal title={`🚨 ${t("anomalyDetails.title")}`} onClose={onClose}>
         <div className="max-w-4xl bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Anomaly Details Section - Collapsible */}
           <div className="border-b mb-3 bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-l-red-500">
@@ -46,7 +49,7 @@ export default function AnomalyDetailsModal({
             >
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-lg text-red-700">
-                  🚨 {localAnomaly.title || "Anomaly Information"}
+                  🚨 {localAnomaly.title || t("anomalyDetails.anomalyInformation")}
                 </h2>
                 <span
                   className={`transform transition-transform duration-300 text-red-700 font-bold ${
@@ -62,18 +65,18 @@ export default function AnomalyDetailsModal({
                 onClick={async (e) => {
                   e.stopPropagation();
                   if (!currentUserKey) {
-                    alert("No user found");
+                    alert(t("anomalyDetails.noUserFound"));
                     return;
                   }
 
                   const alreadyReviewed = !!localAnomaly.reviewedBy?.[currentUserKey];
 
                   if (alreadyReviewed) {
-                    alert("You already reviewed this anomaly ✅");
+                    alert(t("anomalyDetails.alreadyReviewed"));
                     return;
                   }
 
-                  if (!confirm("Have you reviewed this anomaly?")) return;
+                  if (!confirm(t("anomalyDetails.confirmReview"))) return;
 
                   try {
                     const { markAnomalyAsReviewed } = await import(
@@ -82,7 +85,7 @@ export default function AnomalyDetailsModal({
                     const result = await markAnomalyAsReviewed(localAnomaly);
 
                     if (result.alreadyReviewed) {
-                      alert("Already reviewed");
+                      alert(t("anomalyDetails.alreadyReviewed"));
                       return;
                     }
 
@@ -100,11 +103,11 @@ export default function AnomalyDetailsModal({
                       onReviewUpdate(updatedAnomaly);
                     }
 
-                    alert(`✅ Marked as reviewed by ${result.email}`);
+                    alert(`${t("anomalyDetails.markedAsReviewed")} ${result.email}`);
                   } catch (err) {
                     console.error("Error marking as reviewed:", err);
                     alert(
-                      `❌ Failed to mark as reviewed: ${
+                      `${t("anomalyDetails.failedToMark")} ${
                         err instanceof Error ? err.message : "Unknown error"
                       }`
                     );
@@ -120,8 +123,8 @@ export default function AnomalyDetailsModal({
                 }
               >
                 {currentUserKey && localAnomaly.reviewedBy?.[currentUserKey]
-                  ? "✅ Reviewed"
-                  : "⏳ Mark as Reviewed"}
+                  ? t("anomalyDetails.reviewed")
+                  : t("anomalyDetails.markAsReviewed")}
               </button>
             </div>
 
@@ -145,7 +148,7 @@ export default function AnomalyDetailsModal({
                       <li className="flex items-center gap-2">
                         <span className="text-lg">📊</span>
                         <span>
-                          <strong>Current Reports:</strong>{" "}
+                          <strong>{t("anomalyDetails.currentReports")}</strong>{" "}
                           {localAnomaly.metrics.currentReports}
                         </span>
                         <Tooltip message="Number of reports in current period" />
@@ -275,7 +278,7 @@ export default function AnomalyDetailsModal({
                 onClick={() => setReportsTableOpen(true)}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-lg px-4 py-3 shadow-md hover:shadow-lg transition-all"
               >
-                📋 View Related Reports ({reports.length})
+                {t("anomalyDetails.viewRelatedReports")} ({reports.length})
               </button>
             </div>
           )}
@@ -286,7 +289,7 @@ export default function AnomalyDetailsModal({
               onClick={onClose}
               className="bg-gray-300 hover:bg-gray-400 px-6 py-2 rounded font-semibold transition-colors"
             >
-              Close
+              {t("anomalyDetails.close")}
             </button>
           </div>
         </div>

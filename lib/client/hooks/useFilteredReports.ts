@@ -27,28 +27,34 @@ export function useFilteredReports(
   }
 ) {
   const filteredReports = useMemo(() => {
-    return reports.filter((r) => {
+    const fromMs = dateFrom ? new Date(dateFrom).getTime() : null;
+    // Add 23:59:59.999 to include the entire "to" day
+    const toMs = dateTo ? new Date(dateTo).getTime() + (24 * 60 * 60 * 1000 - 1) : null;
+
+    const filtered = reports.filter((r) => {
+      // Area filter - match city
       const areaMatch = !selectedArea || r.area === selectedArea;
+      
+      // Type/category filter
       const typeMatch =
         selectedTypes.length === 0 || selectedTypes.includes(r.type ?? "");
 
-      // Handle multiple status selection
+      // Status filter - handle multiple status selection
       const statusMatch = statusList && statusList.length > 0
         ? statusList.includes(r.status)
         : status === "all"
           ? r.status !== "resolved"
           : r.status === status;
 
-      const fromMs = dateFrom ? new Date(dateFrom).getTime() : null;
-      const toMs = dateTo ? new Date(dateTo).getTime() : null;
-
+      // Time/date filter
       const timeMatch =
         (!fromMs || r.timestamp >= fromMs) &&
         (!toMs || r.timestamp <= toMs);
 
+      // Media filter
       const mediaMatch = !mediaOnly || r.media === true;
 
-      // Handle multiple criticality selection using actual SLA calculation
+      // Criticality filter using actual SLA calculation
       let criticalityMatch = true;
       if (criticalityList && criticalityList.length > 0) {
         const reportColor = getReportCriticalityType(r);
@@ -67,6 +73,8 @@ export function useFilteredReports(
         criticalityMatch
       );
     });
+
+    return filtered;
   }, [reports, selectedArea, selectedTypes, status, statusList, dateFrom, dateTo, mediaOnly, criticality, criticalityList]);
 
   return { filteredReports };

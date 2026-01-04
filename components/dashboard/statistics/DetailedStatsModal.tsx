@@ -1,12 +1,13 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Modal from "@/components/dashboard/common/Modal";
-import { fetchDetailedStatistics, fetchReports } from "@/lib/client/fetchers";
+import { fetchDetailedStatistics, subscribeToReports } from "@/lib/client/fetchers";
 import { DetailedStats, TimeRange, AreaStats, CategoryStats, Report } from "@/lib/types";
 import RealtimeClock from "../common/RealtimeClock";
 import Tooltip from "../common/Tooltip";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { useLanguage } from "@/lib/i18n";
 
 
 interface CityHealthMetrics {
@@ -53,6 +54,7 @@ export default function DetailedStatsModal({
   fromDate?: string;
   toDate?: string;
 }) {
+  const { t } = useLanguage();
   const [, setData] = useState<DetailedStats | null>(null);
   const [cityHealth, setCityHealth] = useState<CityHealthMetrics | null>(null);
   const [categoryBottlenecks, setCategoryBottlenecks] = useState<CategoryBottleneck[]>([]);
@@ -61,6 +63,63 @@ export default function DetailedStatsModal({
   const [loading, setLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const dashboardRef = useRef<HTMLDivElement>(null);
+
+  // Store time range values in refs for real-time callback
+  const timeRangeRef = useRef(timeRange);
+  const fromDateRef = useRef(fromDate);
+  const toDateRef = useRef(toDate);
+  
+  useEffect(() => {
+    timeRangeRef.current = timeRange;
+    fromDateRef.current = fromDate;
+    toDateRef.current = toDate;
+  }, [timeRange, fromDate, toDate]);
+
+  // Calculate city health metrics from reports array
+  const calculateMetricsFromReports = useCallback((reports: Report[]) => {
+    // Filter non-deleted reports
+    const activeReports = reports.filter(r => !r.deleted);
+    
+    // Count by status
+    const totalReports = activeReports.length;
+    const openReports = activeReports.filter(r => r.status === "open").length;
+    const pendingReports = activeReports.filter(r => r.status === "pending").length;
+    const inProgressReports = activeReports.filter(r => r.status === "in progress").length;
+    const resolvedReports = activeReports.filter(r => r.status === "resolved").length;
+    const unresolvedReports = openReports + pendingReports + inProgressReports;
+
+    // Count by category
+    const categoryCounts: Record<string, number> = {};
+    activeReports.forEach(report => {
+      const category = report.type || "other";
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+    });
+
+    // Calculate rates
+    const incomingRate = totalReports / 30;
+    const resolvedRate = resolvedReports / 30;
+    const backlogGrowth = incomingRate - resolvedRate;
+    const backlogTrendCalc = incomingRate > 0 ? (backlogGrowth / incomingRate) * 100 : 0;
+
+    setCityHealth({
+      totalOpenReports: unresolvedReports,
+      unresolvedPercent: totalReports > 0 ? (unresolvedReports / totalReports) * 100 : 0,
+      avgResolutionTime: 0, // Will be set from detailed stats
+      slaBreachRate: 0,
+      trendVsPrevious: 0,
+      incomingPerDay: incomingRate,
+      resolvedPerDay: resolvedRate,
+      backlogTrend: backlogTrendCalc,
+    });
+
+    // Update category bottlenecks with real counts
+    setCategoryBottlenecks(prev => prev.map(b => ({
+      ...b,
+      reportCount: categoryCounts[b.category.toLowerCase()] || 0,
+    })));
+
+    setLoading(false);
+  }, []);
 
   const downloadDashboardAsPDF = async () => {
     if (!dashboardRef.current) return;
@@ -141,26 +200,37 @@ export default function DetailedStatsModal({
     }
   };
 
+  // Real-time subscription for live updates
+  useEffect(() => {
+    if (!open) return;
+
+    const unsubscribe = subscribeToReports((data) => {
+      const all: Report[] = [];
+
+      Object.entries(data).forEach(([type, group]) => {
+        Object.entries(group as Record<string, Omit<Report, "type" | "id">>).forEach(
+          ([id, r]) => {
+            all.push({ ...r, type, id } as Report);
+          }
+        );
+      });
+
+      calculateMetricsFromReports(all);
+    });
+
+    return () => unsubscribe();
+  }, [open, calculateMetricsFromReports]);
+
+  // Initial load of detailed statistics (for resolution times, etc.)
   useEffect(() => {
     async function loadStats() {
       setLoading(true);
       const stats = await fetchDetailedStatistics(timeRange, fromDate, toDate);
-      const reportsData = await fetchReports();
       setData(stats);
 
-      // ✅ Count reports by category from actual data
+      // Count reports by category from live reports in state
       const categoryCounts: Record<string, number> = {};
-      if (reportsData) {
-        Object.entries(reportsData).forEach(([type, group]) => {
-          Object.values(group as Record<string, Report>).forEach((report) => {
-            if (!report.deleted) {
-              const category = type || "other";
-              categoryCounts[category] = (categoryCounts[category] || 0) + 1;
-            }
-          });
-        });
-      }
-
+      
       // Process city health metrics
       const totalReports = stats?.topAreas?.reduce((sum: number, a: AreaStats) => sum + a.total, 0) || 0;
       const unresolvedReports = stats?.topUnresolvedAreas?.reduce((sum: number, a: AreaStats) => sum + (a.total * parseFloat(a.unresolvedPercent as string) / 100), 0) || 0;
@@ -284,7 +354,7 @@ export default function DetailedStatsModal({
     if (cityHealth && cityHealth.unresolvedPercent > 30) {
       insights.push({
         severity: "high",
-        message: `High unresolved rate (${cityHealth.unresolvedPercent.toFixed(1)}%) - Consider allocating more resources`,
+        message: `${t("cityHealth.highUnresolvedRate")} (${cityHealth.unresolvedPercent.toFixed(1)}%) - ${t("cityHealth.considerAllocatingMoreResources")}`,
       });
     }
     
@@ -320,7 +390,7 @@ export default function DetailedStatsModal({
       if (oldestCount > 0) {
         insights.push({
           severity: "high",
-          message: `${oldestCount} reports older than 30 days - Immediate action required`,
+          message: `${oldestCount} ${t("cityHealth.reportsOlderThan30DaysImmediateActionRequired")}`,
         });
       }
     }
@@ -329,7 +399,7 @@ export default function DetailedStatsModal({
 
 
   return (
-    <Modal title="City Health Dashboard" onClose={onClose}>
+    <Modal title={t("cityHealth.title")} onClose={onClose}>
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg w-[1100px] max-h-[90vh] overflow-y-auto">
         {/* Download Button - Fixed Position */}
         <div className="flex justify-end mb-4">
@@ -338,46 +408,46 @@ export default function DetailedStatsModal({
             disabled={isDownloading || loading}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            📄 {isDownloading ? "Generating PDF..." : "Download Dashboard as PDF"}
+            📄 {isDownloading ? t("cityHealth.generatingPDF") : t("cityHealth.downloadPDF")}
           </button>
         </div>
         <div ref={dashboardRef}>
         <div className="space-y-6">
           {/* Header */}
           <div className="text-center border-b-2 border-indigo-300 pb-4">
-            <h2 className="text-2xl font-bold text-indigo-900">🏙️ City Health Dashboard</h2>
+            <h2 className="text-2xl font-bold text-indigo-900">🏙️ {t("cityHealth.title")}</h2>
             <RealtimeClock />
             <p className="text-sm text-gray-600 mt-2">
-              Time Range: <span className="font-semibold">{formatTimeRange(timeRange, fromDate, toDate)}</span>
+              {t("cityHealth.timeRange")} <span className="font-semibold">{formatTimeRange(timeRange, fromDate, toDate)}</span>
             </p>
           </div>
 
           {loading ? (
-            <p className="text-center text-gray-500 py-8">Loading city statistics...</p>
+            <p className="text-center text-gray-500 py-8">{t("cityHealth.loadingStats")}</p>
           ) : (
             <>
               {/* 1️⃣ City Health Summary */}
               {cityHealth && (
                 <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
                   <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                    📊 City Health Summary
-                    <Tooltip message="Overall health metrics for the city. These KPIs provide a snapshot of current report management status and workload trends." />
+                    📊 {t("cityHealth.citySummary")}
+                    <Tooltip message={t("cityHealth.summaryTooltip")} />
                   </h3>
                   <div className="grid grid-cols-2 gap-6 lg:grid-cols-5">
                     <div className="text-center">
                       <div className="text-sm text-gray-600 uppercase tracking-wide flex items-center justify-center">
-                        Open Reports
-                        <Tooltip message="Total number of reports that are currently unresolved (not yet closed). Lower is better. Trend shows change from previous period." />
+                        {t("cityHealth.openReports")}
+                        <Tooltip message={t("cityHealth.openReportsTooltip")} />
                       </div>
                       <p className="text-3xl font-bold text-red-600 mt-2">{Math.round(cityHealth.totalOpenReports)}</p>
                       <p className={`text-sm font-semibold mt-2 ${getTrendColor(cityHealth.trendVsPrevious)}`}>
-                        {getTrendIcon(cityHealth.trendVsPrevious)} {Math.abs(cityHealth.trendVsPrevious).toFixed(0)}% vs previous
+                        {getTrendIcon(cityHealth.trendVsPrevious)} {Math.abs(cityHealth.trendVsPrevious).toFixed(0)}% {t("cityHealth.vsPrevious")}
                       </p>
                     </div>
                     <div className="text-center">
                       <div className="text-sm text-gray-600 uppercase tracking-wide flex items-center justify-center">
-                        Unresolved %
-                        <Tooltip message="Percentage of all reports that remain unresolved. Target: Keep below 30% for optimal efficiency. Green = good, Red = needs improvement." />
+                        {t("cityHealth.unresolvedPercent")}
+                        <Tooltip message={t("cityHealth.unresolvedTooltip")} />
                       </div>
                       {(() => {
                         const healthTarget = 30;
@@ -388,7 +458,7 @@ export default function DetailedStatsModal({
                           <div>
                             <p className="text-3xl font-bold text-orange-600 mt-2">{cityHealth.unresolvedPercent.toFixed(1)}%</p>
                             <p className={`text-sm font-semibold mt-2 ${healthColor}`}>
-                              {healthIcon} {Math.abs(diff).toFixed(1)}% {cityHealth.unresolvedPercent <= healthTarget ? "below" : "above"} target
+                              {healthIcon} {Math.abs(diff).toFixed(1)}% {cityHealth.unresolvedPercent <= healthTarget ? t("cityHealth.belowTarget") : t("cityHealth.aboveTarget")}
                             </p>
                           </div>
                         );
@@ -396,8 +466,8 @@ export default function DetailedStatsModal({
                     </div>
                     <div className="text-center">
                       <div className="text-sm text-gray-600 uppercase tracking-wide flex items-center justify-center">
-                        Avg Resolution
-                        <Tooltip message="Average number of days it takes to resolve a report. Shows how many % above or below SLA target. Green = good (below SLA), Red = needs improvement (above SLA)." />
+                        {t("cityHealth.avgResolution")}
+                        <Tooltip message={t("cityHealth.avgResolutionTooltip")} />
                       </div>
                       {(() => {
                         const SLA_DAYS: Record<string, number> = { garbage: 5, lighting: 7, tree: 8 };
@@ -409,9 +479,9 @@ export default function DetailedStatsModal({
                         return (
                           <div>
                             <p className="text-3xl font-bold text-indigo-600 mt-2">{cityHealth.avgResolutionTime.toFixed(1)}</p>
-                            <p className="text-xs text-gray-500">days</p>
+                            <p className="text-xs text-gray-500">{t("cityHealth.days")}</p>
                             <p className={`text-sm font-semibold mt-2 ${trendColor}`}>
-                              {trendIcon} {Math.abs(resolutionTrend).toFixed(0)}% {resolutionTrend > 0 ? "above" : "below"} SLA
+                              {trendIcon} {Math.abs(resolutionTrend).toFixed(0)}% {resolutionTrend > 0 ? t("cityHealth.aboveSLA") : t("cityHealth.belowSLA")}
                             </p>
                           </div>
                         );
@@ -419,8 +489,8 @@ export default function DetailedStatsModal({
                     </div>
                     <div className="text-center">
                       <div className="text-sm text-gray-600 uppercase tracking-wide flex items-center justify-center">
-                        Incoming/Day
-                        <Tooltip message="Average number of new reports submitted per day. Compared to resolved rate. Green = resolving more than incoming (good), Red = backlog growing." />
+                        {t("cityHealth.incomingPerDay")}
+                        <Tooltip message={t("cityHealth.incomingTooltip")} />
                       </div>
                       {(() => {
                         const incomingRate = cityHealth.incomingPerDay;
@@ -431,9 +501,9 @@ export default function DetailedStatsModal({
                         return (
                           <div>
                             <p className="text-3xl font-bold text-blue-600 mt-2">{incomingRate.toFixed(1)}</p>
-                            <p className="text-xs text-gray-500">reports/day</p>
+                            <p className="text-xs text-gray-500">{t("cityHealth.reportsPerDay")}</p>
                             <p className={`text-sm font-semibold mt-2 ${capacityColor}`}>
-                              {capacityIcon} Resolving {capacity.toFixed(0)}% of incoming
+                              {capacityIcon} {t("cityHealth.resolving")} {capacity.toFixed(0)}% {t("cityHealth.ofIncoming")}
                             </p>
                           </div>
                         );
@@ -441,8 +511,8 @@ export default function DetailedStatsModal({
                     </div>
                     <div className="text-center">
                       <div className="text-sm text-gray-600 uppercase tracking-wide flex items-center justify-center">
-                        Trend
-                        <Tooltip message="Change in open reports compared to previous period. ↑ = increasing workload, ↓ = decreasing workload." />
+                        {t("cityHealth.trend")}
+                        <Tooltip message={t("cityHealth.trendTooltip")} />
                       </div>
                       <p className={`text-3xl font-bold mt-2 ${getTrendColor(cityHealth.trendVsPrevious)}`}>
                         {getTrendIcon(cityHealth.trendVsPrevious)} {Math.abs(cityHealth.trendVsPrevious).toFixed(1)}%
@@ -456,31 +526,31 @@ export default function DetailedStatsModal({
               {categoryBottlenecks.length > 0 && (
                 <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
                   <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    ⚠️ Category Bottleneck Analysis
-                    <Tooltip message="Identifies which report categories take longest to resolve. Categories with high avg time and high SLA breach rates are bottlenecks needing attention." />
+                    ⚠️ {t("cityHealth.categoryBottlenecks")}
+                    <Tooltip message={t("cityHealth.bottlenecksTooltip")} />
                   </h3>
                   <div className="overflow-visible">
                     <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse">
                       <thead className="relative z-50">
                         <tr className="bg-yellow-50 border-b-2 border-yellow-300">
-                          <th className="px-4 py-3 text-left font-semibold text-gray-800 border-r border-gray-200">Category</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-800 border-r border-gray-200">{t("cityHealth.category")}</th>
                           <th className="px-4 py-3 text-center font-semibold text-gray-800 border-r border-gray-200">
                             <div className="flex items-center justify-center gap-2">
-                              <span>Avg Resolution Time</span>
-                              <Tooltip message="Average days from report creation to resolution in this category. Compare across categories to find slow areas." />
+                              <span>{t("cityHealth.avgResolutionTime")}</span>
+                              <Tooltip message={t("cityHealth.avgResolutionTimeTooltip")} />
                             </div>
                           </th>
                           <th className="px-4 py-3 text-center font-semibold text-gray-800 border-r border-gray-200">
                             <div className="flex items-center justify-center gap-2">
-                              <span>Report Count</span>
-                              <Tooltip message="Total number of reports in this category during the selected time period." />
+                              <span>{t("cityHealth.reportCount")}</span>
+                              <Tooltip message={t("cityHealth.reportCountTooltip")} />
                             </div>
                           </th>
                           <th className="px-4 py-3 text-center font-semibold text-gray-800">
                             <div className="flex items-center justify-center gap-2">
-                              <span>SLA Breach Rate</span>
-                              <Tooltip message="Percentage of reports that exceeded their SLA deadline. High rates indicate service level issues." />
+                              <span>{t("cityHealth.slaBreachRate")}</span>
+                              <Tooltip message={t("cityHealth.slaBreachRateTooltip")} />
                             </div>
                           </th>
                         </tr>
@@ -490,7 +560,7 @@ export default function DetailedStatsModal({
                           <tr key={idx} className="border-b hover:bg-yellow-50 transition-colors">
                             <td className="px-4 py-3 font-semibold text-gray-800 border-r border-gray-200">{cat.category}</td>
                             <td className="px-4 py-3 text-center border-r border-gray-200">
-                              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded inline-block font-semibold">{cat.avgResolutionTime.toFixed(1)} days</span>
+                              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded inline-block font-semibold">{cat.avgResolutionTime.toFixed(1)} {t("cityHealth.days")}</span>
                             </td>
                             <td className="px-4 py-3 text-center font-bold border-r border-gray-200">{cat.reportCount}</td>
                             <td className="px-4 py-3 text-center">
@@ -511,23 +581,23 @@ export default function DetailedStatsModal({
               {statusFlow.length > 0 && (
                 <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
                   <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                    ⏱️ Status Flow Efficiency
-                    <Tooltip message="Shows the average time reports spend in each status. Long times in early statuses (Open/Pending) indicate delays in processing." />
+                    ⏱️ {t("cityHealth.statusFlow")}
+                    <Tooltip message={t("cityHealth.statusFlowTooltip")} />
                   </h3>
                   <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                     {statusFlow.map((flow, idx) => (
                       <div key={idx} className="bg-gradient-to-br from-green-50 to-teal-50 rounded-lg p-4 border-l-4 border-green-500">
                         <p className="text-sm font-semibold text-gray-700 mb-2">{flow.status}</p>
                         <p className="text-2xl font-bold text-green-700">{flow.avgDaysInStatus.toFixed(1)}</p>
-                        <p className="text-xs text-gray-600">avg days</p>
+                        <p className="text-xs text-gray-600">{t("cityHealth.avgDays")}</p>
                         <div className="mt-3 bg-gray-200 rounded-full h-2">
                           <div className="bg-green-500 h-2 rounded-full" style={{ width: `${flow.percentOfLifecycle}%` }}></div>
                         </div>
-                        <p className="text-xs text-gray-600 mt-2">{flow.percentOfLifecycle}% of lifecycle</p>
+                        <p className="text-xs text-gray-600 mt-2">{flow.percentOfLifecycle}% {t("cityHealth.ofLifecycle")}</p>
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-500 mt-4">💡 Tip: The green bar shows what percentage of a reports total lifecycle is spent in each status. Aim for balanced distribution.</p>
+                  <p className="text-xs text-gray-500 mt-4">{t("cityHealth.statusFlowTip")}</p>
                 </div>
               )}
 
@@ -535,31 +605,31 @@ export default function DetailedStatsModal({
               {agingReports.length > 0 && (
                 <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
                   <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    📈 Aging Reports Alert
-                    <Tooltip message="Tracks reports that are aging beyond acceptable timeframes. Reports 30+ days old require immediate escalation. This helps identify long-standing issues." />
+                    📈 {t("cityHealth.agingReports")}
+                    <Tooltip message={t("cityHealth.agingReportsTooltip")} />
                   </h3>
                   <div className="overflow-visible">
                     <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse">
                       <thead className="relative z-50">
                         <tr className="bg-red-50 border-b-2 border-red-300">
-                          <th className="px-4 py-3 text-left font-semibold text-gray-800 border-r border-gray-200">Category</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-800 border-r border-gray-200">{t("cityHealth.category")}</th>
                           <th className="px-4 py-3 text-center font-semibold text-gray-800 border-r border-gray-200">
                             <div className="flex items-center justify-center gap-2">
-                              <span>7+ Days Old</span>
-                              <Tooltip message="Reports unresolved for 7+ days. These are starting to age." />
+                              <span>{t("cityHealth.sevenDaysOld")}</span>
+                              <Tooltip message={t("cityHealth.sevenDaysTooltip")} />
                             </div>
                           </th>
                           <th className="px-4 py-3 text-center font-semibold text-gray-800 border-r border-gray-200">
                             <div className="flex items-center justify-center gap-2">
-                              <span>14+ Days Old</span>
-                              <Tooltip message="Reports unresolved for 14+ days. Needs attention soon." />
+                              <span>{t("cityHealth.fourteenDaysOld")}</span>
+                              <Tooltip message={t("cityHealth.fourteenDaysTooltip")} />
                             </div>
                           </th>
                           <th className="px-4 py-3 text-center font-semibold text-gray-800">
                             <div className="flex items-center justify-center gap-2">
-                              <span>30+ Days Old ⚠️</span>
-                              <Tooltip message="Reports unresolved for 30+ days. Requires immediate escalation and priority handling." />
+                              <span>{t("cityHealth.thirtyDaysOld")}</span>
+                              <Tooltip message={t("cityHealth.thirtyDaysTooltip")} />
                             </div>
                           </th>
                         </tr>
@@ -590,14 +660,14 @@ export default function DetailedStatsModal({
               {cityHealth && (
                 <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
                   <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                    📦 Workload vs Capacity
-                    <Tooltip message="Compares incoming reports to resolved reports. If incoming > resolved, backlog grows. Target: Resolve more than incoming." />
+                    📦 {t("cityHealth.workloadCapacity")}
+                    <Tooltip message={t("cityHealth.workloadTooltip")} />
                   </h3>
                   <div className="grid grid-cols-2 gap-6">
                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4">
                       <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                        Incoming Reports/Day
-                        <Tooltip message="New reports submitted per day. High volume increases workload." />
+                        {t("cityHealth.incomingReportsPerDay")}
+                        <Tooltip message={t("cityHealth.incomingWorkloadTooltip")} />
                       </div>
                       <p className="text-4xl font-bold text-blue-700">{cityHealth.incomingPerDay.toFixed(1)}</p>
                       <div className="mt-4 h-2 bg-blue-200 rounded-full">
@@ -606,8 +676,8 @@ export default function DetailedStatsModal({
                     </div>
                     <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4">
                       <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                        Resolved Reports/Day
-                        <Tooltip message="Reports closed per day. Higher is better. Should ideally exceed incoming rate." />
+                        {t("cityHealth.resolvedReportsPerDay")}
+                        <Tooltip message={t("cityHealth.resolvedWorkloadTooltip")} />
                       </div>
                       <p className="text-4xl font-bold text-green-700">{cityHealth.resolvedPerDay.toFixed(1)}</p>
                       <div className="mt-4 h-2 bg-green-200 rounded-full">
@@ -617,11 +687,11 @@ export default function DetailedStatsModal({
                   </div>
                   <div className="mt-4 p-4 bg-purple-50 rounded-lg border-l-4 border-purple-500">
                     <div className="text-sm font-semibold text-purple-900 flex items-center">
-                      Backlog Trend
-                      <Tooltip message="↑ = backlog growing (bad), ↓ = backlog shrinking (good), → = stable." />
+                      {t("cityHealth.backlogTrend")}
+                      <Tooltip message={t("cityHealth.backlogTrendTooltip")} />
                     </div>
                     <p className={`text-2xl font-bold mt-2 ${getTrendColor(cityHealth.backlogTrend)}`}>
-                      {getTrendIcon(cityHealth.backlogTrend)} {Math.abs(cityHealth.backlogTrend).toFixed(1)}% {cityHealth.backlogTrend > 0 ? "Increasing" : "Decreasing"}
+                      {getTrendIcon(cityHealth.backlogTrend)} {Math.abs(cityHealth.backlogTrend).toFixed(1)}% {cityHealth.backlogTrend > 0 ? t("cityHealth.increasing") : t("cityHealth.decreasing")}
                     </p>
                   </div>
                 </div>
@@ -630,8 +700,8 @@ export default function DetailedStatsModal({
               {/* 6️⃣ Priority Action Panel */}
               <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg shadow-md p-6 border-l-4 border-red-600">
                 <h3 className="text-lg font-bold text-red-900 mb-4 flex items-center">
-                  🎯 Priority Actions & Insights
-                  <Tooltip message="AI-generated recommendations based on current dashboard metrics. These are actionable suggestions to improve city health." />
+                  🎯 {t("cityHealth.priorityActions")}
+                  <Tooltip message={t("cityHealth.priorityActionsTooltip")} />
                 </h3>
                 <div className="space-y-3">
                   {getCriticalInsights().length > 0 ? (
@@ -645,14 +715,14 @@ export default function DetailedStatsModal({
                         }`}
                       >
                         <p className="font-semibold text-sm">
-                          {insight.severity === "high" ? "🚨 Critical: " : "⚠️ Warning: "}
+                          {insight.severity === "high" ? `🚨 ${t("cityHealth.critical")} ` : `⚠️ ${t("cityHealth.warning")} `}
                           {insight.message}
                         </p>
                       </div>
                     ))
                   ) : (
                     <div className="p-4 rounded-lg bg-green-100 border-l-4 border-green-500 text-green-800">
-                      <p className="font-semibold text-sm">✅ All metrics are within normal parameters. Great job!</p>
+                      <p className="font-semibold text-sm">{t("cityHealth.allNormal")}</p>
                     </div>
                   )}
                 </div>
@@ -667,7 +737,7 @@ export default function DetailedStatsModal({
           onClick={onClose}
           className="w-full mt-6 px-4 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
         >
-          Close Dashboard
+          {t("cityHealth.closeDashboard")}
         </button>
       </div>
     </Modal>

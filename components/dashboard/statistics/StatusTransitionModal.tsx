@@ -3,6 +3,7 @@ import { useState } from "react";
 import Modal from "@/components/dashboard/common/Modal";
 import * as XLSX from "xlsx";
 import Tooltip from "../common/Tooltip";
+import { useLanguage } from "@/lib/i18n";
 
 const STATUS_ORDER = ["open", "pending", "in progress", "resolved"];
 
@@ -45,6 +46,7 @@ const getTimeRangeLabelFull = (months: string) => {
 };
 
 export default function StatusTransitionModal({ open, onClose, city }: Props) {
+  const { t } = useLanguage();
   const [statusStart, setStatusStart] = useState<string | null>(null);
   const [statusEnd, setStatusEnd] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState("12");
@@ -91,18 +93,18 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
         const sheetName = `${pair.start.charAt(0).toUpperCase() + pair.start.slice(1)} → ${pair.end.charAt(0).toUpperCase() + pair.end.slice(1)}`.substring(0, 31);
         
         const sheetData = [
-          ["Status Transition Analysis"],
+          [t("statusTransition.statusTransitionAnalysis")],
           [""],
-          ["From Status", pair.start],
-          ["To Status", pair.end],
-          ["City", city],
-          ["Time Range", getTimeRangeLabelFull(timeRange)],
-          ["Report Category", category],
+          [t("statusTransition.fromStatusLabel"), pair.start],
+          [t("statusTransition.toStatusLabel"), pair.end],
+          [t("statusTransition.cityLabel"), city],
+          [t("statusTransition.timeRangeLabel"), getTimeRangeLabelFull(timeRange)],
+          [t("statusTransition.reportCategoryLabel"), category],
           [""],
-          ["Average Days", data.avgDays.toFixed(2)],
-          ["Reports Analyzed", data.count],
+          [t("statusTransition.avgDaysLabel"), data.avgDays.toFixed(2)],
+          [t("statusTransition.reportsAnalyzedCountLabel"), data.count],
           [""],
-          ["Analysis Generated", new Date().toLocaleString()],
+          [t("statusTransition.analysisGenerated"), new Date().toLocaleString()],
         ];
 
         const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
@@ -163,26 +165,25 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
 
   if (!city) {
     return (
-      <Modal title="Status Transition Analysis" onClose={onClose}>
+      <Modal title={t("statusTransition.title")} onClose={onClose}>
         <div className="flex items-center justify-center p-8">
-          <p className="text-red-600">No city assigned to your account</p>
+          <p className="text-red-600">{t("statusTransition.noCityAssigned")}</p>
         </div>
       </Modal>
     );
   }
 
   return (
-    <Modal title="Status Transition Analysis" onClose={onClose}>
+    <Modal title={t("statusTransition.title")} onClose={onClose}>
       <div className="space-y-4">
         <p className="text-sm text-gray-700">
-          This view analyzes how long it takes for reports to move from one
-          status to another, based on historical status changes.
+          {t("statusTransition.description")}
         </p>
 
         {/* City Display */}
         <div className="p-3 bg-blue-50 border border-blue-200 rounded">
           <p className="text-sm font-semibold text-blue-900">
-            📍 Analyzing data for: <span className="text-blue-700">{city}</span>
+            {t("statusTransition.analyzingDataFor")} <span className="text-blue-700">{city}</span>
           </p>
         </div>
 
@@ -193,7 +194,7 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
             className="w-full p-4 flex items-center justify-between hover:bg-indigo-100 transition-colors text-left"
           >
             <span className="text-sm font-semibold text-indigo-900 flex items-center gap-2">
-              📖 How to Analyze Report Transitions:
+              {t("statusTransition.howToAnalyze")}
               <Tooltip message="Click to expand/collapse instructions" position="top" />
             </span>
             <span className={`text-lg text-indigo-900 transition-transform duration-300 ${showInstructions ? "rotate-180" : ""}`}>
@@ -203,41 +204,41 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
           
           {showInstructions && (
             <ol className="text-xs text-indigo-800 space-y-2 list-decimal list-inside p-4 pt-0 bg-white bg-opacity-50 border-t border-indigo-200">
-              <li><span className="font-semibold">Select Time Range:</span> Choose the period you want to analyze</li>
-              <li><span className="font-semibold">Select Category:</span> Filter by report type or choose ll categories</li>
-              <li><span className="font-semibold">Select From/To Status:</span> Pick the status transition you want to examine (e.g., Open → Pending)</li>
-              <li><span className="font-semibold">Click Analyze:</span> View average time for this specific transition</li>
-              <li><span className="font-semibold">Optional:</span> Download full report or view heatmap of all transitions</li>
+              <li>{t("statusTransition.instructions.step1")}</li>
+              <li>{t("statusTransition.instructions.step2")}</li>
+              <li>{t("statusTransition.instructions.step3")}</li>
+              <li>{t("statusTransition.instructions.step4")}</li>
+              <li>{t("statusTransition.instructions.step5")}</li>
             </ol>
           )}
         </div>
 
         {/* Select time range */}
         <div className="max-w-sm mx-auto">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("statusTransition.timeRange")}</label>
           <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)} className="w-full p-2 border rounded">
-            <option value="1">Last month</option>
-            <option value="3">Last 3 months</option>
-            <option value="6">Last 6 months</option>
-            <option value="12">Last year</option>
+            <option value="1">{t("statusTransition.lastMonth")}</option>
+            <option value="3">{t("statusTransition.last3Months")}</option>
+            <option value="6">{t("statusTransition.last6Months")}</option>
+            <option value="12">{t("statusTransition.lastYear")}</option>
           </select>
           <p className="text-xs text-gray-500 mt-1">📅 {getTimeRangeLabel(timeRange)}</p>
         </div>
 
         {/* Select report type */}
         <div className="max-w-sm mx-auto">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Report Category</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("statusTransition.reportCategory")}</label>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2 border rounded">
-            <option value="all">All categories</option>
-            <option value="garbage">Garbage</option>
-            <option value="tree">Tree</option>
-            <option value="lighting">Lighting</option>
+            <option value="all">{t("statusTransition.allCategories")}</option>
+            <option value="garbage">{t("categories.garbage")}</option>
+            <option value="tree">{t("categories.tree")}</option>
+            <option value="lighting">{t("categories.lighting")}</option>
           </select>
         </div>
 
         {/* Select Start */}
         <div className="max-w-sm mx-auto">
-          <label className="block text-sm font-medium text-gray-700 mb-1">From Status</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("statusTransition.fromStatus")}</label>
           <select
             value={statusStart ?? ""}
             onChange={(e) => {
@@ -247,7 +248,7 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
             className="w-full p-2 border rounded"
           >
             <option value="" disabled>
-              Select start status
+              {t("statusTransition.selectStartStatus")}
             </option>
 
             {STATUS_ORDER.map((s) => (
@@ -261,14 +262,14 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
         {/* Select End */}
         {statusStart && (
           <div className="max-w-sm mx-auto">
-            <label className="block text-sm font-medium text-gray-700 mb-1">To Status</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("statusTransition.toStatus")}</label>
             <select
               value={statusEnd ?? ""}
               onChange={(e) => setStatusEnd(e.target.value)}
               className="w-full p-2 border rounded"
             >
               <option value="" disabled>
-                Select end status
+                {t("statusTransition.selectEndStatus")}
               </option>
 
               {STATUS_ORDER
@@ -285,7 +286,7 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
         {statusStart && statusEnd && (
           <div className="p-3 bg-amber-50 border border-amber-200 rounded">
             <p className="text-sm text-amber-900">
-              <b>Transition:</b> <span className="uppercase font-semibold">{statusStart}</span> → <span className="uppercase font-semibold">{statusEnd}</span>
+              <b>{t("statusTransition.transition")}</b> <span className="uppercase font-semibold">{statusStart}</span> → <span className="uppercase font-semibold">{statusEnd}</span>
             </p>
           </div>
         )}
@@ -298,10 +299,10 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
               disabled={downloading}
               onClick={handleDownloadExcel}
               className="px-4 py-2 bg-green-600 text-white rounded font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-              title="Download complete analysis for all 6 status transitions"
+              title={t("statusTransition.downloadComplete")}
             >
-              📥 {downloading ? "Downloading..." : "Excel Report"}
-              <Tooltip message="Downloads a comprehensive Excel workbook with all 6 possible status transitions analyzed. Each transition gets its own sheet with detailed metrics." />
+              📅 {downloading ? t("statusTransition.downloading") : t("statusTransition.excelReport")}
+              <Tooltip message={t("statusTransition.downloadComplete")} />
             </button>
           </div>
 
@@ -328,19 +329,19 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
                 setAnalyzing(false);
               }}
               className="px-6 py-2 bg-indigo-600 text-white rounded font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-              title="Analyze the selected transition"
+              title={t("statusTransition.analyzeTooltip")}
             >
-              {analyzing ? "Analyzing..." : "Analyze"}
-              <Tooltip message="Analyzes the average time reports take to transition from the selected 'From Status' to 'To Status'. Shows detailed metrics for this specific transition." />
+              {analyzing ? t("statusTransition.analyzing") : t("statusTransition.analyze")}
+              <Tooltip message={t("statusTransition.analyzeTooltip")} />
             </button>
 
             <button
               onClick={handleShowHeatmap}
               className="px-6 py-2 bg-purple-600 text-white rounded font-semibold hover:bg-purple-700 flex items-center gap-1"
-              title="View transition matrix for all statuses"
+              title={t("statusTransition.heatmapTooltip")}
             >
-              🔥 View Heatmap
-              <Tooltip message="Displays a visual matrix of all 6 status transitions with color coding. Green = fast transitions, Red = slow transitions. Helps identify bottlenecks at a glance." />
+              🔥 {t("statusTransition.viewHeatmap")}
+              <Tooltip message={t("statusTransition.heatmapTooltip")} />
             </button>
           </div>
         </div>
@@ -348,16 +349,16 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
         {showHeatmap && Object.keys(heatmapData).length > 0 && (
           <div className="mt-6 p-5 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
             <h3 className="text-lg font-bold text-purple-900 mb-4">
-              📊 Status Transition Heatmap
+              📊 {t("statusTransition.statusTransitionHeatmap")}
               <span className="text-sm font-semibold text-purple-700 ml-2">
-                ({category === "all" ? "All Categories" : category.charAt(0).toUpperCase() + category.slice(1)})
+                ({category === "all" ? t("statusTransition.allCategories") : category.charAt(0).toUpperCase() + category.slice(1)})
               </span>
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <th className="p-2 bg-purple-200 text-purple-900 font-semibold border">From \ To</th>
+                    <th className="p-2 bg-purple-200 text-purple-900 font-semibold border">{t("statusTransition.fromTo")}</th>
                     {STATUS_ORDER.map((status) => (
                       <th key={status} className="p-2 bg-purple-200 text-purple-900 font-semibold border text-sm">
                         {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -378,7 +379,7 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
                         if (!isValid) {
                           return (
                             <td key={`${fromStatus}-${toStatus}`} className="p-2 border bg-gray-50">
-                              -
+                              {t("statusTransition.noData")}
                             </td>
                           );
                         }
@@ -404,24 +405,24 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
             <div className="mt-4 flex gap-4 flex-wrap justify-center text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-green-100 border border-green-300"></div>
-                <span>0-7.5 days</span>
+                <span>{t("statusTransition.days0To7")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-yellow-100 border border-yellow-300"></div>
-                <span>7.5-15 days</span>
+                <span>{t("statusTransition.days7To15")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-orange-100 border border-orange-300"></div>
-                <span>15-22.5 days</span>
+                <span>{t("statusTransition.days15To22")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-red-100 border border-red-300"></div>
-                <span>22.5+ days</span>
+                <span>{t("statusTransition.days22Plus")}</span>
               </div>
             </div>
 
             <p className="text-xs text-gray-600 mt-3 text-center">
-              Values show average days to transition | Numbers in parentheses show report count
+              {t("statusTransition.heatmapLegend")}
             </p>
           </div>
         )}
@@ -431,7 +432,7 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
             <div className="space-y-4">
               {/* Main Metric */}
               <div className="text-center">
-                <p className="text-sm text-gray-600 uppercase tracking-wider">Average Transition Time</p>
+                <p className="text-sm text-gray-600 uppercase tracking-wider">{t("statusTransition.avgTransitionTime")}</p>
                 <p className="text-4xl font-bold text-green-700 mt-1">
                   {result.avgDays.toFixed(2)}
                 </p>
@@ -441,15 +442,15 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
               {/* Report Count */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-white rounded p-3 border border-green-200">
-                  <p className="text-xs text-gray-600 uppercase">Reports Analyzed</p>
+                  <p className="text-xs text-gray-600 uppercase">{t("statusTransition.reportsAnalyzed")}</p>
                   <p className="text-2xl font-bold text-indigo-600 mt-1">{result.count}</p>
                 </div>
                 <div className="bg-white rounded p-3 border border-green-200">
-                  <p className="text-xs text-gray-600 uppercase">City</p>
+                  <p className="text-xs text-gray-600 uppercase">{t("statusTransition.cityLabel")}</p>
                   <p className="text-lg font-semibold text-gray-700 mt-1">{city}</p>
                 </div>
                 <div className="bg-white rounded p-3 border border-green-200">
-                  <p className="text-xs text-gray-600 uppercase">Time Range</p>
+                  <p className="text-xs text-gray-600 uppercase">{t("statusTransition.timeRangeLabel")}</p>
                   <p className="text-sm font-semibold text-gray-700 mt-1">{getTimeRangeLabel(timeRange)}</p>
                 </div>
               </div>
@@ -467,17 +468,17 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
                     ></div>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2 text-center">Days Scale (30 days = full height)</p>
+                <p className="text-xs text-gray-500 mt-2 text-center">{t("statusTransition.daysScale")}</p>
               </div>
 
               {/* Summary Text */}
               <div className="bg-white rounded p-3 border border-green-200">
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  <span className="font-semibold">Summary:</span> In {city} during <span className="font-bold text-green-700">{getTimeRangeLabel(timeRange)}</span>, reports take an average of{" "}
-                  <span className="font-bold text-green-700">{result.avgDays.toFixed(1)} days</span> to transition from{" "}
-                  <span className="uppercase text-sm font-semibold">{statusStart}</span> to{" "}
-                  <span className="uppercase text-sm font-semibold">{statusEnd}</span> based on{" "}
-                  <span className="font-bold">{result.count} reports</span> analyzed.
+                  <span className="font-semibold">{t("statusTransition.summaryText")}</span> {t("statusTransition.toTransitionFrom")} {city} {t("statusTransition.to")} <span className="font-bold text-green-700">{getTimeRangeLabel(timeRange)}</span>, {t("statusTransition.basedOn")}{" "}
+                  <span className="font-bold text-green-700">{result.avgDays.toFixed(1)} {t("statusTransition.days")}</span> {t("statusTransition.toTransitionFrom")} {" "}
+                  <span className="uppercase text-sm font-semibold">{statusStart}</span> {t("statusTransition.to")}{" "}
+                  <span className="uppercase text-sm font-semibold">{statusEnd}</span> {t("statusTransition.basedOn")}{" "}
+                  <span className="font-bold">{result.count} {t("statusTransition.reportsAnalyzedLabel")}</span>.
                 </p>
               </div>
             </div>

@@ -8,22 +8,28 @@ export interface Bin {
 export const MS_DAY = 24 * 60 * 60 * 1000;
 export const MS_MONTH = 30 * MS_DAY;
 
+// average of an array of numbers
 export function mean(xs: number[]): number {
   return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
 }
 
+//standard deviation of an array of numbers with optional precomputed mean
+//STD formula:  σ = sqrt(  Σᵢ (xᵢ - μ)²  / N  )
+//when xᵢ is each number in the array, μ is the mean, N is the count of numbers
 export function std(xs: number[], m = mean(xs)): number {
   if (!xs.length) return 0;
   const v = xs.reduce((s, x) => s + (x - m) * (x - m), 0) / xs.length;
   return Math.sqrt(v);
 }
-
+// group array items by a key function, returning a Map from key to array of items
+// keyFn: function that takes an item and returns a string key
+//key is the
 export function groupBy<T>(arr: T[], keyFn: (item: T) => string): Map<string, T[]> {
-  const map = new Map<string, T[]>();
+  const map = new Map<string, T[]>();// create empty map with string keys and array of T values
   for (const item of arr) {
-    const key = keyFn(item);
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
+    const key = keyFn(item);// get the key string for this item 
+    if (!map.has(key)) map.set(key, []);// initialize array if key not present 
+    map.get(key)!.push(item);// ! means non-null assertion
   }
   return map;
 }
@@ -38,7 +44,6 @@ export function buildMonthlyBins<T>(
 
   // תחילת חודש נוכחי לפי אזור זמן ישראל
   const nowDate = new Date(now);
-  const startOfMonth = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1).getTime();
 
   // בניית חודשי עבר
   for (let i = monthsBack - 1; i >= 0; i--) {
@@ -58,7 +63,7 @@ export function buildMonthlyBins<T>(
 
 
 /*
-hybrid dynamic-threshold detection method that combines statistical deviation,
+ dynamic-threshold detection method that combines statistical deviation,
 percentage increase, and a minimum-change rule to reduce false positives and handle sparse or noisy municipal data.
 */
 export function calcDynamicThreshold(bins: Bin[]): {
@@ -72,10 +77,13 @@ export function calcDynamicThreshold(bins: Bin[]): {
 
   const hist = bins.slice(0, -1).map(b => b.count);
   const baseSum = hist.reduce((a, b) => a + b, 0);
-  if (baseSum < 10)
-    return { threshold: 8, baselineMean: 0, baselineStd: 0, mode: "static" };
-
-
+  
+  if (baseSum < 10) {
+    // DYNAMIC static mode: use historical mean * 1.3, with a minimum of 1.2
+    const μ = mean(hist.filter(v => v > 0)); // Mean of non-zero values
+    const dynamicThreshold = μ > 0 ? Math.max(μ * 1.3, 1.2) : 8;
+    return { threshold: dynamicThreshold, baselineMean: μ, baselineStd: 0, mode: "static" };
+  }
 
   const μ = mean(hist);
   const σ = std(hist, μ);

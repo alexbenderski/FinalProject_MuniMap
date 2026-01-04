@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import { useLanguage } from "@/lib/i18n";
 
 interface ModalProps {
   title?: string;
@@ -13,6 +14,7 @@ let activeModalCount = 0;
 export default function Modal({ title, onClose, children }: ModalProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const modalIdRef = useRef<number>(0);
+  const { t, isRTL } = useLanguage();
 
   // Assign a unique ID to this modal instance
   useEffect(() => {
@@ -59,12 +61,13 @@ export default function Modal({ title, onClose, children }: ModalProps) {
         {/* Header */}
         {title && (
           <div className="flex justify-between items-center border-b p-4 bg-gray-100">
-            <h2 className="text-lg font-semibold">{title}</h2>
+            <div className="w-10"></div> {/* Spacer for centering */}
+            <h2 className="text-lg font-semibold text-center flex-1">{title}</h2>
             <div className="flex gap-2">
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 className="text-gray-600 font-bold text-lg hover:text-gray-800 transition-colors"
-                title={isFullscreen ? "Collapse" : "Fullscreen"}
+                title={isFullscreen ? t("common.collapse") : t("common.fullscreen")}
               >
                 {isFullscreen ? "⊡" : "⛶"}
               </button>

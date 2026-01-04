@@ -9,15 +9,18 @@ import BottomBar from "@/components/dashboard/layout/BottomBar";
 import MapCanvas from "@/components/dashboard/maps/MapCanvas";
 import FiltersModal from "@/components/dashboard/common/FiltersModal";
 import ReportsTableModal from "@/components/dashboard/reports/ReportsTableModal";
+import SearchByIdModal from "@/components/dashboard/reports/SearchByIdModal";
 import { Report } from "@/lib/types";
 import AnomaliesModal from "@/components/dashboard/anomalies/AnomaliesModal";
 import ArchivedReportsModal from "@/components/dashboard/reports/ArchivedReportsModal";
 import { useAuth } from "@/components/AuthProvider";
 import Image from "next/image";
+import { useLanguage } from "@/lib/i18n";
 
 // 🧪 DEV TOOLS - Remove this import to disable test report generator
 import { TestReportGeneratorModal } from "@/lib/dev-tools/report-generator";
 import { AnomalyThresholdCalculatorModal } from "@/lib/dev-tools/anomaly-threshold-calculator";
+import SimulationPanel from "@/components/dashboard/simulation/SimulationPanel";
 
 export const dynamic = 'force-dynamic';
 
@@ -26,16 +29,19 @@ export default function DashboardPage() {
   // 🔐 Auth
   const { permissions, loading } = useAuth();
   const city = permissions?.city ?? null;
+  const { t } = useLanguage();
 
   // 🔹 UI state
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [tableViewOpen, setTableViewOpen] = useState(false);
+  const [searchByIdOpen, setSearchByIdOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [anomListOpen, setAnomListOpen] = useState(false);
 
   // 🧪 DEV TOOLS - Test Report Generator state
   const [testGenOpen, setTestGenOpen] = useState(false);
   const [thresholdCalcOpen, setThresholdCalcOpen] = useState(false);
+  const [simulationOpen, setSimulationOpen] = useState(false);
   const [cityBoundary, setCityBoundary] = useState<{ lat: number; lng: number }[]>([]);
   const [cityCenter, setCityCenter] = useState<{ lat: number; lng: number } | undefined>(undefined);
 
@@ -92,23 +98,23 @@ export default function DashboardPage() {
       dateRange:
         dateFrom || dateTo ? `${dateFrom ?? "—"} – ${dateTo ?? "—"}` : "—",
       status: statusList.length > 0 ? statusList.join(", ") : "—",
-      media: mediaOnly ? "Only with media" : "—",
+      media: mediaOnly ? t("filters.mediaOnly") : "—",
       criticality: criticalityList.length > 0
         ? criticalityList.map(c => 
-            c === "green" ? "New" :
-            c === "yellow" ? "Medium" :
-            c === "orange" ? "Old" : "Critical"
+            c === "green" ? t("criticality.new") :
+            c === "yellow" ? t("criticality.medium") :
+            c === "orange" ? t("criticality.old") : t("criticality.critical")
           ).join(", ")
         : "—",
     }),
-    [selectedArea, selectedTypes, dateFrom, dateTo, statusList, mediaOnly, criticalityList]
+    [selectedArea, selectedTypes, dateFrom, dateTo, statusList, mediaOnly, criticalityList, t]
   );
 
   // ⏳ Guards — רק אחרי כל ה-Hooks
   if (loading) {
     return (
       <RequireAuth>
-        <div className="p-6">Loading dashboard…</div>
+        <div className="p-6">{t("dashboard.loadingDashboard")}</div>
       </RequireAuth>
     );
   }
@@ -117,11 +123,25 @@ export default function DashboardPage() {
     return (
       <RequireAuth>
         <div className="p-6 text-red-600 font-semibold">
-          No city assigned to this user
+          {t("dashboard.noCityAssigned")}
         </div>
       </RequireAuth>
     );
   }
+
+  // Reset all filters to initial state
+  const handleReset = () => {
+    setSelectedTypes([]);
+    setDateFrom(null);
+    setDateTo(null);
+    setStatus("all");
+    setStatusList([]);
+    setMediaOnly(false);
+    setCriticality("");
+    setCriticalityList([]);
+    setFiltersApplied(false);
+    setReportsForTable([]);
+  };
 
   // ================================
   // JSX
@@ -130,14 +150,13 @@ export default function DashboardPage() {
     <RequireAuth>
       <div className="flex h-screen flex-col bg-gray-100 text-gray-900 min-w-[600px]">
         <TopBar
-          onRefresh={() => window.location.reload()}
+          onRefresh={handleReset}
           onOpenFilters={() => setFiltersOpen(true)}
-          onOpenSearch={() =>
-            reportsForTable.length
-              ? setSearchOpen(true)
-              : alert("Apply filters first")
-          }
+          onOpenTableView={() => setTableViewOpen(true)}
+          onOpenSearch={() => setSearchByIdOpen(true)}
           onOpenArchive={() => setArchiveOpen(true)}
+          onOpenSimulation={() => setSimulationOpen(true)}
+          filtersApplied={filtersApplied}
         />
 
         <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
@@ -189,6 +208,7 @@ export default function DashboardPage() {
               criticalityList: criticalityList,
             }}
             onApply={(filters) => {
+              console.log("📊 Dashboard onApply received filters:", filters);
               setSelectedArea(filters.location || permissions?.city || null);
               setSelectedTypes(filters.categories);
               setDateFrom(filters.dateFrom);
@@ -200,6 +220,7 @@ export default function DashboardPage() {
               setCriticalityList(filters.criticalityList || []);
               setFiltersApplied(true);
               setFiltersOpen(false);
+              console.log("✅ Dashboard filter state updated, modal closed");
             }}
           />
 
@@ -224,10 +245,10 @@ export default function DashboardPage() {
           🎯 <span className="hidden sm:inline">Anomaly Calculator</span><span className="sm:hidden">Calc</span>
         </button>
 
-        {searchOpen && (
+        {tableViewOpen && (
           <ReportsTableModal
-            open={searchOpen}
-            onClose={() => setSearchOpen(false)}
+            open={tableViewOpen}
+            onClose={() => setTableViewOpen(false)}
             reports={reportsForTable}
             selectedArea={selectedArea}
             onApplyFilters={(filters) => {
@@ -238,6 +259,13 @@ export default function DashboardPage() {
               setMediaOnly(filters.mediaOnly);
               setCriticality(filters.criticality || "");
             }}
+          />
+        )}
+
+        {searchByIdOpen && (
+          <SearchByIdModal
+            open={searchByIdOpen}
+            onClose={() => setSearchByIdOpen(false)}
           />
         )}
 
@@ -270,6 +298,16 @@ export default function DashboardPage() {
           onClose={() => setThresholdCalcOpen(false)}
           cityName={permissions?.city ?? ""}
           reportType="All Types"
+          cityBoundary={cityBoundary}
+          defaultCenter={cityCenter}
+        />
+
+        {/* 🧪 DEV TOOLS - Report Simulation Panel */}
+        <SimulationPanel
+          isOpen={simulationOpen}
+          onClose={() => setSimulationOpen(false)}
+          cityName={permissions?.city ?? ""}
+          cityBoundary={cityBoundary.map(p => [p.lat, p.lng])}
         />
       </div>
     </RequireAuth>

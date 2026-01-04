@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   LineChart,
   Line,
@@ -10,12 +10,13 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import Modal from "@/components/dashboard/common/Modal";
-import { fetchReportsStats, fetchResolutionTimeData } from "@/lib/client/fetchers";
+import { fetchReportsStats, fetchResolutionTimeData, subscribeToReports } from "@/lib/client/fetchers";
 import GraphsModal from "@/components/dashboard/statistics/GraphsModal";
 import DetailedStatsModal from "@/components/dashboard/statistics/DetailedStatsModal";
-import { TimeRange } from "@/lib/types";
+import { TimeRange, Report } from "@/lib/types";
 import RealtimeClock from "../common/RealtimeClock";
 import StatusTransitionModal from "./StatusTransitionModal";
+import { useLanguage } from "@/lib/i18n";
 
 
 type Stats = {
@@ -35,6 +36,7 @@ export default function StatisticsModal({
   onClose: () => void;
   city: string | null;
 }) {
+  const { t } = useLanguage();
   const [stats, setStats] = useState<Stats>({
     total: 0,
     open: 0,
@@ -51,66 +53,147 @@ export default function StatisticsModal({
   const [toDate, setToDate] = useState<string>("");
   const [openStatusTransition, setOpenStatusTransition] = useState(false);
 
+  // Store time range values in refs for real-time callback
+  const timeRangeRef = useRef(timeRange);
+  const fromDateRef = useRef(fromDate);
+  const toDateRef = useRef(toDate);
+  const cityRef = useRef(city);
+  
+  useEffect(() => {
+    timeRangeRef.current = timeRange;
+    fromDateRef.current = fromDate;
+    toDateRef.current = toDate;
+    cityRef.current = city;
+  }, [timeRange, fromDate, toDate, city]);
+
+  // Calculate stats from reports array
+  const calculateStatsFromReports = useCallback((reports: Report[]) => {
+    const currentTimeRange = timeRangeRef.current;
+    const currentFromDate = fromDateRef.current;
+    const currentToDate = toDateRef.current;
+    const currentCity = cityRef.current;
+
+    // Calculate date range
+    let startDate: Date;
+    let endDate: Date = new Date();
+
+    if (currentTimeRange === "custom") {
+      if (!currentFromDate || !currentToDate) return;
+      startDate = new Date(currentFromDate);
+      endDate = new Date(new Date(currentToDate).setHours(23, 59, 59, 999));
+    } else {
+      const now = new Date();
+      switch (currentTimeRange) {
+        case "month":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+          break;
+        case "3month":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+          break;
+        case "6month":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+          break;
+        default:
+          startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+          break;
+      }
+    }
+
+    // Filter by city and date range
+    const filtered = reports.filter(r => {
+      if (currentCity && r.area !== currentCity) return false;
+      if (r.deleted) return false;
+      const ts = r.timestamp;
+      if (ts < startDate.getTime()) return false;
+      if (ts > endDate.getTime()) return false;
+      return true;
+    });
+
+    // Calculate stats
+    const newStats: Stats = {
+      total: filtered.length,
+      open: filtered.filter(r => r.status === "open").length,
+      pending: filtered.filter(r => r.status === "pending").length,
+      inProgress: filtered.filter(r => r.status === "in progress").length,
+      resolved: filtered.filter(r => r.status === "resolved").length,
+    };
+
+    setStats(newStats);
+    setLoading(false);
+  }, []);
+
+  // Real-time subscription for stats updates
   useEffect(() => {
     if (!open) return;
-    loadStats();
+
+    const unsubscribe = subscribeToReports((data) => {
+      const all: Report[] = [];
+
+      Object.entries(data).forEach(([type, group]) => {
+        Object.entries(group as Record<string, Omit<Report, "type" | "id">>).forEach(
+          ([id, r]) => {
+            all.push({ ...r, type, id } as Report);
+          }
+        );
+      });
+
+      calculateStatsFromReports(all);
+    });
+
+    return () => unsubscribe();
+  }, [open, calculateStatsFromReports]);
+
+  // Also load resolution time data (this can stay as API call)
+  useEffect(() => {
+    if (!open) return;
+    loadResolutionData();
   }, [open, timeRange]);
 
-async function loadStats() {
-  setLoading(true);
- 
-  // נחשב טווח תאריכים לפי הבחירה
-  let startDate: Date;
-  let endDate: Date = new Date();
+  async function loadResolutionData() {
+    let startDate: Date;
+    let endDate: Date = new Date();
 
-  if (timeRange === "custom") {
-    if (!fromDate || !toDate) { setLoading(false); return; }
-    startDate = new Date(fromDate);
-    endDate = new Date(new Date(toDate).setHours(23,59,59,999));
-  } else {
-    const now = new Date();
-    switch (timeRange) {
-      case "month":
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-        break;
-      case "3month":
-        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        break;
-      case "6month":
-        startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-        break;
-      default:
-        startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
-        break;
+    if (timeRange === "custom") {
+      if (!fromDate || !toDate) return;
+      startDate = new Date(fromDate);
+      endDate = new Date(new Date(toDate).setHours(23, 59, 59, 999));
+    } else {
+      const now = new Date();
+      switch (timeRange) {
+        case "month":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+          break;
+        case "3month":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+          break;
+        case "6month":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+          break;
+        default:
+          startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+          break;
+      }
     }
+
+    let resolutionData = await fetchResolutionTimeData(timeRange, startDate, endDate);
+
+    const monthOrder = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    resolutionData = resolutionData.sort(
+      (a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month)
+    );
+
+    setTimeToResolveData(resolutionData);
   }
 
+  const loadStats = () => {
+    loadResolutionData();
+  };
 
-
-
-
-  // טוען נתונים מהמסד עם סינון לפי תאריכים
-  const data = await fetchReportsStats(timeRange, startDate, endDate);
-  let resolutionData = await fetchResolutionTimeData(timeRange, startDate, endDate);
-
-  // ✅ סידור החודשים לפי סדר כרונולוגי
-  const monthOrder = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ];
-  resolutionData = resolutionData.sort(
-    (a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month)
-  );
-
-  const resolvedCount = data.total - (data.open + data.pending + data.inProgress);
-  setStats({
-    ...data,
-    resolved: resolvedCount,
-  });
-  setTimeToResolveData(resolutionData);
-  setLoading(false);
-}
   const resolvedCount = stats.total - (stats.open + stats.pending + stats.inProgress);
   const openPercent = stats.total ? ((stats.open / stats.total) * 100).toFixed(1) : "0";
   const pendingPercent = stats.total ? ((stats.pending / stats.total) * 100).toFixed(1) : "0";
@@ -123,15 +206,15 @@ async function loadStats() {
 
   
   return (
-    <Modal title="📊 Statistics & Analysis Hub" onClose={onClose}>
+    <Modal title=" " onClose={onClose}>
       <div className="p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-lg max-h-[85vh] overflow-y-auto w-[950px]">
         <h1 className="text-3xl font-bold text-center mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          📈 Analytics Dashboard
+          📈 {t("statistics.analyticsDashboard")}
         </h1>
         <RealtimeClock />
  {/* 🔹 בורר זמן */}
 <div className="text-center mb-6">
-  <label className="mr-2 font-semibold">Time Range:</label>
+  <label className="mr-2 font-semibold">{t("statistics.timeRange")}:</label>
 
   <select
     className="border border-gray-300 rounded-md px-3 py-1"
@@ -152,26 +235,28 @@ async function loadStats() {
       }
     }}
   >
-    <option value="month">Last Month</option>
-    <option value="3month">Last 3 Months</option>
-    <option value="6month">Last 6 Months</option>
-    <option value="year">Last Year</option>
-    <option value="custom">Custom Range</option>
+    <option value="month">{t("statistics.lastMonth")}</option>
+    <option value="3month">{t("statistics.last3Months")}</option>
+    <option value="6month">{t("statistics.last6Months")}</option>
+    <option value="year">{t("statistics.lastYear")}</option>
+    <option value="custom">{t("statistics.customRange")}</option>
   </select>
 
   {/* 🔸 אם נבחר custom – הצג שדות תאריך */}
   {timeRange === "custom" && (
     <div className="mt-3 flex justify-center gap-2 items-center">
-      <label>From:</label>
+      <label>{t("common.from")}:</label>
       <input
         type="date"
+        dir="ltr"
         className="border border-gray-300 rounded-md px-2 py-1"
         value={fromDate}
         onChange={(e) => setFromDate(e.target.value)}
       />
-      <label>To:</label>
+      <label>{t("common.to")}:</label>
       <input
         type="date"
+        dir="ltr"
         className="border border-gray-300 rounded-md px-2 py-1"
         value={toDate}
         onChange={(e) => setToDate(e.target.value)}
@@ -180,14 +265,14 @@ async function loadStats() {
         onClick={loadStats}
         className="ml-3 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700"
       >
-        Apply
+        {t("common.apply")}
       </button>
     </div>
   )}
 </div>
 
         {loading ? (
-          <p className="text-center text-gray-500">Loading statistics...</p>
+          <p className="text-center text-gray-500">{t("statistics.loadingStatistics")}</p>
         ) : (
           <>
             {/* 🔹 Stats Cards with Gradient */}
@@ -195,7 +280,7 @@ async function loadStats() {
               <div className="bg-gradient-to-br from-blue-400 to-blue-600 text-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow transform hover:scale-105 transition-transform">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold opacity-90">📦 Total Reports</p>
+                    <p className="text-sm font-semibold opacity-90">📦 {t("statistics.totalReports")}</p>
                     <p className="text-4xl font-bold mt-2">{stats.total}</p>
                   </div>
                   <div className="text-5xl opacity-40">📊</div>
@@ -204,7 +289,7 @@ async function loadStats() {
               <div className="bg-gradient-to-br from-green-400 to-green-600 text-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow transform hover:scale-105 transition-transform">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold opacity-90">🟢 Open Reports ({openPercent}%)</p>
+                    <p className="text-sm font-semibold opacity-90">🟢 {t("statistics.openReports")} ({openPercent}%)</p>
                     <p className="text-4xl font-bold mt-2">{stats.open}</p>
                   </div>
                   <div className="text-5xl opacity-40">⏳</div>
@@ -213,7 +298,7 @@ async function loadStats() {
               <div className="bg-gradient-to-br from-yellow-400 to-yellow-600 text-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow transform hover:scale-105 transition-transform">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold opacity-90">🟡 Pending Reports ({pendingPercent}%)</p>
+                    <p className="text-sm font-semibold opacity-90">🟡 {t("statistics.pendingReports")} ({pendingPercent}%)</p>
                     <p className="text-4xl font-bold mt-2">{stats.pending}</p>
                   </div>
                   <div className="text-5xl opacity-70">⚡</div>
@@ -222,7 +307,7 @@ async function loadStats() {
               <div className="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow transform hover:scale-105 transition-transform">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold opacity-90">🟠 In Progress Reports ({inProgressPercent}%)</p>
+                    <p className="text-sm font-semibold opacity-90">🟠 {t("statistics.inProgressReports")} ({inProgressPercent}%)</p>
                     <p className="text-4xl font-bold mt-2">{stats.inProgress}</p>
                   </div>
                   <div className="text-5xl opacity-15">🔄</div>
@@ -231,7 +316,7 @@ async function loadStats() {
               <div className="bg-gradient-to-br from-teal-400 to-teal-600 text-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow transform hover:scale-105 transition-transform">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold opacity-90">✅ Resolved Reports ({resolvedPercent}%)</p>
+                    <p className="text-sm font-semibold opacity-90">✅ {t("statistics.resolvedReports")} ({resolvedPercent}%)</p>
                     <p className="text-4xl font-bold mt-2">{resolvedCount}</p>
                   </div>
                   <div className="text-5xl opacity-40">✓</div>
@@ -242,7 +327,7 @@ async function loadStats() {
             {/* 🔹 Resolution Time Chart */}
             <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border-l-4 border-green-500">
               <h3 className="text-center font-bold text-lg mb-4 text-gray-800">
-                ⏱️ Average Time to Resolve (days)
+                ⏱️ {t("statistics.avgTimeToResolve")}
               </h3>
 
 
@@ -277,13 +362,13 @@ async function loadStats() {
         {/* Action Buttons Explanations */}
         <div className="flex gap-3 justify-center flex-wrap mb-2">
           <div className="text-xs text-gray-600 bg-blue-50 rounded px-2 py-1 w-[200px] text-center">
-            <b> Open Graphs:</b> Visualize trends and patterns in reports with interactive charts.
+            <b> {t("statistics.openGraphs")}:</b> {t("statistics.openGraphsDesc")}
           </div>
           <div className="text-xs text-gray-600 bg-purple-50 rounded px-2 py-1 w-[200px] text-center">
-            <b> Detailed Stats:</b> Explore in-depth statistics and breakdowns by area and category.
+            <b> {t("statistics.detailedStats")}:</b> {t("statistics.detailedStatsDesc")}
           </div>
           <div className="text-xs text-gray-600 bg-indigo-50 rounded px-2 py-1 w-[200px] text-center">
-            <b> Status Transitions:</b> Analyze how reports move through each status and workflow.
+            <b> {t("statistics.statusTransitions")}:</b> {t("statistics.statusTransitionsDesc")}
           </div>
         </div>
 
@@ -293,19 +378,19 @@ async function loadStats() {
             onClick={() => setGraphsModalOpen(true)}
             className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
           >
-            📊 Open Graphs
+            📊 {t("statistics.openGraphs")}
           </button>
           <button
             onClick={() => setDetailedOpen(true)}
             className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
           >
-            📈 Detailed Stats
+            📈 {t("statistics.detailedStats")}
           </button>
           <button
             onClick={() => setOpenStatusTransition(true)}
             className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-lg hover:from-indigo-600 hover:to-indigo-700 font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
           >
-            ⏱️ Status Transitions
+            ⏱️ {t("statistics.statusTransitions")}
           </button>
 
         </div>
