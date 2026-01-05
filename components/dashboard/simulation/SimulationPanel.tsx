@@ -76,13 +76,13 @@ export default function SimulationPanel({
     const newEngine = new SimulationEngine();
     
     // Set up event handlers
-    newEngine.on("stateChange", (newState) => setState(newState));
-    newEngine.on("statsUpdate", (newStats) => setStats(newStats));
+    newEngine.on("stateChange", (newState) => setState(newState as SimulationStatus));
+    newEngine.on("statsUpdate", (newStats) => setStats(newStats as SimulationStats));
     newEngine.on("log", (message) => {
-      setLogs(prev => [...prev.slice(-100), `[${new Date().toLocaleTimeString()}] ${message}`]);
+      setLogs(prev => [...prev.slice(-100), `[${new Date().toLocaleTimeString()}] ${message as string}`]);
     });
     newEngine.on("error", (error) => {
-      setLogs(prev => [...prev.slice(-100), `[ERROR] ${error.message}`]);
+      setLogs(prev => [...prev.slice(-100), `[ERROR] ${(error as { message: string }).message}`]);
     });
     
     setEngine(newEngine);
