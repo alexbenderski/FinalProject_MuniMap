@@ -14,7 +14,8 @@ interface SearchByIdModalProps {
 // Criticality cell component
 function CriticalityCell({ timestamp, type }: { timestamp: number; type: string }) {
   const { language } = useLanguage();
-  const { level, key } = getReportCriticalityType(timestamp, type);
+  // getReportCriticalityType expects a Report object, not separate timestamp and type
+  const level = getReportCriticalityType({ timestamp, type } as Report);
   const colorMap: Record<string, string> = {
     green: "bg-green-100 text-green-800 border-green-400",
     yellow: "bg-yellow-100 text-yellow-800 border-yellow-400",
@@ -29,10 +30,10 @@ function CriticalityCell({ timestamp, type }: { timestamp: number; type: string 
     red: "קריטי",
   };
   
-  const displayLabel = language === "he" ? hebrewLabels[key] || level : level;
+  const displayLabel = language === "he" ? hebrewLabels[level] || level : level;
   
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-bold border ${colorMap[key] || "bg-gray-100"}`}>
+    <span className={`px-2 py-1 rounded-full text-xs font-bold border ${colorMap[level] || "bg-gray-100"}`}>
       {displayLabel}
     </span>
   );
