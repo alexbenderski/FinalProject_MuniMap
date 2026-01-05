@@ -266,7 +266,119 @@ Several lighting reports have been "In Progress" for over 10 days, exceeding the
 
 ---
 
-## Scenario 5: 📋 Archive Management - Audit & Compliance
+## Scenario 5: �️ Geo Clusters Map - Infrastructure Pattern Analysis
+
+### Situation
+City infrastructure manager needs to identify hotspots of infrastructure issues across the entire city to optimize service placement and resource allocation.
+
+### Workflow
+
+1. **Dashboard Access**
+   - Infrastructure manager logs into MuniMap dashboard
+   - Dashboard displays map with city boundary and all open reports
+   - Bottom toolbar shows available views
+
+2. **Access Geo Clusters Map**
+   - Manager clicks **"Geo Clusters"** button in bottom toolbar
+   - Geo Clusters Map view opens, replacing the standard map
+   - Map now displays:
+     - Green clusters (medium severity) with numbers indicating report count
+     - Red clusters (high severity) indicating dense anomalous areas
+     - Cluster centroids marked with GPS coordinates
+
+3. **Identify Problem Areas**
+   - Manager immediately spots:
+     - **Red cluster in Downtown area**: 28 reports (water category) centered at Rothschild Blvd
+     - **Red cluster in Industrial zone**: 19 reports (pest category) centered at Factory Lane
+     - **Green cluster in South District**: 12 reports (garbage category) centered at Market Street
+     - **Green cluster in Beach area**: 8 reports (lighting category) centered at Beachfront Promenade
+
+4. **Cluster Details & Analysis**
+   - Manager clicks the downtown water cluster
+   - Popup shows detailed metrics:
+     - **Total Reports**: 28
+     - **Severity**: HIGH (Z-score: 4.2)
+     - **Radius**: 650 meters
+     - **Centroid**: 32.0850°N, 34.7805°E
+     - **Percentage Change**: +250% vs. historical baseline
+     - **Related Reports**: 28 reports listed with links
+     - **First Detected**: Jan 5, 2026, 2:30 PM
+     - **Status**: Open
+
+5. **Pattern Recognition**
+   - Manager analyzes the 5 visible clusters:
+     - **Downtown water cluster**: Possible underground pipe network issue
+     - **Industrial zone pests**: Suggests sanitation problem in commercial area
+     - **South District garbage**: Indicates under-serviced residential area
+     - **Beach area lighting**: Suggests aging infrastructure
+   
+   - Manager clicks each cluster to view:
+     - Individual report details (why each report was filed)
+     - Timestamps (confirm if concurrent or spread over time)
+     - Photos and descriptions
+     - Field coordinator notes
+
+6. **Cross-Category Insights**
+   - Manager applies filter: Category = Water
+   - Map refreshes showing only water-related clusters
+   - Identifies 3 water problem areas across city:
+     - Downtown (28 reports) - possible main pipe issue
+     - Industrial zone (12 reports) - secondary pipes
+     - East district (7 reports) - distribution network
+   
+   - Uses this information to:
+     - Prioritize downtown area for immediate investigation
+     - Schedule preventive maintenance for secondary areas
+     - Plan equipment placement for emergency response
+
+7. **Historical Comparison**
+   - Manager switches date filter: Last 30 days → Last 90 days
+   - Map shows historical clusters overlaid with current clusters
+   - Discovers:
+     - Downtown water cluster has been persistent (present in all 3 months)
+     - Industrial zone pest cluster appeared only last 30 days (new problem)
+     - South District garbage cluster is recurring monthly (service schedule issue)
+
+8. **Resource Planning Decision**
+   - Based on cluster analysis, manager decides:
+     - **Downtown**: Authorize underground pipe network inspection (urgent)
+     - **Industrial Zone**: Increase pest control service frequency (preventive)
+     - **South District**: Adjust garbage collection schedule (operational fix)
+     - **Beach Area**: Schedule lighting infrastructure audit (maintenance planning)
+
+9. **Action Items Assignment**
+   - Manager opens reporting modal and creates action items:
+     - Dispatch water inspection team to Downtown cluster centroid
+     - Contact pest control service for Industrial zone quote
+     - Adjust South District collection schedule effective immediately
+     - Schedule Beach area lighting audit for next week
+   
+   - Shares map view with department heads:
+     - Water Department: Downtown cluster link
+     - Sanitation: South District cluster link
+     - Pest Control Coordinator: Industrial zone cluster link
+
+10. **Progress Tracking**
+    - Manager bookmarks the Geo Clusters Map view
+    - Sets calendar reminder to review clusters weekly
+    - Next week: Reviews updated map to verify:
+      - Downtown cluster size reduced after inspection
+      - Industrial zone cluster remains (awaiting pest control action)
+      - South District cluster smaller (due to schedule adjustment)
+
+### Benefits
+✅ **Instant Hotspot Identification**: Visually identify infrastructure problem areas across entire city  
+✅ **Pattern Recognition**: Discover recurring issues and geographic concentrations  
+✅ **Proactive Planning**: Allocate resources before problems become critical  
+✅ **Root Cause Analysis**: Geographic clustering suggests underground infrastructure issues  
+✅ **Service Optimization**: Adjust service placement based on data-driven cluster analysis  
+✅ **Historical Insights**: Identify chronic vs. new vs. seasonal patterns  
+✅ **Multi-Department Coordination**: Share cluster analysis with relevant departments for unified response  
+✅ **Cost Prevention**: Prevent major infrastructure failures through early detection of spatial patterns
+
+---
+
+## Scenario 6: �📋 Archive Management - Audit & Compliance
 
 ### Situation
 City auditor requests 6-month report history for garbage collection compliance review.
@@ -331,7 +443,7 @@ City auditor requests 6-month report history for garbage collection compliance r
 
 ---
 
-## Scenario 6: 🎯 Real-Time Monitoring - Live Operations Center
+## Scenario 7: 🎯 Real-Time Monitoring - Live Operations Center
 
 ### Situation
 Municipal control center monitors all city infrastructure issues in real-time during peak hours.
@@ -402,7 +514,7 @@ Municipal control center monitors all city infrastructure issues in real-time du
 
 ---
 
-## Scenario 7: 🔍 Test Report Generation - System Quality Assurance
+## Scenario 8: 🔍 Test Report Generation - System Quality Assurance
 
 ### Situation
 QA team needs to test anomaly detection algorithms before production deployment of new code.
