@@ -12,11 +12,12 @@
 
 export { default as AnomalyThresholdCalculatorModal } from "./AnomalyThresholdCalculatorModal";
 export {
-  calculateAllThresholds,
   calculateSpikeThreshold,
   calculateSlowResponseThreshold,
   calculateGeoClusterThreshold,
+  calcDynamicThreshold,
   type HistoricalData,
   type ThresholdCalculation,
   type AnomalyType,
+  type ThresholdResult,
 } from "./calculateThresholds";
