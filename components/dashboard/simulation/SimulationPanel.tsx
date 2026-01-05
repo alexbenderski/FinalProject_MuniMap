@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   SimulationConfig,
   SimulationState,
-  SimulationStats,
   ReportCategory,
   GenerationMode,
 } from "@/lib/simulation/types";
@@ -20,6 +19,16 @@ interface SimulationPanelProps {
 }
 
 type TabType = "presets" | "custom" | "monitor";
+
+interface SimulationStats {
+  totalGenerated: number;
+  totalWritten: number;
+  totalFailed: number;
+  reportsPerCategory: Record<string, number>;
+  startTime: number | null;
+  elapsedSeconds: number;
+  estimatedRemainingSeconds: number;
+}
 
 const CATEGORY_ICONS: Record<ReportCategory, string> = {
   garbage: "🗑️",
