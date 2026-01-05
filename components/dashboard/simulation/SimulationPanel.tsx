@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   SimulationConfig,
-  SimulationState,
   ReportCategory,
   GenerationMode,
 } from "@/lib/simulation/types";
@@ -19,6 +18,8 @@ interface SimulationPanelProps {
 }
 
 type TabType = "presets" | "custom" | "monitor";
+
+type SimulationStatus = "idle" | "running" | "paused" | "completed";
 
 interface SimulationStats {
   totalGenerated: number;
@@ -58,7 +59,7 @@ export default function SimulationPanel({
   const [config, setConfig] = useState<SimulationConfig>({ ...DEFAULT_CONFIG, cityName });
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [engine, setEngine] = useState<SimulationEngine | null>(null);
-  const [state, setState] = useState<SimulationState>("idle");
+  const [state, setState] = useState<SimulationStatus>("idle");
   const [stats, setStats] = useState<SimulationStats>({
     totalGenerated: 0,
     totalWritten: 0,
