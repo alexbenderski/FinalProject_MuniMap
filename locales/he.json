@@ -524,7 +524,9 @@
     "critical": "קריטי:",
     "warning": "אזהרה:",
     "allNormal": "✅ כל המדדים נמצאים בטווחים תקינים. עבודה מצוינת!",
-    "reportsOlderThan30DaysImmediateActionRequired": "דיווחים בני יותר מ-30 ימים דורשים טיפול מיידי כדי למנוע השפעות שליליות על שביעות רצון התושבים."
+    "reportsOlderThan30DaysImmediateActionRequired": "דיווחים בני יותר מ-30 ימים דורשים טיפול מיידי כדי למנוע השפעות שליליות על שביעות רצון התושבים.",
+    "highUnresolvedRate": "זוהה שיעור גבוה של דיווחים לא פתורים. יש להתמקד בסגירת דיווחים נוספים.",
+    "considerAllocatingMoreResources": "יש לשקול הקצאת משאבים נוספים לקטגוריות עם צווארי בקבוק גבוהים."
   },
   "statusTransition": {
     "title": "ניתוח מעברי סטטוס",
@@ -588,6 +590,7 @@
     "reportsAnalyzedCountLabel": "דיווחים שנותחו",
     "analysisGenerated": "ניתוח שנוצר"
   },
+  "ViewTransitionMatrixForAllStatuses": "צפה במטריצת מעברים לכל הסטטוסים",
   "ViewHeatmap": "הצג מפת חום",
     "Analyzing": "מנתח...",    
     "Analyze": "נתח",

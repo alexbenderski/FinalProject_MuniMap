@@ -16,8 +16,8 @@ export {
   calculateSlowResponseThreshold,
   calculateGeoClusterThreshold,
   calcDynamicThreshold,
-  type HistoricalData,
-  type ThresholdCalculation,
   type AnomalyType,
+  type ReportType,
+  type Bin,
   type ThresholdResult,
 } from "./calculateThresholds";

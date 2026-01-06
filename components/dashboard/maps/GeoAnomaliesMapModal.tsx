@@ -60,8 +60,23 @@ export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAn
   }, [open]);
   
   // Extract unique categories from geo_cluster anomalies
-  const geoAnomalies = anomalies.filter(a => a.type === "geo_cluster" && a.center);
-  const availableCategories = Array.from(new Set(geoAnomalies.map(a => a.category)));
+  // Only require type="geo_cluster", center will be checked when rendering
+  const geoAnomalies = anomalies.filter(a => a.type === "geo_cluster");
+  const availableCategories = Array.from(new Set(geoAnomalies.map(a => a.category).filter(Boolean)));
+  
+  // Debug logging
+  useEffect(() => {
+    console.log("🗺️ Geo Anomalies Modal - Total anomalies:", anomalies.length);
+    console.log("🗺️ Geo cluster anomalies:", geoAnomalies.length);
+    console.log("🗺️ Available categories:", availableCategories);
+    console.log("🗺️ Geo anomalies details:", geoAnomalies.map(a => ({ 
+      id: a.id, 
+      category: a.category, 
+      area: a.area, 
+      hasCenter: !!a.center,
+      center: a.center
+    })));
+  }, [anomalies.length]);
 
   // Filter anomalies based on selected categories - empty selection means show nothing
   const filteredAnomalies = selectedCategories.length === 0 
@@ -157,32 +172,39 @@ export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAn
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {availableCategories.map(category => {
-              const isSelected = selectedCategories.includes(category);
-              const color = CATEGORY_COLORS[category] || "#808080";
-              
-              return (
-                <button
-                  key={category}
-                  onClick={() => toggleCategory(category)}
-                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all border-2 ${
-                    isSelected
-                      ? "shadow-lg scale-105"
-                      : "opacity-60 hover:opacity-100"
-                  }`}
-                  style={{
-                    backgroundColor: isSelected ? color : "#f0f0f0",
-                    borderColor: color,
-                    color: isSelected ? "#fff" : "#333",
-                  }}
-                >
-                  {category === "garbage" ? "🗑️" : 
-                   category === "lighting" ? "💡" : 
-                   category === "tree" ? "🌳" : 
-                   "⚠️"} {category.toUpperCase()}
-                </button>
-              );
-            })}
+            {availableCategories.length === 0 ? (
+              <div className="w-full text-center py-4">
+                <p className="text-orange-600 font-semibold">⚠️ No geo-cluster anomalies found</p>
+                <p className="text-xs text-gray-500 mt-1">Geo-cluster anomalies will appear here when detected by the system</p>
+              </div>
+            ) : (
+              availableCategories.map(category => {
+                const isSelected = selectedCategories.includes(category);
+                const color = CATEGORY_COLORS[category] || "#808080";
+                
+                return (
+                  <button
+                    key={category}
+                    onClick={() => toggleCategory(category)}
+                    className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all border-2 ${
+                      isSelected
+                        ? "shadow-lg scale-105"
+                        : "opacity-60 hover:opacity-100"
+                    }`}
+                    style={{
+                      backgroundColor: isSelected ? color : "#f0f0f0",
+                      borderColor: color,
+                      color: isSelected ? "#fff" : "#333",
+                    }}
+                  >
+                    {category === "garbage" ? "🗑️" : 
+                     category === "lighting" ? "💡" : 
+                     category === "tree" ? "🌳" : 
+                     "⚠️"} {category.toUpperCase()}
+                  </button>
+                );
+              })
+            )}
           </div>
           
           <div className="mt-3 text-xs text-gray-600">

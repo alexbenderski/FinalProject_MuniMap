@@ -73,10 +73,11 @@ export function detectHighActivity(reports: Report[], now = Date.now()): Anomaly
     }
 
     const pct = μ ? ((current - μ) / μ) * 100 : 100;
+    // z is number of standard deviations away from the mean, it helps to understand how unusual the spike is
     const z = (current - μ) / (σ || 1);
     console.log(`📊 pctChange=${pct}%, zScore=${z}`);
 
-    const severity = z >= 3.0 || pct >= 100 ? "high" : "medium";
+    const severity = z >= 3.0 || pct >= 100 ? "high" : "medium";// z>=3 means very rare event 
     console.log("🚨 Creating anomaly entry!");
 
 const anomaly = buildAnomaly({
