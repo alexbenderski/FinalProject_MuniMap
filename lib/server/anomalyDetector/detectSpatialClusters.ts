@@ -389,9 +389,17 @@ function formClusters(
 function buildSpatialAnomaly(cluster: SpatialCluster): Anomaly {
   const relatedReportIds = cluster.cells.flatMap((c) => c.cell.reports).map((r) => r.id);
 
-  // Calculate aggregate metrics
+  // Calculate aggregate metrics from all cells in the cluster
   const baselineMeans = cluster.cells.map((c) => c.timeSeries.historicalMean);
   const clusterBaselineMean = mean(baselineMeans);
+  
+  // Calculate aggregate standard deviation (average of cell stds)
+  const baselineStds = cluster.cells.map((c) => c.timeSeries.historicalStd);
+  const clusterBaselineStd = mean(baselineStds);
+  
+  // Calculate aggregate threshold (average of cell thresholds)
+  const thresholds = cluster.cells.map((c) => c.threshold);
+  const clusterThreshold = mean(thresholds);
 
   const currentCounts = cluster.cells.map((c) => c.timeSeries.currentCount);
   const clusterCurrentCount = currentCounts.reduce((a, b) => a + b, 0);
@@ -410,15 +418,22 @@ function buildSpatialAnomaly(cluster: SpatialCluster): Anomaly {
     title: `ריכוז גיאוגרפי של דיווחי ${cluster.category} באזור ${cluster.area}`,
     description: `זוהה ריכוז חריג של ${cluster.totalReports} דיווחים ברדיוס ${cluster.radius}מ' סביב נקודה מרכזית. הפעילות עלתה ב-${pctChange.toFixed(0)}% מול ההיסטוריה (Z-max=${cluster.maxZScore}).`,
     metrics: {
+      // Standard metrics expected by UI
+      currentReports: cluster.totalReports,
+      baselineMean: parseFloat(clusterBaselineMean.toFixed(2)),
+      baselineStd: parseFloat(clusterBaselineStd.toFixed(2)),
+      threshold: parseFloat(clusterThreshold.toFixed(2)),
+      pctChange: Math.round(pctChange),
+      zScore: parseFloat(cluster.avgZScore.toFixed(2)),
+      
+      // Geo-cluster specific metrics
       totalReports: cluster.totalReports,
       cellsInvolved: cluster.cells.length,
-      radiusMeters: cluster.radius,
+      radiusMeters: Math.round(cluster.radius),
       centroidLat: cluster.centroid.lat,
       centroidLng: cluster.centroid.lng,
-      avgZScore: cluster.avgZScore,
-      maxZScore: cluster.maxZScore,
-      pctChange: Math.round(pctChange),
-      baselineMean: parseFloat(clusterBaselineMean.toFixed(2)),
+      avgZScore: parseFloat(cluster.avgZScore.toFixed(2)),
+      maxZScore: parseFloat(cluster.maxZScore.toFixed(2)),
     },
     relatedReports: relatedReportIds,
     center: cluster.centroid,

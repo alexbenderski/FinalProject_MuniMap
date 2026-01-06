@@ -67,16 +67,23 @@ export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAn
   // Debug logging
   useEffect(() => {
     console.log("🗺️ Geo Anomalies Modal - Total anomalies:", anomalies.length);
+    console.log("🗺️ Anomaly types breakdown:", anomalies.reduce((acc, a) => {
+      acc[a.type] = (acc[a.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>));
     console.log("🗺️ Geo cluster anomalies:", geoAnomalies.length);
     console.log("🗺️ Available categories:", availableCategories);
-    console.log("🗺️ Geo anomalies details:", geoAnomalies.map(a => ({ 
-      id: a.id, 
-      category: a.category, 
-      area: a.area, 
-      hasCenter: !!a.center,
-      center: a.center
-    })));
+    if (geoAnomalies.length > 0) {
+      console.log("🗺️ Geo anomalies details:", geoAnomalies.map(a => ({ 
+        id: a.id, 
+        category: a.category, 
+        area: a.area, 
+        hasCenter: !!a.center,
+        center: a.center
+      })));
+    }
   }, [anomalies.length]);
+
 
   // Filter anomalies based on selected categories - empty selection means show nothing
   const filteredAnomalies = selectedCategories.length === 0 
@@ -173,9 +180,23 @@ export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAn
           </div>
           <div className="flex flex-wrap gap-2">
             {availableCategories.length === 0 ? (
-              <div className="w-full text-center py-4">
-                <p className="text-orange-600 font-semibold">⚠️ No geo-cluster anomalies found</p>
-                <p className="text-xs text-gray-500 mt-1">Geo-cluster anomalies will appear here when detected by the system</p>
+              <div className="w-full text-center py-6">
+                <p className="text-orange-600 font-semibold text-lg mb-2">⚠️ No Geo-Cluster Anomalies Found</p>
+                <p className="text-sm text-gray-600 mb-3">
+                  You have <span className="font-bold text-blue-600">{anomalies.length}</span> {anomalies.length === 1 ? 'anomaly' : 'anomalies'} detected, 
+                  but none are geographic cluster types.
+                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-2xl mx-auto text-left">
+                  <p className="text-sm text-gray-700 mb-2">
+                    <strong>About Geo-Cluster Anomalies:</strong>
+                  </p>
+                  <ul className="text-xs text-gray-600 space-y-1 ml-4">
+                    <li>• Geo-cluster anomalies are created when multiple reports of the same category appear within a small geographic area</li>
+                    <li>• The spatial clustering algorithm runs automatically every 10 minutes</li>
+                    <li>• Other anomaly types (spike, slow_response) can be viewed in the "View Anomalies" modal</li>
+                    <li>• To generate test geo-clusters, use the "🧪 Test Report Generator" tool in the dashboard</li>
+                  </ul>
+                </div>
               </div>
             ) : (
               availableCategories.map(category => {

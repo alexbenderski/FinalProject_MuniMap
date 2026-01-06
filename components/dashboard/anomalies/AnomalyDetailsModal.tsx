@@ -149,7 +149,7 @@ export default function AnomalyDetailsModal({
                         <span className="text-lg">📊</span>
                         <span>
                           <strong>{t("anomalyDetails.currentReports")}</strong>{" "}
-                          {localAnomaly.metrics.currentReports}
+                          {localAnomaly.metrics.currentReports ?? localAnomaly.metrics.totalReports ?? "?"}
                         </span>
                         <Tooltip message="Number of reports in current period" />
                       </li>
@@ -165,11 +165,32 @@ export default function AnomalyDetailsModal({
                         </li>
                       )}
 
+                      {localAnomaly.type === "geo_cluster" && (
+                        <>
+                          <li className="flex items-center gap-2">
+                            <span className="text-lg">🔲</span>
+                            <span>
+                              <strong>Cells Involved:</strong>{" "}
+                              {localAnomaly.metrics.cellsInvolved ?? "?"}
+                            </span>
+                            <Tooltip message="Number of grid cells with anomalous activity" />
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="text-lg">📏</span>
+                            <span>
+                              <strong>Radius:</strong>{" "}
+                              {localAnomaly.metrics.radiusMeters ?? "?"}m
+                            </span>
+                            <Tooltip message="Radius of the geographic cluster" />
+                          </li>
+                        </>
+                      )}
+
                       <li className="flex items-center gap-2">
                         <span className="text-lg">📈</span>
                         <span>
                           <strong>Historical Avg:</strong>{" "}
-                          {localAnomaly.metrics.baselineMean}
+                          {localAnomaly.metrics.baselineMean ?? localAnomaly.metrics.baselineAvgDays ?? "N/A"}
                         </span>
                         <Tooltip message="Average from past 6 months" />
                       </li>
@@ -178,7 +199,7 @@ export default function AnomalyDetailsModal({
                         <span className="text-lg">📊</span>
                         <span>
                           <strong>Std Dev:</strong>{" "}
-                          {localAnomaly.metrics.baselineStd}
+                          {localAnomaly.metrics.baselineStd ?? "N/A"}
                         </span>
                         <Tooltip message="Standard deviation from average" />
                       </li>
@@ -187,7 +208,7 @@ export default function AnomalyDetailsModal({
                         <span className="text-lg">🎯</span>
                         <span>
                           <strong>Threshold:</strong>{" "}
-                          {localAnomaly.metrics.threshold}
+                          {localAnomaly.metrics.threshold ?? "N/A"}
                         </span>
                         <Tooltip
                           message={
@@ -202,8 +223,9 @@ export default function AnomalyDetailsModal({
                         <span className="text-lg">📉</span>
                         <span>
                           <strong>Change:</strong>{" "}
-                          {localAnomaly.metrics.pctChange > 0 ? "+" : ""}
-                          {localAnomaly.metrics.pctChange}%
+                          {localAnomaly.metrics.pctChange != null 
+                            ? `${localAnomaly.metrics.pctChange > 0 ? "+" : ""}${localAnomaly.metrics.pctChange}%`
+                            : "N/A"}
                         </span>
                         <Tooltip message="Percentage change from average" />
                       </li>
@@ -211,10 +233,22 @@ export default function AnomalyDetailsModal({
                       <li className="flex items-center gap-2">
                         <span className="text-lg">📐</span>
                         <span>
-                          <strong>Z-Score:</strong> {localAnomaly.metrics.zScore}
+                          <strong>Z-Score:</strong>{" "}
+                          {localAnomaly.metrics.zScore ?? localAnomaly.metrics.avgZScore ?? "N/A"}
                         </span>
                         <Tooltip message="Distance from average in standard deviations" />
                       </li>
+
+                      {localAnomaly.type === "geo_cluster" && localAnomaly.metrics.maxZScore && (
+                        <li className="flex items-center gap-2">
+                          <span className="text-lg">📐</span>
+                          <span>
+                            <strong>Max Z-Score:</strong>{" "}
+                            {localAnomaly.metrics.maxZScore}
+                          </span>
+                          <Tooltip message="Maximum Z-score among all cells in this cluster" />
+                        </li>
+                      )}
 
                       <li className="flex items-center gap-2">
                         <span className="text-lg">📅</span>
