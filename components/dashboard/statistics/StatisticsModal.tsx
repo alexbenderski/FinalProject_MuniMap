@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import Modal from "@/components/dashboard/common/Modal";
-import { fetchReportsStats, fetchResolutionTimeData, subscribeToReports } from "@/lib/client/fetchers";
+import { fetchResolutionTimeData, subscribeToReports } from "@/lib/client/fetchers";
 import GraphsModal from "@/components/dashboard/statistics/GraphsModal";
 import DetailedStatsModal from "@/components/dashboard/statistics/DetailedStatsModal";
 import { TimeRange, Report } from "@/lib/types";
@@ -52,6 +52,9 @@ export default function StatisticsModal({
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
   const [openStatusTransition, setOpenStatusTransition] = useState(false);
+  
+  // Store the latest reports data
+  const [allReports, setAllReports] = useState<Report[]>([]);
 
   // Store time range values in refs for real-time callback
   const timeRangeRef = useRef(timeRange);
@@ -138,16 +141,28 @@ export default function StatisticsModal({
         );
       });
 
+      setAllReports(all);
       calculateStatsFromReports(all);
     });
 
     return () => unsubscribe();
   }, [open, calculateStatsFromReports]);
+  
+  // Recalculate stats when time range or dates change
+  useEffect(() => {
+    if (!open || allReports.length === 0) return;
+    calculateStatsFromReports(allReports);
+  }, [timeRange, fromDate, toDate, city, open, allReports, calculateStatsFromReports]);
 
   // Also load resolution time data (this can stay as API call)
   useEffect(() => {
     if (!open) return;
-    loadResolutionData();
+    
+    async function load() {
+      await loadResolutionData();
+    }
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, timeRange]);
 
   async function loadResolutionData() {
