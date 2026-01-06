@@ -122,7 +122,14 @@ export interface AnomalyMetrics {
   pctChange: number;
   zScore: number;
   bins: AnomalyBin[];
-  [x: string]: number | AnomalyBin[];
+  // geo_cluster specific metrics
+  cellsInvolved?: number;
+  radiusMeters?: number;
+  maxZScore?: number;
+  // slow_response specific metrics
+  baselineAvgDays?: number;
+  ratio?: number;
+  [x: string]: number | AnomalyBin[] | undefined;
 }
 
 export interface Anomaly {

@@ -27,17 +27,20 @@ interface ReportsTableModalProps {
   onApplyFilters: (filters: FiltersPayload) => void; // 👈  — כדי לעדכן גם את המפה
   title?: string;               
   anomalyDetails?: Anomaly; // 👈 חדש — מוסיף את פרטי האנומליה
-  onReviewUpdate?: (updatedAnomaly: Anomaly) => void; 
+  onReviewUpdate?: (updatedAnomaly: Anomaly) => void;
+  initialFilters?: FiltersPayload; // 👈 חדש — מסננים התחלתיים מה-dashboard
   }
 
 type FiltersPayload = {
   categories: string[];
   location: string;
   status: "open" | "pending" | "in progress" | "resolved" | "all";
+  statusList?: string[]; // 👈 חדש — רשימת סטטוסים
   mediaOnly: boolean;
   dateFrom: string | null;
   dateTo: string | null;
-   criticality?: string;
+  criticality?: string;
+  criticalityList?: string[]; // 👈 חדש — רשימת קריטיות
 };
 
 
@@ -67,6 +70,7 @@ export default function ReportsTableModal({
   title,
   anomalyDetails,
   onReviewUpdate,
+  initialFilters,
 }: ReportsTableModalProps) {
 /////////////////////////////////////////////////////////////////consts://///////////////////////
   const { t, language } = useLanguage();
@@ -91,15 +95,33 @@ useEffect(() => {
   const [selectedReports, setSelectedReports] = useState<string[]>([]);
   const [searchId, setSearchId] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState<FiltersPayload>({
-    categories: [],
-    location: "",
-    status: "all",
-    mediaOnly: false,
-    dateFrom: null,
-    dateTo: null,
-    criticality: "",
-  })
+  const [filters, setFilters] = useState<FiltersPayload>(() => {
+    // 👈 אתחול עם הסינונים מה-dashboard אם קיימים
+    if (initialFilters) {
+      return {
+        categories: initialFilters.categories || [],
+        location: initialFilters.location || "",
+        status: initialFilters.status || "all",
+        statusList: initialFilters.statusList || [],
+        mediaOnly: initialFilters.mediaOnly || false,
+        dateFrom: initialFilters.dateFrom ?? null,
+        dateTo: initialFilters.dateTo ?? null,
+        criticality: initialFilters.criticality || "",
+        criticalityList: initialFilters.criticalityList || [],
+      };
+    }
+    return {
+      categories: [],
+      location: "",
+      status: "all",
+      statusList: [],
+      mediaOnly: false,
+      dateFrom: null,
+      dateTo: null,
+      criticality: "",
+      criticalityList: [],
+    };
+  });
   const [mapOpen, setMapOpen] = useState(false);
   const [reportsToShow, setReportsToShow] = useState<Report[]>([]);
   // 🔍 שליטה על פתיחת חלון הפרטים
@@ -348,6 +370,23 @@ const filteredRows = useMemo(() => {
     return anomalyRows.sort((a, b) => b.timestamp - a.timestamp);
   }
 
+  // ⭐ בדיקה אם יש סינונים פעילים
+  const hasFilters = 
+    filters.categories.length > 0 ||
+    filters.location ||
+    (filters.statusList && filters.statusList.length > 0) ||
+    (filters.status !== "all") ||
+    filters.mediaOnly ||
+    filters.dateFrom ||
+    filters.dateTo ||
+    (filters.criticalityList && filters.criticalityList.length > 0) ||
+    filters.criticality;
+
+  // ⭐ אם אין סינונים — לא מציגים דיווחים (כפי שביקש המשתמש)
+  if (!hasFilters) {
+    return [];
+  }
+
   // ⭐ במצב רגיל — סינון רגיל
   return rows.filter((r) => {
     const categoryMatch =
@@ -357,10 +396,13 @@ const filteredRows = useMemo(() => {
     const locationMatch =
       !filters.location || r.area === filters.location;
 
+    // ⭐ תמיכה ב-statusList (מרובה) או status (יחיד)
     const statusMatch =
-      filters.status === "all"
-        ? true
-        : r.status === filters.status;
+      (filters.statusList && filters.statusList.length > 0)
+        ? filters.statusList.includes(r.status ?? "")
+        : filters.status === "all"
+          ? true
+          : r.status === filters.status;
 
     const mediaMatch =
       !filters.mediaOnly || r.media === true;
@@ -381,9 +423,12 @@ const filteredRows = useMemo(() => {
       ? (r.id ?? "").toLowerCase().includes(searchId.toLowerCase())
       : true;
 
-      const criticalityMatch =
-        !filters.criticality ||
-        getReportCriticalityType(r) === filters.criticality;
+    // ⭐ תמיכה ב-criticalityList (מרובה) או criticality (יחיד)
+    const reportCriticality = getReportCriticalityType(r);
+    const criticalityMatch =
+      (filters.criticalityList && filters.criticalityList.length > 0)
+        ? filters.criticalityList.includes(reportCriticality)
+        : !filters.criticality || reportCriticality === filters.criticality;
       
     return (
       categoryMatch &&
@@ -909,8 +954,37 @@ return (
     </table>
 
     {filteredRows.length === 0 && (
-      <div className="text-center py-3 text-gray-500">
-        {t("reportsTable.noReportsFound")}
+      <div className="text-center py-8 text-gray-500">
+        {(() => {
+          // Check if any filters are applied
+          const hasFilters = 
+            filters.categories.length > 0 ||
+            filters.location ||
+            (filters.statusList && filters.statusList.length > 0) ||
+            (filters.status !== "all") ||
+            filters.mediaOnly ||
+            filters.dateFrom ||
+            filters.dateTo ||
+            (filters.criticalityList && filters.criticalityList.length > 0) ||
+            filters.criticality;
+
+          if (!hasFilters) {
+            return (
+              <div>
+                <p className="text-lg font-semibold mb-2">📋 {t("reportsTable.noFiltersApplied")}</p>
+                <p className="text-sm">{t("reportsTable.applyFiltersToSeeReports")}</p>
+                <button
+                  onClick={() => setFiltersOpen(true)}
+                  className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+                >
+                  🧰 {t("filters.title")}
+                </button>
+              </div>
+            );
+          }
+
+          return t("reportsTable.noReportsFound");
+        })()}
       </div>
     )}
   </div>
@@ -928,15 +1002,28 @@ return (
       <FiltersModal
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
+        currentFilters={{
+          categories: filters.categories,
+          location: filters.location,
+          status: filters.status,
+          statusList: filters.statusList || [],
+          mediaOnly: filters.mediaOnly,
+          dateFrom: filters.dateFrom,
+          dateTo: filters.dateTo,
+          criticality: filters.criticality || "",
+          criticalityList: filters.criticalityList || [],
+        }}
         onApply={(newFilters) => {
           setFilters({
             categories: newFilters.categories,
             location: newFilters.location,
             status: newFilters.status,
+            statusList: newFilters.statusList || [],
             mediaOnly: newFilters.mediaOnly,
             dateFrom: newFilters.dateFrom,
             dateTo: newFilters.dateTo,
             criticality: newFilters.criticality || "",
+            criticalityList: newFilters.criticalityList || [],
           });
           onApplyFilters?.(newFilters);
           setFiltersOpen(false);

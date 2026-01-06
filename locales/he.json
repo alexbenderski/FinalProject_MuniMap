@@ -222,6 +222,8 @@
     "map": "מפה",
     "details": "פרטים",
     "noReportsFound": "לא נמצאו דיווחים.",
+    "noFiltersApplied": "לא הוחלו סינונים",
+    "applyFiltersToSeeReports": "אנא החל סינונים כדי לראות דיווחים. השתמש בכפתור הסינון למטה.",
     "generatedRouteLinks": "קישורי מסלול שנוצרו",
     "routeLinksDescription": "נוצרו שני קישורים – אחד עם מזהים לצפייה, ואחד נקי לניווט בפועל.",
     "enableGpsWarning": "!!! נא לוודא שה-GPS מופעל ב-Google Maps בטלפון שלך !!!",
@@ -588,7 +590,11 @@
     "reportCategoryLabel": "קטגוריית דיווח",
     "avgDaysLabel": "ממוצע ימים",
     "reportsAnalyzedCountLabel": "דיווחים שנותחו",
-    "analysisGenerated": "ניתוח שנוצר"
+    "analysisGenerated": "ניתוח שנוצר",
+    "inCity": "ב",
+    "avgTimeToTransition": "הזמן הממוצע למעבר מ",
+    "is": "הוא",
+    "days": "ימים"
   },
   "ViewTransitionMatrixForAllStatuses": "צפה במטריצת מעברים לכל הסטטוסים",
   "ViewHeatmap": "הצג מפת חום",

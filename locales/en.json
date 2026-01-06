@@ -222,6 +222,8 @@
     "map": "Map",
     "details": "Details",
     "noReportsFound": "No reports found.",
+    "noFiltersApplied": "No Filters Applied",
+    "applyFiltersToSeeReports": "Please apply filters to see reports. Use the Filters button below.",
     "generatedRouteLinks": "Generated Route Links",
     "routeLinksDescription": "Two links have been generated – one with IDs for viewing, and one clean link for actual navigation.",
     "enableGpsWarning": "!!! Please make sure GPS is enabled in Google Maps on your phone !!!",
@@ -589,7 +591,11 @@
     "reportCategoryLabel": "Report Category",
     "avgDaysLabel": "Average Days",
     "reportsAnalyzedCountLabel": "Reports Analyzed",
-    "analysisGenerated": "Analysis Generated"
+    "analysisGenerated": "Analysis Generated",
+    "inCity": "In",
+    "avgTimeToTransition": "the average time to transition from",
+    "is": "is",
+    "days": "days"
   },
   "ViewTransitionMatrixForAllStatuses": "View Transition Matrix for All Statuses",
   "ViewHeatmap": "View Heatmap",

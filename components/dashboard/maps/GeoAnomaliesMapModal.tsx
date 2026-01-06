@@ -193,8 +193,8 @@ export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAn
                   <ul className="text-xs text-gray-600 space-y-1 ml-4">
                     <li>• Geo-cluster anomalies are created when multiple reports of the same category appear within a small geographic area</li>
                     <li>• The spatial clustering algorithm runs automatically every 10 minutes</li>
-                    <li>• Other anomaly types (spike, slow_response) can be viewed in the "View Anomalies" modal</li>
-                    <li>• To generate test geo-clusters, use the "🧪 Test Report Generator" tool in the dashboard</li>
+                    <li>• Other anomaly types (spike, slow_response) can be viewed in the View Anomalies modal</li>
+                    <li>• To generate test geo-clusters, use the 🧪 Test Report \Generator tool in the dashboard</li>
                   </ul>
                 </div>
               </div>

@@ -251,13 +251,27 @@ export default function DashboardPage() {
             onClose={() => setTableViewOpen(false)}
             reports={reportsForTable}
             selectedArea={selectedArea}
+            initialFilters={{
+              categories: selectedTypes,
+              location: selectedArea || "",
+              status: status,
+              statusList: statusList,
+              mediaOnly: mediaOnly,
+              dateFrom: dateFrom,
+              dateTo: dateTo,
+              criticality: criticality,
+              criticalityList: criticalityList,
+            }}
             onApplyFilters={(filters) => {
               setSelectedTypes(filters.categories);
               setDateFrom(filters.dateFrom);
               setDateTo(filters.dateTo);
               setStatus(filters.status);
+              setStatusList(filters.statusList || []);
               setMediaOnly(filters.mediaOnly);
               setCriticality(filters.criticality || "");
+              setCriticalityList(filters.criticalityList || []);
+              setFiltersApplied(true);
             }}
           />
         )}

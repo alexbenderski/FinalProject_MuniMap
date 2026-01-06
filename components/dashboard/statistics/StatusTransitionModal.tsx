@@ -7,6 +7,19 @@ import { useLanguage } from "@/lib/i18n";
 
 const STATUS_ORDER = ["open", "pending", "in progress", "resolved"];
 
+// SLA thresholds in days (matching lib/server/sla.ts)
+const SLA_DAYS: Record<string, number> = {
+  garbage: 5,
+  lighting: 7,
+  tree: 8,
+  all: 7, // Default average for "all categories"
+};
+
+// Get SLA for the selected category
+const getSLA = (category: string): number => {
+  return SLA_DAYS[category] ?? 7;
+};
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -151,13 +164,16 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
     setHeatmapData(newHeatmapData);
   };
 
-  const getHeatmapColor = (avgDays: number, maxDays: number = 30) => {
+  // SLA-based heatmap coloring:
+  // Green = ≤50% SLA, Yellow = 50-100% SLA, Orange = 100-200% SLA, Red = >200% SLA
+  const getHeatmapColor = (avgDays: number) => {
     if (avgDays === 0) return "bg-gray-100";
-    const ratio = Math.min(avgDays / maxDays, 1);
-    if (ratio < 0.25) return "bg-green-100";
-    if (ratio < 0.5) return "bg-yellow-100";
-    if (ratio < 0.75) return "bg-orange-100";
-    return "bg-red-100";
+    const sla = getSLA(category);
+    const ratio = avgDays / sla;
+    if (ratio <= 0.5) return "bg-green-100";  // ≤50% of SLA
+    if (ratio <= 1) return "bg-yellow-100";   // 50-100% of SLA
+    if (ratio <= 2) return "bg-orange-100";   // 100-200% of SLA
+    return "bg-red-100";                       // >200% of SLA
   };
 
 
@@ -401,28 +417,28 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
               </table>
             </div>
 
-            {/* Legend */}
+            {/* Legend - SLA-based thresholds */}
             <div className="mt-4 flex gap-4 flex-wrap justify-center text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-green-100 border border-green-300"></div>
-                <span>{t("statusTransition.days0To7")}</span>
+                <span>≤50% SLA ({(getSLA(category) * 0.5).toFixed(1)} {t("days")})</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-yellow-100 border border-yellow-300"></div>
-                <span>{t("statusTransition.days7To15")}</span>
+                <span>50-100% SLA ({(getSLA(category) * 0.5).toFixed(1)}-{getSLA(category)} {t("days")})</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-orange-100 border border-orange-300"></div>
-                <span>{t("statusTransition.days15To22")}</span>
+                <span>100-200% SLA ({getSLA(category)}-{getSLA(category) * 2} {t("days")})</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-red-100 border border-red-300"></div>
-                <span>{t("statusTransition.days22Plus")}</span>
+                <span>&gt;200% SLA (&gt;{getSLA(category) * 2} {t("days")})</span>
               </div>
             </div>
 
             <p className="text-xs text-gray-600 mt-3 text-center">
-              {t("statusTransition.heatmapLegend")}
+              {t("statusTransition.heatmapLegend")} | SLA: {getSLA(category)} {t("days")}
             </p>
           </div>
         )}
@@ -474,11 +490,15 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
               {/* Summary Text */}
               <div className="bg-white rounded p-3 border border-green-200">
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  <span className="font-semibold">{t("statusTransition.summaryText")}</span> {t("statusTransition.toTransitionFrom")} {city} {t("statusTransition.to")} <span className="font-bold text-green-700">{getTimeRangeLabel(timeRange)}</span>, {t("statusTransition.basedOn")}{" "}
-                  <span className="font-bold text-green-700">{result.avgDays.toFixed(1)} {t("statusTransition.days")}</span> {t("statusTransition.toTransitionFrom")} {" "}
+                  <span className="font-semibold">{t("statusTransition.summaryText")}</span>{" "}
+                  {t("statusTransition.inCity")} <span className="font-bold text-blue-700">{city}</span>,{" "}
+                  {t("statusTransition.avgTimeToTransition")}{" "}
                   <span className="uppercase text-sm font-semibold">{statusStart}</span> {t("statusTransition.to")}{" "}
-                  <span className="uppercase text-sm font-semibold">{statusEnd}</span> {t("statusTransition.basedOn")}{" "}
-                  <span className="font-bold">{result.count} {t("statusTransition.reportsAnalyzedLabel")}</span>.
+                  <span className="uppercase text-sm font-semibold">{statusEnd}</span>{" "}
+                  {t("statusTransition.is")} <span className="font-bold text-green-700">{result.avgDays.toFixed(1)} {t("statusTransition.days")}</span>,{" "}
+                  {t("statusTransition.basedOn")}{" "}
+                  <span className="font-bold">{result.count} {t("statusTransition.reportsAnalyzedLabel")}</span>{" "}
+                  ({getTimeRangeLabel(timeRange)}).
                 </p>
               </div>
             </div>
