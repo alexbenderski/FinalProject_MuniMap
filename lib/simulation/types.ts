@@ -3,7 +3,7 @@
  * Configuration and state types for the municipal report simulator
  */
 
-export type ReportCategory = "garbage" | "lighting" | "tree" | "hazard";
+export type ReportCategory = "garbage" | "lighting" | "tree" | "hazard" | "animal" | "maintenance" | "pest";
 
 export type GenerationMode = "random" | "controlled" | "burst" | "pattern";
 

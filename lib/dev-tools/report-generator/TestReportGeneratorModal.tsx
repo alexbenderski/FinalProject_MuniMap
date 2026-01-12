@@ -6,6 +6,9 @@
  * This modal provides a UI for generating and inserting test reports into Firebase.
  * It is completely isolated from production components.
  * 
+ * ⚠️ SECURITY: Reports are ONLY written to the authenticated user's city.
+ * The city from auth permissions takes priority over props.
+ * 
  * To remove this feature:
  * 1. Delete the /lib/dev-tools/report-generator folder
  * 2. Remove the import and button from dashboard/page.tsx
@@ -22,11 +25,12 @@ import {
 } from "./generateReports";
 import { writeReportsToFirebase, WriteResult } from "./writeReportsToFirebase";
 import { Category } from "@/lib/categories";
+import { useAuth } from "@/components/AuthProvider";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  cityName: string;
+  cityName: string; // Optional prop, but will be overridden by auth permissions
   cityBoundary: { lat: number; lng: number }[];
   defaultCenter?: { lat: number; lng: number };
 }
@@ -36,10 +40,15 @@ type Step = "config" | "preview" | "writing" | "result";
 export default function TestReportGeneratorModal({
   open,
   onClose,
-  cityName,
+  cityName: propCityName,
   cityBoundary,
   defaultCenter,
 }: Props) {
+  const { user } = useAuth();
+  
+  // Simple check: user must be logged in to use dev tools
+  const isLoggedIn = Boolean(user);
+  
   // State
   const [step, setStep] = useState<Step>("config");
   const [errors, setErrors] = useState<string[]>([]);
@@ -125,6 +134,11 @@ export default function TestReportGeneratorModal({
 
   // Build config from form
   const buildConfig = (): GeneratorConfig | null => {
+    if (!isLoggedIn) {
+      setErrors(["🚫 Cannot generate reports: User must be logged in."]);
+      return null;
+    }
+
     const openTimeRangeStart = new Date(`${openStartDate}T${openStartTime}`).getTime();
     const openTimeRangeEnd = new Date(`${openEndDate}T${openEndTime}`).getTime();
     
@@ -150,7 +164,7 @@ export default function TestReportGeneratorModal({
       radiusMeters: radiusNum,
       count: countNum,
       cityBoundary,
-      area: cityName,
+      area: propCityName || "",
       openTimeRange: {
         start: openTimeRangeStart,
         end: openTimeRangeEnd,
@@ -235,6 +249,11 @@ export default function TestReportGeneratorModal({
 
   // Handle write to Firebase
   const handleWrite = async () => {
+    if (!isLoggedIn) {
+      setErrors(["Please log in to use this tool."]);
+      return;
+    }
+
     setStep("writing");
     setErrors([]);
 
@@ -296,12 +315,19 @@ export default function TestReportGeneratorModal({
           {/* Step: Config */}
           {step === "config" && (
             <div className="space-y-6">
-              {/* City Info */}
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-700">
-                  <strong>City:</strong> {cityName} | 
-                  <strong> Boundary Points:</strong> {cityBoundary.length}
-                </p>
+              {/* User Status */}
+              <div className={`p-4 rounded-lg border ${isLoggedIn ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
+                {isLoggedIn ? (
+                  <p className="text-sm text-blue-700">
+                    <strong>✅ Logged in as:</strong> {user?.email || "Unknown"} | 
+                    <strong> City:</strong> {propCityName || "N/A"} | 
+                    <strong> Boundary Points:</strong> {cityBoundary?.length || 0}
+                  </p>
+                ) : (
+                  <p className="text-sm text-red-700">
+                    🔓 <strong>Not logged in.</strong> Please log in to use this tool.
+                  </p>
+                )}
               </div>
 
               {/* Time Range */}

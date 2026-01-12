@@ -7,6 +7,7 @@ import AnomalyDetailsModal from "@/components/dashboard/anomalies/AnomalyDetails
 import { markAnomalyAsReviewed } from "@/lib/client/fetchers";
 import { getCurrentUserInfo } from "@/lib/client/fetchers";
 import { useLanguage } from "@/lib/i18n";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function AnomaliesModal({
   open,
@@ -17,13 +18,15 @@ export default function AnomaliesModal({
   selectedArea: string | null;
 }) {
   const { t, language } = useLanguage();
+  const { permissions } = useAuth();
+  const userCity = permissions?.city || null;
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [anomalyDetailsOpen, setAnomalyDetailsOpen] = useState(false);
   const [reportsForAnomaly, setReportsForAnomaly] = useState<Report[]>([]);
   const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null);
-  const [sortKey, setSortKey] = useState<"type" | "reports" | "status" | "firstDetected" | "lastUpdated" | null>(null);
+  const [sortKey, setSortKey] = useState<"type" | "reports" | "status" | "firstDetected" | "lastUpdated" | "severity" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
@@ -41,7 +44,7 @@ export default function AnomaliesModal({
 
   if (!open) return null;
 
-  const handleSort = (key: "type" | "reports" | "status" | "firstDetected" | "lastUpdated") => {
+  const handleSort = (key: "type" | "reports" | "status" | "firstDetected" | "lastUpdated" | "severity") => {
     if (sortKey === key) {
       setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
@@ -51,6 +54,11 @@ export default function AnomaliesModal({
   };
 
     const filtered = anomalies.filter((a) => {
+      // ✅ Filter by user's city first
+      if (userCity && a.area !== userCity) {
+        return false;
+      }
+
       const s = search.toLowerCase();
 
       return (
@@ -81,6 +89,11 @@ export default function AnomaliesModal({
       } else if (sortKey === "lastUpdated") {
         aVal = new Date(a.lastUpdated).getTime();
         bVal = new Date(b.lastUpdated).getTime();
+      } else if (sortKey === "severity") {
+        // Map severity to numeric values for sorting (high=3, medium=2, low=1)
+        const severityMap: Record<string, number> = { high: 3, medium: 2, low: 1 };
+        aVal = severityMap[a.severity || "low"] || 1;
+        bVal = severityMap[b.severity || "low"] || 1;
       }
 
       if (aVal === bVal) return 0;
@@ -143,7 +156,7 @@ async function handleMarkReviewed(anomaly: Anomaly) {
   
   return (
     <Modal title={`🚨 ${t("anomalies.title")}`} onClose={onClose}>
-      <div className="w-[900px] max-h-[80vh] overflow-y-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 p-4 rounded-lg shadow-lg">
+      <div className="w-[1200px] max-h-[80vh] overflow-y-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 p-4 rounded-lg shadow-lg">
         {loading ? (
           <div className="text-center py-8">
             <div className="inline-block animate-spin text-4xl mb-3">⚙️</div>
@@ -188,6 +201,12 @@ async function handleMarkReviewed(anomaly: Anomaly) {
                     >
                       📁 {t("anomalies.type")} {sortKey === "type" && (sortDir === "asc" ? "▲" : "▼")}
                     </th>
+                    <th
+                      className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
+                      onClick={() => handleSort("severity")}
+                    >
+                      ⚠️ {t("anomalies.severity")} {sortKey === "severity" && (sortDir === "asc" ? "▲" : "▼")}
+                    </th>
                     <th className="p-3 text-left">📝 {t("anomalies.description")}</th>
                     <th className="p-3 text-center">📍 {t("anomalies.area")}</th>
                     <th
@@ -229,6 +248,19 @@ async function handleMarkReviewed(anomaly: Anomaly) {
         <td className="p-3 text-center">
           <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold capitalize">
             {a.category || "unknown"}
+          </span>
+        </td>
+
+        {/* severity */}
+        <td className="p-3 text-center">
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+            a.severity === "high" ? "bg-red-100 text-red-800 border-2 border-red-300" :
+            a.severity === "medium" ? "bg-orange-100 text-orange-800 border-2 border-orange-300" :
+            "bg-yellow-100 text-yellow-800 border-2 border-yellow-300"
+          }`}>
+            {a.severity === "high" ? `🔴${t("anomalies.severityHigh")}` :
+             a.severity === "medium" ? `🟠${t("anomalies.severityMedium")}` :
+             `🟡 ${t("anomalies.severityLow")}`}
           </span>
         </td>
 

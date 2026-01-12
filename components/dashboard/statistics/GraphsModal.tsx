@@ -2,12 +2,13 @@
 import { useState, useRef } from "react";
 import Modal from "@/components/dashboard/common/Modal";
 import {
-  LineChart, Line, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LabelList,
 } from "recharts";
 import { fetchGraphData, GraphTopic } from "@/lib/client/fetchers";
 import { Graph } from "@/lib/types";
 import RealtimeClock from "../common/RealtimeClock";
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { useLanguage } from "@/lib/i18n";
 
 export default function GraphsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -56,30 +57,76 @@ export default function GraphsModal({ open, onClose }: { open: boolean; onClose:
           clonedSvg.setAttribute('height', `${height}`);
           clonedSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
 
-          // Remove external styles and any inline styles that may carry unsupported color functions
+          // Remove any style elements
           clonedSvg.querySelectorAll('style,link').forEach((el) => el.remove());
-          clonedSvg.querySelectorAll('[style]').forEach((el) => {
-            const styleAttr = el.getAttribute('style') || '';
-            if (styleAttr.includes('lab(')) {
-              el.removeAttribute('style');
+
+          // Fix all rect elements (bars in bar charts) - ensure they have proper fill
+          clonedSvg.querySelectorAll('rect').forEach((rect) => {
+            const fill = rect.getAttribute('fill');
+            // If fill is missing or contains problematic values, set default colors
+            if (!fill || fill === 'none' || fill.includes('lab(') || fill.includes('url(')) {
+              // Check if it's part of the chart grid (usually has small width/height)
+              const width = parseFloat(rect.getAttribute('width') || '0');
+              const height = parseFloat(rect.getAttribute('height') || '0');
+              
+              // If it's a small rect, it's probably grid background - make it light
+              if (width < 10 || height < 10) {
+                rect.setAttribute('fill', '#f9fafb');
+              } else {
+                // It's a data bar - use chart colors based on position/class
+                const className = rect.getAttribute('class') || '';
+                if (className.includes('recharts-bar') || width > 10) {
+                  // Try to preserve existing color or use default
+                  rect.setAttribute('fill', fill && !fill.includes('lab(') ? fill : '#3b82f6');
+                } else {
+                  rect.setAttribute('fill', '#f9fafb');
+                }
+              }
             }
           });
 
-          // Enforce safe fills/strokes so serialization stays RGB/hex
-          clonedSvg.querySelectorAll('rect,path,line').forEach((el) => {
-            const tag = el.tagName.toLowerCase();
-            if (!el.getAttribute('fill')) {
-              el.setAttribute('fill', tag === 'rect' ? '#3b82f6' : 'none');
+          // Fix all path elements (lines in line charts)
+          clonedSvg.querySelectorAll('path').forEach((path) => {
+            const stroke = path.getAttribute('stroke');
+            const fill = path.getAttribute('fill');
+            
+            if (!stroke || stroke.includes('lab(')) {
+              path.setAttribute('stroke', '#3b82f6');
             }
-            if (!el.getAttribute('stroke')) {
-              el.setAttribute('stroke', '#0f172a');
+            if (!fill || fill === 'none') {
+              path.setAttribute('fill', 'none');
+            } else if (fill.includes('lab(')) {
+              path.setAttribute('fill', 'none');
+            }
+            
+            if (!path.getAttribute('stroke-width')) {
+              path.setAttribute('stroke-width', '2');
             }
           });
 
+          // Fix all circle/dot elements
+          clonedSvg.querySelectorAll('circle').forEach((circle) => {
+            const fill = circle.getAttribute('fill');
+            if (!fill || fill.includes('lab(')) {
+              circle.setAttribute('fill', '#3b82f6');
+            }
+          });
+
+          // Fix all text elements
           clonedSvg.querySelectorAll('text').forEach((el) => {
-            if (!el.getAttribute('fill')) el.setAttribute('fill', '#0f172a');
+            const fill = el.getAttribute('fill');
+            if (!fill || fill.includes('lab(')) {
+              el.setAttribute('fill', '#0f172a');
+            }
             (el as SVGTextElement).setAttribute('font-family', 'Arial, sans-serif');
-            (el as SVGTextElement).setAttribute('font-size', '12px');
+          });
+
+          // Fix line elements (grid lines, axes)
+          clonedSvg.querySelectorAll('line').forEach((line) => {
+            const stroke = line.getAttribute('stroke');
+            if (!stroke || stroke.includes('lab(')) {
+              line.setAttribute('stroke', '#e5e7eb');
+            }
           });
 
           const serialized = new XMLSerializer().serializeToString(clonedSvg);
@@ -93,11 +140,11 @@ export default function GraphsModal({ open, onClose }: { open: boolean; onClose:
           });
 
           const canvas = document.createElement('canvas');
-          canvas.width = width * 2; // upscale for clarity
+          canvas.width = width * 2;
           canvas.height = height * 2;
           const ctx = canvas.getContext('2d');
           if (ctx) {
-            ctx.fillStyle = '#f9fafb';
+            ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           }
@@ -312,10 +359,10 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
                     : "לא סגורים"}
                 </h3>
 
-                <div className="h-[250px]">
+                <div className="h-[280px]">
                   <ResponsiveContainer width="100%" height="100%">
                     {g.type === "line" && (
-                      <LineChart data={g.data}>
+                      <LineChart data={g.data} margin={{ top: 30, right: 40, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
                         <YAxis />
@@ -326,29 +373,38 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
                           stroke="#3b82f6"
                           strokeWidth={2}
                           dot={{ r: 5 }}
-                        />
+                          isAnimationActive={false}
+                        >
+                          <LabelList dataKey={dataKey} position="top" offset={10} style={{ fontSize: 13, fill: '#0f172a', fontWeight: 'bold' }} />
+                        </Line>
                       </LineChart>
                     )}
 
                     {g.type === "bar" && (
-                      <BarChart data={g.data}>
+                      <BarChart data={g.data} margin={{ top: 30, right: 40, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey={dataKey} fill="#3b82f6" />
+                        <Bar dataKey={dataKey} fill="#3b82f6" isAnimationActive={false}>
+                          <LabelList dataKey={dataKey} position="top" offset={8} style={{ fontSize: 13, fill: '#0f172a', fontWeight: 'bold' }} />
+                        </Bar>
                       </BarChart>
                     )}
 
                     {g.type === "double" && (
-                      <BarChart data={g.data}>
+                      <BarChart data={g.data} margin={{ top: 30, right: 40, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
                         <YAxis />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="reports" fill="#3b82f6" name="סה״כ דיווחים" />
-                        <Bar dataKey="resolved" fill="#10b981" name="דיווחים סגורים" />
+                        <Bar dataKey="reports" fill="#3b82f6" name="סה״כ דיווחים" isAnimationActive={false}>
+                          <LabelList dataKey="reports" position="top" offset={8} style={{ fontSize: 13, fill: '#0f172a', fontWeight: 'bold' }} />
+                        </Bar>
+                        <Bar dataKey="resolved" fill="#10b981" name="דיווחים סגורים" isAnimationActive={false}>
+                          <LabelList dataKey="resolved" position="top" offset={8} style={{ fontSize: 13, fill: '#0f172a', fontWeight: 'bold' }} />
+                        </Bar>
                       </BarChart>
                     )}
                   </ResponsiveContainer>

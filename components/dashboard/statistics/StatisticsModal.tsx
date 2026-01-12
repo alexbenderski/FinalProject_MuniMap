@@ -192,15 +192,8 @@ export default function StatisticsModal({
       }
     }
 
-    let resolutionData = await fetchResolutionTimeData(timeRange, startDate, endDate);
-
-    const monthOrder = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    resolutionData = resolutionData.sort(
-      (a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month)
-    );
+    // API returns data already sorted by year-month
+    const resolutionData = await fetchResolutionTimeData(timeRange, startDate, endDate);
 
     setTimeToResolveData(resolutionData);
   }
@@ -222,7 +215,7 @@ export default function StatisticsModal({
   
   return (
     <Modal title=" " onClose={onClose}>
-      <div className="p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-lg max-h-[85vh] overflow-y-auto w-[950px]">
+      <div className="p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-lg max-h-[85vh] overflow-y-auto w-[1200px]  ">
         <h1 className="text-3xl font-bold text-center mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
           📈 {t("statistics.analyticsDashboard")}
         </h1>
@@ -341,9 +334,18 @@ export default function StatisticsModal({
 
             {/* 🔹 Resolution Time Chart */}
             <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border-l-4 border-green-500">
-              <h3 className="text-center font-bold text-lg mb-4 text-gray-800">
-                ⏱️ {t("statistics.avgTimeToResolve")}
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-lg text-gray-800">
+                  ⏱️ {t("statistics.avgTimeToResolve")}
+                </h3>
+                <button
+                  onClick={loadStats}
+                  className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm font-medium transition-colors flex items-center gap-1"
+                  title={t("statistics.refreshGraph")}
+                >
+                  🔄 {t("statistics.refresh")}
+                </button>
+              </div>
 
 
               <div className="h-[280px] bg-gradient-to-br from-gray-50 to-green-50 rounded-lg p-3">
@@ -365,6 +367,7 @@ export default function StatisticsModal({
                       strokeWidth={3}
                       dot={{ r: 6, fill: "#1e40af" }}
                       activeDot={{ r: 8 }}
+                      isAnimationActive={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>

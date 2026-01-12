@@ -9,11 +9,12 @@ import {
 import { SimulationEngine } from "@/lib/simulation/engine";
 import { SIMULATION_PRESETS, DEFAULT_CONFIG, applyPreset } from "@/lib/simulation/presets";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useAuth } from "@/components/AuthProvider";
 
 interface SimulationPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  cityName?: string;
+  cityName?: string; // Optional prop, but will be overridden by auth permissions
   cityBoundary?: number[][];
 }
 
@@ -36,6 +37,9 @@ const CATEGORY_ICONS: Record<ReportCategory, string> = {
   lighting: "💡",
   tree: "🌳",
   hazard: "⚠️",
+  animal: "🐾",
+  maintenance: "🛠️",
+  pest: "🐛",
 };
 
 const CATEGORY_LABELS: Record<ReportCategory, { en: string; he: string }> = {
@@ -43,20 +47,27 @@ const CATEGORY_LABELS: Record<ReportCategory, { en: string; he: string }> = {
   lighting: { en: "Lighting", he: "תאורה" },
   tree: { en: "Trees", he: "עצים" },
   hazard: { en: "Hazards", he: "מפגעים" },
+  animal: { en: "Animals", he: "חיות" },
+  maintenance: { en: "Maintenance", he: "תחזוקה" },
+  pest: { en: "Pests", he: "מזיקים" },
 };
 
 export default function SimulationPanel({
   isOpen,
   onClose,
-  cityName = "Tel Aviv",
+  cityName: propCityName, // Accept prop but don't use as primary source
   cityBoundary,
 }: SimulationPanelProps) {
   const { language } = useLanguage();
   const isHebrew = language === "he";
+  const { user } = useAuth();
+
+  // Simple check: user must be logged in to use simulation
+  const isLoggedIn = Boolean(user);
 
   // State
   const [activeTab, setActiveTab] = useState<TabType>("presets");
-  const [config, setConfig] = useState<SimulationConfig>({ ...DEFAULT_CONFIG, cityName });
+  const [config, setConfig] = useState<SimulationConfig>({ ...DEFAULT_CONFIG, cityName: propCityName || "" });
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [engine, setEngine] = useState<SimulationEngine | null>(null);
   const [state, setState] = useState<SimulationStatus>("idle");
@@ -98,17 +109,23 @@ export default function SimulationPanel({
     const presetConfig = applyPreset(presetId);
     // Convert cityBoundary from number[][] to { lat, lng }[]
     const convertedBoundary = cityBoundary?.map(([lat, lng]) => ({ lat, lng }));
-    setConfig({ ...presetConfig, cityName, cityBoundary: convertedBoundary });
-  }, [cityName, cityBoundary]);
+    setConfig({ ...presetConfig, cityName: propCityName || "", cityBoundary: convertedBoundary });
+  }, [propCityName, cityBoundary]);
 
   // Control handlers
   const handleStart = useCallback(async () => {
     if (!engine) return;
+    
+    if (!isLoggedIn) {
+      setLogs(prev => [...prev, "[ERROR] 🚫 Cannot start simulation: User must be logged in."]);
+      return;
+    }
+    
     setLogs([]);
     // Convert cityBoundary from number[][] to { lat, lng }[]
     const convertedBoundary = cityBoundary?.map(([lat, lng]) => ({ lat, lng }));
-    await engine.start({ ...config, cityName, cityBoundary: convertedBoundary });
-  }, [engine, config, cityName, cityBoundary]);
+    await engine.start({ ...config, cityName: propCityName || "", cityBoundary: convertedBoundary });
+  }, [engine, config, propCityName, isLoggedIn, cityBoundary]);
 
   const handleStop = useCallback(() => {
     engine?.stop();
@@ -307,7 +324,7 @@ export default function SimulationPanel({
                   {isHebrew ? "קטגוריות" : "Categories"}
                 </label>
                 <div className="grid grid-cols-4 gap-2">
-                  {(["garbage", "lighting", "tree", "hazard"] as ReportCategory[]).map(cat => (
+                  {(["garbage", "lighting", "tree", "hazard","animal", "maintenance", "pest"] as ReportCategory[]).map(cat => (
                     <button
                       key={cat}
                       onClick={() => toggleCategory(cat)}
@@ -401,7 +418,7 @@ export default function SimulationPanel({
                   {isHebrew ? "פילוח לפי קטגוריה" : "Category Breakdown"}
                 </div>
                 <div className="grid grid-cols-4 gap-3">
-                  {(["garbage", "lighting", "tree", "hazard"] as ReportCategory[]).map(cat => (
+                  {(["garbage", "lighting", "tree", "hazard","animal", "maintenance", "pest"] as ReportCategory[]).map(cat => (
                     <div key={cat} className="text-center">
                       <div className="text-2xl mb-1">{CATEGORY_ICONS[cat]}</div>
                       <div className="text-lg font-semibold text-gray-900">
@@ -450,6 +467,16 @@ export default function SimulationPanel({
                 "bg-gray-400"
               }`} />
               <span className="text-sm text-gray-700 capitalize">{state}</span>
+              {isLoggedIn && (
+                <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                  ✅ {user?.email || "Unknown"}
+                </span>
+              )}
+              {!isLoggedIn && (
+                <span className="text-xs text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                  🔓 {isHebrew ? "נא להתחבר" : "Please log in"}
+                </span>
+              )}
             </div>
 
             {/* Control Buttons */}
@@ -457,7 +484,8 @@ export default function SimulationPanel({
               {state === "idle" || state === "completed" ? (
                 <button
                   onClick={handleStart}
-                  disabled={config.categories.length === 0}
+                  disabled={config.categories.length === 0 || !isLoggedIn}
+                  title={!isLoggedIn ? (isHebrew ? "נדרשת התחברות" : "Login required") : ""}
                   className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isHebrew ? "התחל סימולציה" : "Start Simulation"}

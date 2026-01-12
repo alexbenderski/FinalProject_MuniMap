@@ -227,9 +227,6 @@ export default function DetailedStatsModal({
       setLoading(true);
       const stats = await fetchDetailedStatistics(timeRange, fromDate, toDate);
       setData(stats);
-
-      // Count reports by category from live reports in state
-      const categoryCounts: Record<string, number> = {};
       
       // Process city health metrics
       const totalReports = stats?.topAreas?.reduce((sum: number, a: AreaStats) => sum + a.total, 0) || 0;
@@ -270,6 +267,10 @@ export default function DetailedStatsModal({
           garbage: 5,
           lighting: 7,
           tree: 8,
+          hazard: 3,
+          road: 7,
+          water: 2,
+          other: 7,
         };
         
         const slaDays = SLA_DAYS[c.category.toLowerCase()] ?? 7;
@@ -285,7 +286,7 @@ export default function DetailedStatsModal({
           category: c.category,
           avgResolutionTime: avgResolveDays,
           slaBreachRate: slaBreachPercentage, // ✅ No cap - show real percentage
-          reportCount: categoryCounts[c.category.toLowerCase()] || 0, // ✅ Real count
+          reportCount: c.reportCount || 0, // ✅ Real count from API
         };
       });
       setCategoryBottlenecks(bottlenecks);

@@ -10,7 +10,7 @@ import { buildAnomaly, Anomaly } from "./builders";
 
 const CELL_SIZE_DEGREES = 0.003; // ~300m at Israel's latitude (~32°N) - finer granularity
 const MONTHS_BACK = 6; // Historical baseline window
-const MIN_REPORTS_FOR_ANOMALY = 5; // Minimum reports to trigger anomaly (5 for real clusters)
+const MIN_REPORTS_FOR_ANOMALY = 15; // Minimum total reports in cell to consider for anomaly
 const SPATIAL_CONSISTENCY_THRESHOLD = 0.15; // Only 15% of neighbors needed (very lenient)
 
 // ============================================================================
@@ -54,7 +54,7 @@ interface CellAnomalyScore {
   pctChange: number;
   threshold: number;
   isAnomaly: boolean;
-  severity: "medium" | "high";
+  severity: "low" | "medium" | "high";
 }
 
 interface SpatialCluster {
@@ -65,7 +65,7 @@ interface SpatialCluster {
   totalReports: number;
   avgZScore: number;
   maxZScore: number;
-  severity: "medium" | "high";
+  severity: "low" | "medium" | "high";
   area: string;
   category: string;
 }
@@ -146,33 +146,35 @@ function scoreCells(
     // Skip empty cells
     if (cell.reports.length === 0) continue;
 
-    const timeSeries = buildCellTimeSeries(cell, MONTHS_BACK, now);
+    // 🎯 NEW: Check TOTAL reports in cell, not just current month
+    // This matches what users see in the Anomaly Calculator
+    const totalReports = cell.reports.length;
 
-    // Calculate dynamic threshold using existing utility
+    // Skip if not enough reports for spatial cluster detection
+    if (totalReports < MIN_REPORTS_FOR_ANOMALY) continue;
+
+    // Still build time series for metadata
+    const timeSeries = buildCellTimeSeries(cell, MONTHS_BACK, now);
     const { threshold, baselineMean, baselineStd } = calcDynamicThreshold(timeSeries.bins);
 
-    const current = timeSeries.currentCount;
     const μ = baselineMean;
     const σ = baselineStd || 1;
 
-    // Statistical measures
+    // Statistical measures (using current month for stats)
+    const current = timeSeries.currentCount;
     const zScore = (current - μ) / σ;
     const pctChange = μ > 0 ? ((current - μ) / μ) * 100 : 0;
 
-    // For new areas with no history, use lenient threshold
-    let isAnomaly: boolean;
-    if (μ === 0) {
-      // New area: just need enough reports
-      isAnomaly = current >= MIN_REPORTS_FOR_ANOMALY;
-    } else {
-      // Established area: compare to threshold
-      isAnomaly = current >= threshold && current >= MIN_REPORTS_FOR_ANOMALY;
-    }
+    // This is a spatial cluster because it has enough total reports
+    const isAnomaly = true;
 
-    if (!isAnomaly) continue;
-
-    // Severity based on Z-score and percentage - more lenient
-    const severity: "medium" | "high" = zScore >= 2.5 || pctChange >= 80 ? "high" : "medium";
+    // Severity based on Z-score and percentage
+    // HIGH: Z-score >= 3.0 (99.7% confidence) AND percentage change >= 100% (actual doubling)
+    // MEDIUM: Z-score >= 2.0 AND percentage change >= 50%
+    // LOW: Everything else that triggered anomaly detection
+    const severity: "low" | "medium" | "high" = 
+      zScore >= 3.0 && pctChange >= 100 ? "high" :
+      zScore >= 2.0 && pctChange >= 50 ? "medium" : "low";
 
     if (current >= 5) {
       console.log(`   📊 Cell ${cellId}: ${current} reports, μ=${μ.toFixed(1)}, σ=${σ.toFixed(1)}, Z=${zScore.toFixed(2)}, change=${pctChange.toFixed(0)}% → ${severity}`);
@@ -330,10 +332,12 @@ function formClusters(
     const avgZScore = mean(zScores);
     const maxZScore = Math.max(...zScores);
 
-    // Determine cluster severity
+    // Determine cluster severity based on cell distribution
     const highSeverityCells = cluster.filter((c) => c.severity === "high").length;
-    const severity: "medium" | "high" =
-      highSeverityCells / cluster.length >= 0.5 ? "high" : "medium";
+    const mediumSeverityCells = cluster.filter((c) => c.severity === "medium").length;
+    const severity: "low" | "medium" | "high" =
+      highSeverityCells / cluster.length >= 0.5 ? "high" :
+      (highSeverityCells + mediumSeverityCells) / cluster.length >= 0.5 ? "medium" : "low";
 
     // Determine area (most common area in reports)
     const areaCounts = new Map<string, number>();

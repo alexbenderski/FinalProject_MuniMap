@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Report,FilterStatus } from "@/lib/types";
-import { updateReportInDB,softDeleteReportInDB } from "@/lib/client/fetchers";
+import { Report,FilterStatus, ReportComment } from "@/lib/types";
+import { updateReportInDB,softDeleteReportInDB, addReportComment, getCurrentUserInfo, fetchCurrentUserAuthority } from "@/lib/client/fetchers";
 import { getReportImages } from "@/lib/client/storage";
 import Image from "next/image";
 import ImageViewerModal from "../common/ImageViewerModal";
@@ -51,6 +51,9 @@ export default function ReportDetailsModal({
   const [loadingImages, setLoadingImages] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [commentsExpanded, setCommentsExpanded] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
 
     useEffect(() => {
     setLocalReport(report ?? null);
@@ -114,8 +117,12 @@ const handleUpdateStatus = async () => {
   }
 
   const newStatus = STATUS_FLOW[currentIndex + 1];
-  const updatedBy = "System Operator";
   const updatedAt = Date.now();
+
+  // Get current user info and authority
+  const { email } = getCurrentUserInfo();
+  const authority = await fetchCurrentUserAuthority();
+  const updatedBy = authority || "Municipal Worker";
 
   // ⬅️ כאן נבדוק אם עברנו ל־resolved
   const extraFields =
@@ -125,7 +132,7 @@ const handleUpdateStatus = async () => {
 
   const nextHistory = [
     ...(localReport.statusHistory || []),
-    { status: newStatus, updatedBy, updatedAt },
+    { status: newStatus, updatedBy, updatedAt, authority, email: email || undefined },
   ];
 
   try {
@@ -176,14 +183,19 @@ const handleDeleteReport = async () => {
     return;
   }
 
+  // Get current user info
+  const { email } = getCurrentUserInfo();
+  const authority = await fetchCurrentUserAuthority();
+  const deletedBy = authority || email || "Unknown User";
+
   try {
-    await softDeleteReportInDB(reportType, reportId, "System Operator");
+    await softDeleteReportInDB(reportType, reportId, deletedBy);
 
     const merged = {
       ...localReport,
       deleted: true,
       deletedAt: Date.now(),
-      deletedBy: "System Operator",
+      deletedBy,
     };
 
 
@@ -210,13 +222,22 @@ const handleDeleteReport = async () => {
     }
 
     return (
-      <ul className="space-y-2 mt-2 border-l-2 border-gray-300 pl-4">
+      <ul className="space-y-3 mt-2 border-l-2 border-gray-300 pl-4">
         {localReport.statusHistory.map((entry, idx) => (
           <li key={idx} className="relative">
             <span className="absolute -left-[9px] top-[4px] w-2 h-2 bg-blue-500 rounded-full" />
-            <p className="text-sm">
-              <strong>{entry.status.toUpperCase()}</strong> — {t("reports.updatedBy").toLowerCase()}{" "}
-              <span className="text-blue-700">{entry.updatedBy}</span>{" "}
+            <p className="text-sm font-semibold">
+              <strong>{entry.status.toUpperCase()}</strong>
+            </p>
+            <p className="text-xs text-gray-600">
+              {t("reports.updatedBy")}: <span className="text-purple-700 font-medium">{entry.authority || entry.updatedBy}</span>
+            </p>
+            {entry.email && (
+              <p className="text-xs text-blue-600">
+                📧 {entry.email}
+              </p>
+            )}
+            <p className="text-xs text-gray-500">
               {new Date(entry.updatedAt).toLocaleString(language === "he" ? "he-IL" : "en-US")}
             </p>
           </li>
@@ -258,9 +279,7 @@ const handleDeleteReport = async () => {
             <span className="bg-white/20 px-3 py-1 rounded-full">📍 {localReport.area}</span>
             <span className="bg-white/20 px-3 py-1 rounded-full">🏷️ {localReport?.type?.toUpperCase()}</span>
           </div>
-          <p className="text-blue-100 text-sm mt-2">
-            {t("reports.submittedBy")}: {new Date(localReport.timestamp).toLocaleString(language === "he" ? "he-IL" : "en-US")}
-          </p>
+
         </div>
 
         {/* Description Section */}
@@ -273,6 +292,102 @@ const handleDeleteReport = async () => {
             value={localReport.description || t("reports.noDescription")}
             className="w-full border-0 rounded-md px-3 py-2 bg-white resize-none h-24 text-gray-700 focus:outline-none"
           />
+        </div>
+
+        {/* Comments Section - Collapsible */}
+        <div className="mb-6 bg-amber-50 p-4 rounded-lg border border-amber-200">
+          <button
+            onClick={() => setCommentsExpanded(!commentsExpanded)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <h3 className="font-bold text-lg text-amber-900 flex items-center gap-2">
+              <span>💬</span> {t("reports.comments")} ({localReport.comments?.length || 0})
+            </h3>
+            <span className="text-amber-700 text-xl font-bold">
+              {commentsExpanded ? "▲" : "▼"}
+            </span>
+          </button>
+          
+          {commentsExpanded && (
+            <div className="mt-4">
+              {/* Existing Comments */}
+              {(!localReport.comments || localReport.comments.length === 0) ? (
+                <p className="text-gray-500 text-sm italic mb-4">{t("reports.noComments")}</p>
+              ) : (
+                <div className="space-y-3 mb-4 max-h-[200px] overflow-y-auto">
+                  {[...localReport.comments].sort((a, b) => b.timestamp - a.timestamp).map((comment) => (
+                    <div key={comment.id} className="bg-white p-3 rounded-lg border border-amber-100 shadow-sm">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-semibold text-amber-800">{comment.userName}</span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(comment.timestamp).toLocaleString(language === "he" ? "he-IL" : "en-US")}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700">{comment.text}</p>
+                      <p className="text-xs text-blue-600 mt-1">📧 {comment.userEmail}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add New Comment */}
+              <div className="border-t border-amber-200 pt-4">
+                <label className="font-semibold text-amber-800 block mb-2">
+                  {t("reports.writeComment")}:
+                </label>
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder={t("reports.writeComment")}
+                  className="w-full border-2 border-amber-300 rounded-md px-3 py-2 resize-none h-20 text-gray-700 focus:outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-200"
+                />
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={async () => {
+                      if (!newComment.trim()) {
+                        alert(t("reports.commentCannotBeEmpty"));
+                        return;
+                      }
+                      
+                      const { email } = getCurrentUserInfo();
+                      if (!email) {
+                        alert(t("reports.userNotAuthenticated"));
+                        return;
+                      }
+
+                      setSubmittingComment(true);
+                      try {
+                        const result = await addReportComment(
+                          localReport.type || "",
+                          localReport.id || "",
+                          newComment
+                        );
+                        
+                        // Update local state
+                        const updatedComments = [...(localReport.comments || []), result.comment];
+                        const updatedReport = { ...localReport, comments: updatedComments };
+                        setLocalReport(updatedReport);
+                        onReportUpdated?.(updatedReport);
+                        setNewComment("");
+                        alert(t("reports.commentAdded"));
+                      } catch (err) {
+                        console.error("Failed to add comment:", err);
+                        alert(t("reports.failedToAddComment"));
+                      } finally {
+                        setSubmittingComment(false);
+                      }
+                    }}
+                    disabled={submittingComment || !newComment.trim()}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                  >
+                    <span>✓</span>
+                    {submittingComment ? t("reports.submitting") : t("reports.addComment")}
+                  </button>
+
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Summary and Timeline Grid */}

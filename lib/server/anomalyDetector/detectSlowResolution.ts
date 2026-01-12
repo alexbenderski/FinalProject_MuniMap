@@ -188,7 +188,7 @@ export async function detectSlowResolution(
         bins,
       },
       relatedReports: items.map((r) => r.id),
-      severity: ratio >= 2 ? "high" : "medium",
+      severity: ratio >= 2.5 ? "high" : ratio >= 1.5 ? "medium" : "low",
     });
 
     anomaly.generalMessage = generateAnomalyDescription(anomaly);

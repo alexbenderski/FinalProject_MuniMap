@@ -77,7 +77,10 @@ export function detectHighActivity(reports: Report[], now = Date.now()): Anomaly
     const z = (current - μ) / (σ || 1);
     console.log(`📊 pctChange=${pct}%, zScore=${z}`);
 
-    const severity = z >= 3.0 || pct >= 100 ? "high" : "medium";// z>=3 means very rare event 
+    // Three-level severity: high (Z>=3 OR %>=100), medium (Z>=2 OR %>=50), low (everything else)
+    const severity: "low" | "medium" | "high" = 
+      z >= 3.0 || pct >= 100 ? "high" :
+      z >= 2.0 || pct >= 50 ? "medium" : "low";
     console.log("🚨 Creating anomaly entry!");
 
 const anomaly = buildAnomaly({

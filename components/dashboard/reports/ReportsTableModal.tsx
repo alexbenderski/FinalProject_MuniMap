@@ -46,21 +46,6 @@ type FiltersPayload = {
 
 
 
-// ✅ פונקציה שמחזירה כתובת מעודכנת בדיוק כמו שגוגל משתמשת בה
-async function getGoogleFormattedAddress(lat: number, lng: number): Promise<string> {
-  return new Promise((resolve) => {
-    const geocoder = new google.maps.Geocoder();
-    const latlng = { lat, lng };
-    geocoder.geocode({ location: latlng }, (results, status) => {
-      if (status === "OK" && results && results[0]) {
-        resolve(results[0].formatted_address); // כתובת רשמית
-      } else {
-        resolve(`${lat.toFixed(5)}, ${lng.toFixed(5)}`); // fallback
-      }
-    });
-  });
-}
-
 export default function ReportsTableModal({
   open,
   onClose,
@@ -132,7 +117,8 @@ useEffect(() => {
   const { safeKey: currentUserKey } = getCurrentUserInfo();
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [generatedCleanLink, setGeneratedCleanLink] = useState("");
-  const [generatedLabeledLink, setGeneratedLabeledLink] = useState("");
+  const [fieldWorkerModalOpen, setFieldWorkerModalOpen] = useState(false);
+  const [fieldWorkerReports, setFieldWorkerReports] = useState<Report[]>([]);
   // 🧭 ניהול מיון
   const [sortColumn, setSortColumn] = useState<string>(""); 
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -154,83 +140,6 @@ useEffect(() => {
 
 
 
-  ///////////////////////////////////////////////////////////////functions global////////////////////////////////////
-
-
-// // ✅ מחשב את רמת הקריטיות לפי תאריך
-// function getReportCriticality(timestamp: number, type?: string) {
-//   const reportDate = new Date(timestamp);
-//   const now = new Date();
-//   const diffDays = Math.floor(
-//     (now.getTime() - reportDate.getTime()) / (1000 * 60 * 60 * 24)
-//   );
-
-//   const ranges = [
-//     { max: 5, level: "חדש", key: "green" },
-//     { max: 14, level: "בינוני", key: "yellow" },
-//     { max: 30, level: "ישן", key: "orange" },
-//     { max: Infinity, level: "קריטי", key: "red" },
-//   ];
-
-//   const current = ranges.find(r => diffDays <= r.max)!;
-//   const normalizedType = type?.toLowerCase() || "default";
-
-//   return {
-//     level: current.level,
-//     color: current.key,
-//     icon: `/icons/${current.key}_${normalizedType}.png`,
-//   };
-// }
-
-
-//sla version
-// Note: This function is currently unused but kept for reference
-// Use getReportCriticalityType from @/lib/server/sla instead
-/*
-function getReportCriticality(timestamp: number, type?: string) {
-  const now = Date.now();
-  const ageDays = Math.floor((now - timestamp) / (1000 * 60 * 60 * 24));
-
-  const sla = SLA_DAYS[type ?? "default"] ?? 7;
-
-  let color = "green";
-  if (ageDays > sla * 2) color = "red";
-  else if (ageDays > sla) color = "orange";
-  else if (ageDays >= sla * 0.5) color = "yellow";
-
-  return {
-    level:
-      color === "green"   ? "חדש" :
-      color === "yellow"  ? "בינוני" :
-      color === "orange"  ? "ישן" :
-      "קריטי",
-    color,
-    icon: `/icons/${color}_${type ?? "default"}.png`,
-  };
-}
-*/
-
-
-
-
-//  function CriticalityCell({ timestamp, type }: Props) {
-//   const c = getReportCriticality(timestamp, type);
-//   const [imgSrc, setImgSrc] = useState(c.icon);
-
-//   return (
-//     <div className="flex flex-col items-center justify-center">
-//       <Image
-//         src={imgSrc}
-//         alt={c.level}
-//         width={24}
-//         height={24}
-//         onError={() => setImgSrc(`/icons/${c.color}_default.png`)}
-//         unoptimized
-//       />
-//       <span style={{ color: c.color, fontSize: "13px" }}>{c.level}</span>
-//     </div>
-//   );
-// }
 
 
 function CriticalityCell({ timestamp, type }: Props) {
@@ -532,71 +441,32 @@ async function handleGenerateDualLinks() {
     alert(err);
   }
 
-  // ✅ נבנה רשימת נקודות לניווט — נוסיף את המיקום הנוכחי בתחילת המסלול בלבד
+  // ✅ נבנה רשימת נקודות לניווט — ללא GPS של המשתמש, כדי שהעובד יוכל לבחור את מיקומו בעצמו
   const routePoints: { lat: number; lng: number }[] = [];
-  if (userLocation) routePoints.push(userLocation);
   routePoints.push(...selected.map((r) => ({ lat: r.lat, lng: r.lng })));
 
-  // ✅ מביאים את הכתובות שגוגל עצמה מחזירה (רק עבור הדיווחים עצמם)
-  const formattedAddresses = await Promise.all(
-    selected.map((r) => getGoogleFormattedAddress(r.lat, r.lng))
-  );
-
   // --------------------------
-  // 🔹 לינק נקי (כולל GPS כנקודת התחלה)
-  const originClean = `${routePoints[0].lat},${routePoints[0].lng}`;
+  // 🔹 לינק נקי (ללא נקודת התחלה - העובד יבחר את מיקומו ידנית)
   const destinationClean = `${routePoints[routePoints.length - 1].lat},${routePoints[routePoints.length - 1].lng}`;
   const waypointsClean = routePoints
-    .slice(1, -1)
+    .slice(0, -1)
     .map((p) => `${p.lat},${p.lng}`)
     .join("|");
 
   const cleanLink = waypointsClean
-    ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
-        originClean
-      )}&destination=${encodeURIComponent(
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
         destinationClean
       )}&waypoints=${encodeURIComponent(
         waypointsClean
       )}&travelmode=driving&hl=he`
-    : `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
-        originClean
-      )}&destination=${encodeURIComponent(
+    : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
         destinationClean
-      )}&travelmode=driving&hl=he`;
-
-  // --------------------------
-  // 🔹 לינק עם מזהים (לצפייה בלבד)
-  const labeledAddresses = formattedAddresses.map(
-    (addr, i) =>
-      `${addr}(rpt_${selected[i].id?.replace("rpt_", "") ?? "unknown"})`
-  );
-
-  const originLabeled = userLocation
-    ? "מיקום נוכחי (GPS)"
-    : labeledAddresses[0];
-  const destinationLabeled = labeledAddresses[labeledAddresses.length - 1];
-  const waypointsLabeled = labeledAddresses.slice(1, -1).join("|");
-
-  const labeledLink = waypointsLabeled
-    ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
-        originLabeled
-      )}&destination=${encodeURIComponent(
-        destinationLabeled
-      )}&waypoints=${encodeURIComponent(
-        waypointsLabeled
-      )}&travelmode=driving&hl=he`
-    : `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
-        originLabeled
-      )}&destination=${encodeURIComponent(
-        destinationLabeled
       )}&travelmode=driving&hl=he`;
 
   // --------------------------
   // שמירה והעתקה
   setGeneratedCleanLink(cleanLink);
-  setGeneratedLabeledLink(labeledLink);
-  navigator.clipboard.writeText(`${cleanLink}\n\n${labeledLink}`);
+  navigator.clipboard.writeText(cleanLink);
   setLinkModalOpen(true);
 }
 
@@ -606,7 +476,7 @@ async function handleGenerateDualLinks() {
 return (
   <>
     <Modal title={title ?? t("reportsTable.title")} onClose={onClose}>
-      <div className="flex flex-col bg-white rounded-lg shadow-lg max-w-[95vw] max-h-[90vh] w-[1000px] overflow-hidden">
+      <div className="flex flex-col bg-white rounded-lg shadow-lg max-w-[95vw] max-h-[90vh] w-[1200px] overflow-hidden">
 
 {/* Anomaly Details Section - Collapsible */}
 {localAnomaly && (
@@ -807,12 +677,47 @@ return (
           )}
           </div>
           
-            <button
-            className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold rounded-lg px-4 py-2 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
-            onClick={handleGenerateDualLinks}
-          >
-            🛣️ {t("reportsTable.routeLink")}
-          </button>
+            <div className="flex gap-1 items-center">
+              <button
+                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold rounded-lg px-4 py-2 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                onClick={() => {
+                  const selected = rows.filter(r => selectedReports.includes(r.id ?? ""));
+                  if (selected.length === 0) {
+                    alert(t("reportsTable.noReportsSelected"));
+                    return;
+                  }
+                  // Check if ALL selected reports are pending
+                  const allPending = selected.every(r => r.status === "pending");
+                  if (!allPending) {
+                    alert(t("reportsTable.onlyPendingAllowed"));
+                    return;
+                  }
+                  handleGenerateDualLinks();
+                }}
+              >
+                🛣️ {t("reportsTable.routeLink")}
+              </button>
+              <button
+                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold rounded-lg px-4 py-2 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                onClick={() => {
+                  const selected = rows.filter(r => selectedReports.includes(r.id ?? ""));
+                  if (selected.length === 0) {
+                    alert(t("reportsTable.noReportsSelected"));
+                    return;
+                  }
+                  // Check if ALL selected reports are pending
+                  const allPending = selected.every(r => r.status === "pending");
+                  if (!allPending) {
+                    alert(t("reportsTable.onlyPendingAllowed"));
+                    return;
+                  }
+                  setFieldWorkerReports(selected);
+                  setFieldWorkerModalOpen(true);
+                }}
+              >
+                📄 {t("reportsTable.fieldWorkerFile")}
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2 items-center">
               <input
                 type="text"
@@ -1065,22 +970,11 @@ return (
             <Modal title={t("reportsTable.generatedRouteLinks")} onClose={() => setLinkModalOpen(false)}>
               <div className="p-6 text-center">
                 <p className="text-gray-700 text-sm mb-4">
-                  {t("reportsTable.routeLinksDescription")}
+                  {t("reportsTable.routeLinksDescriptionClean")}
                 </p>
                 <p className="text-red-600 font-bold mb-4">
                   {t("reportsTable.enableGpsWarning")}
                 </p>
-
-                {/* לינק עם מזהים */}
-                <div className="mb-5">
-                  <h3 className="font-semibold mb-1">🔹 {t("reportsTable.labeledRouteTitle")}</h3>
-                  <button
-                    onClick={() => window.open(generatedLabeledLink, "_blank")}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
-                  >
-                    {t("reportsTable.openLabeledRoute")}
-                  </button>
-                </div>
 
                 {/* לינק נקי */}
                 <div className="mb-5">
@@ -1094,7 +988,93 @@ return (
                 </div>
 
                 <p className="text-xs text-gray-500 mt-5">
-                  {t("reportsTable.linksCopiedNote")}
+                  {t("reportsTable.linkCopiedNote")}
+                </p>
+              </div>
+            </Modal>
+          )}
+
+          {/* 📄 Field Worker File Generator Modal */}
+          {fieldWorkerModalOpen && (
+            <Modal title={t("reportsTable.fieldWorkerFileTitle")} onClose={() => setFieldWorkerModalOpen(false)}>
+              <div className="p-6">
+                {/* Description */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5">
+                  <h3 className="font-bold text-blue-800 mb-2">📋 {t("reportsTable.fieldWorkerFileDescription")}</h3>
+                  <p className="text-sm text-blue-700">
+                    {t("reportsTable.fieldWorkerFileInfo")}
+                  </p>
+                </div>
+
+                {/* Report count info */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-5 text-center">
+                  <p className="text-green-800 font-semibold">
+                    ✅ {fieldWorkerReports.length} {t("reportsTable.pendingReportsReady")}
+                  </p>
+                </div>
+
+                {/* Generate button */}
+                <div className="text-center">
+                  <button
+                    onClick={() => {
+                      // Generate WhatsApp-friendly text content
+                      const dateStr = new Date().toLocaleDateString(language === "he" ? "he-IL" : "en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric"
+                      });
+                      
+                      let content = `📋 ${t("reportsTable.fieldWorkerListTitle")}\n`;
+                      content += `📅 ${t("reportsTable.generatedOn")}: ${dateStr}\n`;
+                      content += `📊 ${t("reportsTable.totalReports")}: ${fieldWorkerReports.length}\n`;
+                      content += "═".repeat(40) + "\n\n";
+
+                      fieldWorkerReports.forEach((r, index) => {
+                        const reportDate = new Date(r.timestamp).toLocaleDateString(language === "he" ? "he-IL" : "en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "2-digit"
+                        });
+                        
+                        content += `📌 ${t("reportsTable.reportNumber")} ${index + 1}\n`;
+                        content += "─".repeat(30) + "\n";
+                        content += `📋 ${t("reportsTable.columns.id")}: ${r.id ?? "—"}\n`;
+                        content += `📁 ${t("reportsTable.columns.category")}: ${r.type}\n`;
+                        content += `📝 ${t("reportsTable.columns.description")}: ${r.description}\n`;
+                        content += `📅 ${t("reportsTable.columns.date")}: ${reportDate}\n`;
+                        content += `📍 ${t("reportsTable.columns.area")}: ${r.area}\n`;
+                        content += `🏢 ${t("reportsTable.columns.address")}: ${r.address || "—"}\n`;
+                        content += `✓ ${t("reportsTable.columns.status")}: ${r.status}\n`;
+                        content += `📷 ${t("reportsTable.columns.media")}: ${r.media ? t("reportsTable.hasMedia") : t("reportsTable.noMedia")}\n`;
+                        content += "\n";
+                      });
+
+                      content += "═".repeat(40) + "\n";
+                      content += `✅ ${t("reportsTable.endOfList")}\n`;
+
+                      // Create and download the file
+                      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = `WorkOrder_${new Date().toISOString().split("T")[0]}.txt`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+
+                      // Also copy to clipboard for easy sharing
+                      navigator.clipboard.writeText(content);
+                        alert(t("reportsTable.fileGeneratedAndCopied"));
+                      }}
+                      className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 mx-auto"
+                      >
+                      📥 {t("reportsTable.generateAndDownload")}
+                  </button>
+                </div>
+
+                <p className="text-xs text-gray-500 mt-5 text-center">
+                  {t("reportsTable.fieldWorkerFileNote")}
                 </p>
               </div>
             </Modal>

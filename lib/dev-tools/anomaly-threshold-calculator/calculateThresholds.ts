@@ -14,7 +14,7 @@
 // ============================================
 
 export type AnomalyType = "spike" | "slow_response" | "geo_cluster";
-export type ReportType = "garbage" | "lighting" | "tree" | "hazard";
+export type ReportType = "garbage" | "lighting" | "tree" | "hazard" | "animal" | "maintenance" | "pest";
 
 export interface Bin {
   ts: number;

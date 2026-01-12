@@ -19,7 +19,7 @@ interface DetailedStats {
   topAreas: Array<{ area: string; total: number; unresolvedPercent: string; avgResolveDays: string }>;
   topUnresolvedAreas: Array<{ area: string; total: number; unresolvedPercent: string; avgResolveDays: string }>;
   topAreasByResolveTime: Array<{ area: string; total: number; unresolvedPercent: string; avgResolveDays: string }>;
-  topCategoriesByResolveTime: Array<{ category: string; avgResolveDays: string }>;
+  topCategoriesByResolveTime: Array<{ category: string; avgResolveDays: string; reportCount: number }>;
 }
 
 export async function POST(req: NextRequest) {
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     const catAgg: Record<
       string,
-      { sumDays: number; resolvedCount: number }
+      { sumDays: number; resolvedCount: number; totalCount: number }
     > = {};
 
     for (const r of reports) {
@@ -96,7 +96,8 @@ export async function POST(req: NextRequest) {
       }
 
       const cat = r.type ?? "other";
-      catAgg[cat] ??= { sumDays: 0, resolvedCount: 0 };
+      catAgg[cat] ??= { sumDays: 0, resolvedCount: 0, totalCount: 0 };
+      catAgg[cat].totalCount += 1;
       if (isResolved && typeof r.resolvedAt === "number" && typeof r.timestamp === "number") {
         catAgg[cat].sumDays += (r.resolvedAt - r.timestamp) / (1000 * 60 * 60 * 24);
         catAgg[cat].resolvedCount += 1;
@@ -132,10 +133,10 @@ export async function POST(req: NextRequest) {
       .map(([category, s]) => ({
         category,
         avgResolveDays: s.resolvedCount ? (s.sumDays / s.resolvedCount).toFixed(1) : "—",
+        reportCount: s.totalCount,
       }))
-      .filter((x) => x.avgResolveDays !== "—")
-      .sort((a, b) => parseFloat(b.avgResolveDays) - parseFloat(a.avgResolveDays))
-      .slice(0, 5);
+      .sort((a, b) => b.reportCount - a.reportCount)
+      .slice(0, 10);
 
     const result: DetailedStats = {
       topAreas,

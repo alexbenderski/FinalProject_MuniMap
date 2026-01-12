@@ -172,8 +172,11 @@ useEffect(() => {
                   setIsModalOpen(true);
                 }}
                 icon={{
-                  url: `/icons/${getReportCriticalityType(r)}_${r.type?.toLowerCase() || "garbage"}.png`,
-                  scaledSize: new google.maps.Size(22, 22),
+                  url: `/icons/${getReportCriticalityType(r)}_${r.type?.toLowerCase() }.png`,
+                  scaledSize: new google.maps.Size(
+                    r.type === "animal" || r.type === "maintenance" ? 26 : 22,
+                    r.type === "animal" || r.type === "maintenance" ? 26 : 22
+                  ),
                 }}
               />
             ))}
@@ -192,7 +195,7 @@ useEffect(() => {
           {/* Info message when filters not applied */}
           {!filtersApplied && (
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 pointer-events-none z-10">
-              <div className="text-center bg-amber-500/90 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+              <div className="text-center bg-orange-100 text-orange-800 px-4 py-2 rounded-lg shadow-lg text-sm border-2 border-orange-400">
                 <p className="font-semibold">🔍 {t("map.noFiltersApplied") || "No filters applied"}</p>
                 <p className="text-xs mt-1">{t("map.applyFiltersToView") || "Apply filters to view reports on the map"}</p>
               </div>

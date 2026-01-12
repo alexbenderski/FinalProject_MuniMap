@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Modal from "@/components/dashboard/common/Modal";
-import { Anomaly, Report } from "@/lib/types";
-import { getCurrentUserInfo } from "@/lib/client/fetchers";
+import { Anomaly, AnomalyComment, Report } from "@/lib/types";
+import { getCurrentUserInfo, addAnomalyComment } from "@/lib/client/fetchers";
 import ReportsTableModal from "@/components/dashboard/reports/ReportsTableModal";
 import Tooltip from "../common/Tooltip";
 import { useLanguage } from "@/lib/i18n";
@@ -23,16 +23,19 @@ export default function AnomalyDetailsModal({
   reports,
   onReviewUpdate,
 }: AnomalyDetailsModalProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [localAnomaly, setLocalAnomaly] = useState(anomaly);
   const [anomalyDetailsOpen, setAnomalyDetailsOpen] = useState(true);
+  const [commentsOpen, setCommentsOpen] = useState(true);
   const [reportsTableOpen, setReportsTableOpen] = useState(false);
-  const { safeKey: currentUserKey } = getCurrentUserInfo();
+  const [newComment, setNewComment] = useState("");
+  const [addingComment, setAddingComment] = useState(false);
+  const { safeKey: currentUserKey, email: currentUserEmail } = getCurrentUserInfo();
 
-  // Update local anomaly when prop changes
-  if (anomaly !== localAnomaly && anomaly.id === localAnomaly.id) {
+  // Sync localAnomaly with prop changes
+  useEffect(() => {
     setLocalAnomaly(anomaly);
-  }
+  }, [anomaly]);
 
   if (!open) return null;
 
@@ -89,21 +92,22 @@ export default function AnomalyDetailsModal({
                       return;
                     }
 
-                    const updatedAnomaly = {
-                      ...localAnomaly,
-                      reviewedBy: {
-                        ...(localAnomaly.reviewedBy ?? {}),
-                        [currentUserKey]: result.timestamp ?? Date.now(),
-                      },
-                    };
-
-                    setLocalAnomaly(updatedAnomaly);
-
-                    if (onReviewUpdate) {
-                      onReviewUpdate(updatedAnomaly);
-                    }
-
-                    alert(`${t("anomalyDetails.markedAsReviewed")} ${result.email}`);
+                    setLocalAnomaly(prev => {
+                      const updatedAnomaly = {
+                        ...prev,
+                        reviewedBy: {
+                          ...(prev.reviewedBy ?? {}),
+                          [currentUserKey]: result.timestamp ?? Date.now(),
+                        },
+                      };
+                      
+                      if (onReviewUpdate) {
+                        onReviewUpdate(updatedAnomaly);
+                      }
+                      
+                      return updatedAnomaly;
+                    });
+                    // Button changes to "Reviewed" immediately - no alert needed
                   } catch (err) {
                     console.error("Error marking as reviewed:", err);
                     alert(
@@ -301,6 +305,155 @@ export default function AnomalyDetailsModal({
                     </ul>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* Comments Section - Collapsible */}
+          <div className="border-b mb-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500 mx-4 rounded-lg">
+            {/* Collapsible Header */}
+            <div
+              className="px-6 pt-4 pb-3 flex items-center justify-between cursor-pointer hover:bg-blue-100 transition-colors rounded-t-lg"
+              onClick={() => setCommentsOpen(!commentsOpen)}
+            >
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold text-lg text-blue-700">
+                  💬 {t("anomalyDetails.commentsSection")}
+                  {localAnomaly.comments && Object.keys(localAnomaly.comments).length > 0 && (
+                    <span className="ml-2 bg-blue-200 text-blue-800 px-2 py-1 rounded-full text-sm">
+                      {Object.keys(localAnomaly.comments).length}
+                    </span>
+                  )}
+                </h2>
+                <span
+                  className={`transform transition-transform duration-300 text-blue-700 font-bold ${
+                    commentsOpen ? "rotate-180" : ""
+                  }`}
+                >
+                  ▼
+                </span>
+              </div>
+            </div>
+
+            {/* Comments Content */}
+            {commentsOpen && (
+              <div className="px-6 pb-4">
+                {/* Add Comment Form */}
+                <div className="bg-white rounded-lg p-4 border border-blue-200 mb-4">
+                  <h4 className="font-semibold text-blue-800 mb-2">✏️ {t("anomalyDetails.addComment")}</h4>
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder={t("anomalyDetails.commentPlaceholder")}
+                    className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none transition-colors resize-none"
+                    rows={3}
+                    disabled={addingComment}
+                  />
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={async () => {
+                        if (!newComment.trim()) {
+                          alert(t("anomalyDetails.emptyCommentError"));
+                          return;
+                        }
+                        if (!currentUserEmail) {
+                          alert(t("anomalyDetails.noUserFound"));
+                          return;
+                        }
+
+                        setAddingComment(true);
+                        try {
+                          const result = await addAnomalyComment(localAnomaly, newComment);
+                          
+                          if (result.success && result.comment) {
+                            setLocalAnomaly(prev => {
+                              // Get existing comments as array
+                              const existingComments: AnomalyComment[] = prev.comments
+                                ? (Array.isArray(prev.comments)
+                                    ? prev.comments
+                                    : Object.values(prev.comments))
+                                : [];
+                              
+                              // Add new comment to the array
+                              const updatedComments = [...existingComments, result.comment as AnomalyComment];
+                              
+                              const updatedAnomaly = {
+                                ...prev,
+                                comments: updatedComments
+                              };
+                              
+                              if (onReviewUpdate) {
+                                onReviewUpdate(updatedAnomaly);
+                              }
+                              
+                              return updatedAnomaly;
+                            });
+                            setNewComment("");
+                            // Comment appears immediately in the list - no alert needed
+                          }
+                        } catch (err) {
+                          console.error("Error adding comment:", err);
+                          alert(`${t("anomalyDetails.commentFailed")} ${err instanceof Error ? err.message : "Unknown error"}`);
+                        } finally {
+                          setAddingComment(false);
+                        }
+                      }}
+                      disabled={addingComment || !newComment.trim()}
+                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-lg px-4 py-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {addingComment ? (
+                        <>⏳ {t("anomalyDetails.posting")}</>
+                      ) : (
+                        <>📤 {t("anomalyDetails.postComment")}</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Comments List - Sorted by date (newest first) */}
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {(() => {
+                    // Convert comments object to array and sort by timestamp descending (newest first)
+                    const commentsArray: AnomalyComment[] = localAnomaly.comments
+                      ? (Array.isArray(localAnomaly.comments)
+                          ? localAnomaly.comments
+                          : Object.values(localAnomaly.comments))
+                      : [];
+                    
+                    const sortedComments = [...commentsArray].sort((a, b) => b.timestamp - a.timestamp);
+
+                    if (sortedComments.length === 0) {
+                      return (
+                        <div className="text-center py-4 text-gray-500">
+                          <p>💭 {t("anomalyDetails.noComments")}</p>
+                        </div>
+                      );
+                    }
+
+                    return sortedComments.map((comment) => (
+                      <div
+                        key={comment.id}
+                        className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-semibold text-blue-700 text-sm">
+                            👤 {comment.userEmail}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            📅 {new Date(comment.timestamp).toLocaleDateString(language === "he" ? "he-IL" : "en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-gray-800 text-sm whitespace-pre-wrap">{comment.text}</p>
+                      </div>
+                    ));
+                  })()}
+                </div>
               </div>
             )}
           </div>

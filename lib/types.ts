@@ -7,6 +7,16 @@ export interface statusHistoryEntry {
   status: ReportStatus;
   updatedAt: number;
   updatedBy: string;
+  authority?: string;  // Role/authority of the user who updated
+  email?: string;      // Email for contact
+}
+
+export interface ReportComment {
+  id: string;
+  userName: string;     // Authority/role name from Firestore
+  userEmail: string;    // Email for contact
+  text: string;
+  timestamp: number;
 }
 
 
@@ -93,6 +103,7 @@ export interface Report {
   deleted?: boolean;
   deletedAt?: number;
   deletedBy?: string;
+  comments?: ReportComment[];  // Comments from municipal workers
 }
 
 
@@ -132,6 +143,13 @@ export interface AnomalyMetrics {
   [x: string]: number | AnomalyBin[] | undefined;
 }
 
+export interface AnomalyComment {
+  id: string;
+  userEmail: string;
+  text: string;
+  timestamp: number;
+}
+
 export interface Anomaly {
   firebaseKey: string; 
   id: string;
@@ -154,6 +172,7 @@ export interface Anomaly {
   reviewedBy?: {
     [emailKey: string]: number; // timestamp
   };
+  comments?: AnomalyComment[];
 }
 
 
@@ -194,6 +213,7 @@ export interface AreaStats {
 export interface CategoryStats {
   category: string;
   avgResolveDays: string | "—";
+  reportCount?: number;
 }
 
 export interface DetailedStats {

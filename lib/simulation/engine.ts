@@ -57,6 +57,9 @@ export class SimulationEngine {
       lighting: 0,
       tree: 0,
       hazard: 0,
+      animal: 0,
+      maintenance: 0,
+      pest: 0,
     };
 
     return {

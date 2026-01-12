@@ -2,6 +2,8 @@ import { app } from "./firebase";
 import { getDatabase, ref, onValue } from "firebase/database";
 import { Anomaly, DetailedStats, Report, TimeRange } from "@/lib/types";
 import { getAuth } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { db as firestoreDb } from "./firestore";
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -13,6 +15,26 @@ export function getCurrentUserInfo() {
   const email = auth.currentUser?.email ?? null;
   const safeKey = email ? email.replace(/\./g, "_") : null;
   return { email, safeKey };
+}
+
+/**
+ * Fetches the current user's authority from Firestore
+ */
+export async function fetchCurrentUserAuthority(): Promise<string> {
+  const { safeKey } = getCurrentUserInfo();
+  if (!safeKey) return "Municipal Worker";
+  
+  try {
+    const userDocRef = doc(firestoreDb, "users", safeKey);
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      return userData?.authority || "Municipal Worker";
+    }
+  } catch (err) {
+    console.warn("Could not fetch user authority:", err);
+  }
+  return "Municipal Worker";
 }
 
 // ==================== LOCAL FILE FETCHERS ====================
@@ -183,6 +205,80 @@ export async function markAnomalyAsReviewed(anomaly: Anomaly) {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "Failed to mark anomaly as reviewed");
+  }
+
+  return response.json();
+}
+
+/**
+ * Add comment to anomaly via server API
+ */
+export async function addAnomalyComment(anomaly: Anomaly, commentText: string) {
+  const { email } = getCurrentUserInfo();
+  
+  if (!email) {
+    throw new Error("User not authenticated");
+  }
+
+  if (!anomaly.firebaseKey) {
+    throw new Error("Anomaly missing firebaseKey");
+  }
+
+  if (!commentText.trim()) {
+    throw new Error("Comment text cannot be empty");
+  }
+
+  const response = await fetch("/api/anomalies", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      firebaseKey: anomaly.firebaseKey,
+      userEmail: email,
+      commentText: commentText.trim()
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to add comment");
+  }
+
+  return response.json();
+}
+
+/**
+ * Add comment to report via server API
+ */
+export async function addReportComment(reportType: string, reportId: string, commentText: string) {
+  const { email } = getCurrentUserInfo();
+  
+  if (!email) {
+    throw new Error("User not authenticated");
+  }
+
+  if (!reportType || !reportId) {
+    throw new Error("Report missing type or id");
+  }
+
+  if (!commentText.trim()) {
+    throw new Error("Comment text cannot be empty");
+  }
+
+  const response = await fetch("/api/reports", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "addComment",
+      reportType,
+      reportId,
+      userEmail: email,
+      commentText: commentText.trim()
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to add comment");
   }
 
   return response.json();

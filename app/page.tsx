@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "@/lib/client/auth-client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 
@@ -13,7 +13,15 @@ export default function LoginPage() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t, isRTL } = useLanguage();
+
+  // Check if user was redirected due to session expiry
+  useEffect(() => {
+    if (searchParams.get('expired') === 'true') {
+      setErr(t("login.sessionExpired"));
+    }
+  }, [searchParams, t]);
 
  async function onSubmit(e: React.FormEvent) {
   e.preventDefault();

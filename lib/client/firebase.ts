@@ -1,6 +1,6 @@
 //firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, browserSessionPersistence, setPersistence } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 import { getStorage } from "firebase/storage";
 
@@ -17,6 +17,13 @@ const firebaseConfig = {
 
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// 🔐 Set session persistence - session clears when browser/tab is closed
+// Combined with 5-minute inactivity timeout in AuthProvider
+setPersistence(auth, browserSessionPersistence).catch((error) => {
+  console.error("Failed to set auth persistence:", error);
+});
+
 export const db = getDatabase(app); // ✅ Realtime DB
 export const storage = getStorage(app); 
 

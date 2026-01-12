@@ -25,6 +25,8 @@ export interface WriteResult {
  * Write generated test reports to Firebase Realtime Database
  * 
  * Structure: Reports/{type}/{id} -> report data
+ * 
+ * @param reports - Reports to write
  */
 export async function writeReportsToFirebase(
   reports: GeneratedReport[]
@@ -58,7 +60,6 @@ export async function writeReportsToFirebase(
       // Write to: Reports/{type}/{id}
       const reportRef = ref(db, `Reports/${reportType}/${generatedId}`);
       
-      // Remove the generatedId from the data (it's used as the key)
       await set(reportRef, reportData);
 
       result.writtenCount++;
@@ -76,6 +77,9 @@ export async function writeReportsToFirebase(
 
 /**
  * Batch write reports in chunks for better performance
+ * 
+ * @param reports - Reports to write
+ * @param batchSize - Number of reports per batch
  */
 export async function writeReportsInBatches(
   reports: GeneratedReport[],

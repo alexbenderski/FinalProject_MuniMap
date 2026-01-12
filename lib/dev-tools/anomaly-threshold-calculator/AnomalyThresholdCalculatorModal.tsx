@@ -41,13 +41,16 @@ interface ClusterConfig {
   radius: number;
 }
 
-const REPORT_TYPES: ReportType[] = ["garbage", "lighting", "tree", "hazard"];
+const REPORT_TYPES: ReportType[] = ["garbage", "lighting", "tree", "hazard", "animal", "maintenance","pest"];
 
 const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   garbage: "🗑️ Garbage",
   lighting: "💡 Lighting",
   tree: "🌳 Tree",
   hazard: "⚠️ Hazard",
+  animal: "🐾 Animal",
+  maintenance: "🛠️ Maintenance",
+  pest: "🐛 Pest",
 };
 
 const ANOMALY_LABELS: Record<AnomalyType, string> = {

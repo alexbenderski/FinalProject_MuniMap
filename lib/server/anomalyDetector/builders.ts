@@ -26,7 +26,7 @@ export interface Anomaly {
   description: string;
   metrics: AnomalyMetrics;
   relatedReports: string[];
-  severity: "medium" | "high";
+  severity: "low" | "medium" | "high";
   status: "open" | "closed";
   firstDetected: number ;
   lastUpdated: number;
@@ -59,7 +59,7 @@ export function buildAnomaly(params: {
   metrics: AnomalyMetrics;
   relatedReports: string[];
   center?: { lat: number; lng: number } | null;
-  severity?: "medium" | "high";
+  severity?: "low" |"medium" | "high";
 }): Anomaly {
   const {
     category,

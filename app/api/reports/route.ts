@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/server/firebase-admin";
+import { db, adminFirestore } from "@/lib/server/firebase-admin";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -110,5 +110,93 @@ export async function DELETE(req: NextRequest) {
   } catch (error) {
     console.error("Error deleting report:", error);
     return NextResponse.json({ error: "Failed to delete report" }, { status: 500 });
+  }
+}
+
+// POST - Add comment to report
+export async function POST(req: NextRequest) {
+  try {
+    const { action, reportType, reportId, userEmail, commentText } = await req.json();
+
+    if (action !== "addComment") {
+      return NextResponse.json(
+        { error: "Invalid action" },
+        { status: 400 }
+      );
+    }
+
+    if (!reportType || !reportId) {
+      return NextResponse.json(
+        { error: "Missing reportType or reportId" },
+        { status: 400 }
+      );
+    }
+
+    if (!userEmail) {
+      return NextResponse.json(
+        { error: "Missing userEmail" },
+        { status: 400 }
+      );
+    }
+
+    if (!commentText || !commentText.trim()) {
+      return NextResponse.json(
+        { error: "Comment text cannot be empty" },
+        { status: 400 }
+      );
+    }
+
+    // Get user's authority from Firestore
+    const safeKey = userEmail.replace(/\./g, "_");
+    let authority = "Municipal Worker";
+    
+    try {
+      const userDoc = await adminFirestore.collection("users").doc(safeKey).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        authority = userData?.authority || "Municipal Worker";
+      }
+    } catch (err) {
+      console.warn("Could not fetch user authority:", err);
+    }
+
+    const path = `Reports/${reportType}/${reportId}`;
+    const nodeRef = db.ref(path);
+
+    const snapshot = await nodeRef.once("value");
+    if (!snapshot.exists()) {
+      return NextResponse.json(
+        { error: `Report not found: ${path}` },
+        { status: 404 }
+      );
+    }
+
+    // Get existing comments or initialize empty array
+    const reportData = snapshot.val();
+    const existingComments = reportData.comments || [];
+
+    // Create new comment
+    const newComment = {
+      id: `comment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userName: authority,
+      userEmail: userEmail,
+      text: commentText.trim(),
+      timestamp: Date.now()
+    };
+
+    // Add to existing comments
+    const updatedComments = [...existingComments, newComment];
+
+    // Update in database
+    await nodeRef.update({ comments: updatedComments });
+    console.log("[API] Added comment to report:", path, newComment);
+
+    return NextResponse.json({ 
+      success: true, 
+      comment: newComment 
+    });
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    return NextResponse.json({ error: "Failed to add comment" }, { status: 500 });
   }
 }
