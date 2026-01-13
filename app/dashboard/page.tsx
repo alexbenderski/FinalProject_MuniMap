@@ -227,23 +227,23 @@ export default function DashboardPage() {
         <BottomBar onOpenFullList={() => setAnomListOpen(true)} />
 
         {/* 🧪 DEV TOOLS - Test Report Generator Button */}
-        <button
+        {/* <button
           onClick={() => setTestGenOpen(true)}
           className="fixed bottom-40 left-4 z-40 px-3 py-2 bg-orange-500 text-white rounded-lg shadow-lg hover:bg-orange-600 font-semibold text-xs sm:text-sm flex items-center gap-2 whitespace-nowrap"
           title="Generate Test Reports (QA Tool)"
           style={{ marginRight: "50px" }}
         >
           🧪 <span className="hidden sm:inline">Generate Test Reports</span><span className="sm:hidden">Test Gen</span>
-        </button>
+        </button> */}
 
         {/* 🧪 DEV TOOLS - Anomaly Threshold Calculator Button */}
-        <button
+        {/* <button
           onClick={() => setThresholdCalcOpen(true)}
           className="fixed bottom-40 left-[calc(1rem+50px)] sm:left-[calc(12rem+50px)] md:left-[calc(14rem+50px)] z-40 px-3 py-2 bg-indigo-500 text-white rounded-lg shadow-lg hover:bg-indigo-600 font-semibold text-xs sm:text-sm flex items-center gap-2 whitespace-nowrap mt-14 sm:mt-0"
           title="Calculate Anomaly Thresholds (QA Tool)"
         >
           🎯 <span className="hidden sm:inline">Anomaly Calculator</span><span className="sm:hidden">Calc</span>
-        </button>
+        </button> */}
 
         {tableViewOpen && (
           <ReportsTableModal
@@ -298,31 +298,31 @@ export default function DashboardPage() {
         )}
 
         {/* 🧪 DEV TOOLS - Test Report Generator Modal */}
-        <TestReportGeneratorModal
+        {/* <TestReportGeneratorModal
           open={testGenOpen}
           onClose={() => setTestGenOpen(false)}
           cityName={permissions?.city ?? ""}
           cityBoundary={cityBoundary}
           defaultCenter={cityCenter}
-        />
+        /> */}
 
         {/* 🧪 DEV TOOLS - Anomaly Threshold Calculator Modal */}
-        <AnomalyThresholdCalculatorModal
+        {/* <AnomalyThresholdCalculatorModal
           open={thresholdCalcOpen}
           onClose={() => setThresholdCalcOpen(false)}
           cityName={permissions?.city ?? ""}
           reportType="All Types"
           cityBoundary={cityBoundary}
           defaultCenter={cityCenter}
-        />
+        /> */}
 
         {/* 🧪 DEV TOOLS - Report Simulation Panel */}
-        <SimulationPanel
+        {/* <SimulationPanel
           isOpen={simulationOpen}
           onClose={() => setSimulationOpen(false)}
           cityName={permissions?.city ?? ""}
           cityBoundary={cityBoundary.map(p => [p.lat, p.lng])}
-        />
+        /> */}
       </div>
     </RequireAuth>
   );

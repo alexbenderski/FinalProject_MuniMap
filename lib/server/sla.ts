@@ -19,7 +19,11 @@ export function getReportCriticalityType(report: Report) {
 
 // SLA ימים לכל סוג דיווח
 export const SLA_DAYS: Record<string, number> = {
-  garbage: 5,
-  lighting: 7,
-  tree: 8,
+garbage: 4,
+lighting: 10,
+tree: 14,
+hazard: 2,
+animal: 3,
+maintenance: 21,
+pest: 7,
 };
