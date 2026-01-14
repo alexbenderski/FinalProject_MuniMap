@@ -46,16 +46,20 @@ async function runDetectionJob(): Promise<void> {
   }
 }
 const mul = 4;
-const DAY_MS =  60 * 1000 * 60 * mul ; // 4 hours
-setInterval(runDetectionJob, DAY_MS);
-runDetectionJob();// Run on server start
+// base units
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+
+// anomaly detection – every 4 hours
+setInterval(runDetectionJob, HOUR_MS * mul);
+runDetectionJob(); // run on server start
 
 // cleanup old anomalies – every 4 hours
-setInterval(cleanupOldAnomalies, 1000 * 60 * mul ); // every 4 hours
+setInterval(cleanupOldAnomalies, HOUR_MS * mul);
 
 // archive old reports – every 24 hours
-setInterval(archiveOldReports, 1000 * 60  * 60 * 24);// every 24 hours
-archiveOldReports();
+setInterval(archiveOldReports, HOUR_MS * 24);
+archiveOldReports(); // run on server start
 
 const PORT = 4000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));

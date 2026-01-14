@@ -68,7 +68,9 @@ export default function TopBar({
         >
           📋 <span className="hidden lg:inline">{t("topbar.archive")}</span>
         </button>
-        {/* {onOpenSimulation && (
+        {/* 🧪 DEV TOOLS - Simulation Button - HIDDEN */}
+        {/* HIDDEN
+        {onOpenSimulation && (
           <button
             onClick={onOpenSimulation}
             className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-lg bg-purple-500 text-white font-semibold hover:bg-purple-600 shadow-md text-xs sm:text-sm whitespace-nowrap hidden sm:flex"
@@ -76,7 +78,8 @@ export default function TopBar({
           >
             🧪 <span className="hidden lg:inline">{t("topbar.simulation") || "Simulation"}</span>
           </button>
-        )} */}
+        )}
+        */}
         <button
           onClick={handleLogout}
           className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 shadow-md text-xs sm:text-sm whitespace-nowrap"

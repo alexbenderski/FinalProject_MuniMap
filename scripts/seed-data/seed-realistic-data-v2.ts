@@ -23,27 +23,30 @@ const __dirname = dirname(__filename);
 // ============================================================================
 
 const SEED = 12345;
-const TARGET_CITIES = ["חיפה", "נשר", "חוף הכרמל"];
+const TARGET_CITIES = ["חיפה", "נשר"];
 
 // Base reports (will be spread across 12 months)
-const BASE_REPORTS_PER_CITY = 100;
-const ARCHIVE_REPORTS_PER_CITY = 100;
+const BASE_REPORTS_PER_CITY = 50;
+const ARCHIVE_REPORTS_PER_CITY = 50;
 
 // Anomaly patterns (added on top of base reports)
-const SPIKE_EXTRA_REPORTS = 80; // Extra reports in current month for spike categories
-const CLUSTER_REPORTS = 25; // Reports in same location for cluster
+const SPIKE_EXTRA_REPORTS = 40; // Extra reports in current month for spike categories
+const CLUSTER_REPORTS = 15; // Reports in same location for cluster
 const SLOW_RESOLUTION_DAYS_MIN = 15; // Min days for slow resolution
 const SLOW_RESOLUTION_DAYS_MAX = 25; // Max days
 
-const CATEGORIES = ["garbage", "lighting", "hazard", "tree"] as const;
+const CATEGORIES = ["garbage", "lighting", "hazard", "tree", "animal", "maintenance", "pest"] as const;
 type Category = (typeof CATEGORIES)[number];
 type Status = "open" | "pending" | "in progress" | "resolved";
 
 const SLA_DAYS: Record<Category, number> = {
-  garbage: 7,
-  lighting: 5,
-  hazard: 3,
-  tree: 14,
+garbage: 4,
+lighting: 10,
+tree: 14,
+hazard: 2,
+animal: 3,
+maintenance: 21,
+pest: 7,
 };
 
 // ============================================================================
@@ -61,16 +64,20 @@ interface Report {
   type: Category;
   description: string;
   street: string;
+  address: string;
   status: Status;
   timestamp: number;
   lat: number;
   lng: number;
   imageUrl: string;
-  residentFirstName: string;
-  residentLastName: string;
+  submittedBy: string;
+  email: string;
+  phone: string;
   deleted: boolean;
-  statusHistory?: Array<{ status: Status; timestamp: number; userName: string }>;
+  statusHistory?: Array<{ status: Status; updatedAt: number; updatedBy: string; authority?: string; email?: string }>;
   resolvedAt?: number;
+  updatedBy?: string;
+  updatedAt?: number;
 }
 
 // ============================================================================
@@ -206,7 +213,51 @@ const DESCRIPTIONS: Record<Category, readonly string[]> = {
     "שורשים מרימים את המדרכה",
     "עץ יבש",
   ],
+  animal: [
+    "כלב הולך רופף",
+    "חתולים בשכונה",
+    "עופות חורצים",
+    "בעל חיים תקוע",
+    "כביש לא בטוח לבעלי חיים",
+  ],
+  maintenance: [
+    "פרצות בכביש",
+    "ספסל שבור",
+    "מדרכה שקועה",
+    "צריך תיקון דחוף",
+    "תשתית פגומה",
+  ],
+  pest: [
+    "פשפשים בשכונה",
+    "נמלים בכל מקום",
+    "תיקייה של עכברים",
+    "זיהום חרקים",
+    "צריך הדברה דחוף",
+  ],
 };
+
+// ============================================================================
+// STREET NAMES (by city)
+// ============================================================================
+
+// ============================================================================
+// RESIDENT DATA
+// ============================================================================
+
+const FIRST_NAMES = ["אבי", "דני", "יוסי", "משה", "רונה", "שרה", "דוד", "מרים", "יעקב", "רחל"] as const;
+const LAST_NAMES = ["כהן", "לוי", "מזרחי", "אבו", "ישראלי", "בן דוד", "שלום", "ברק"] as const;
+
+function generatePhone(rng: SeededRandom): string {
+  const prefix = rng.pick(["050", "052", "053", "054", "055", "058"]);
+  const number = rng.nextInt(1000000, 9999999);
+  return `${prefix}-${number}`;
+}
+
+function generateEmail(firstName: string, lastName: string): string {
+  const domains = ["gmail.com", "walla.co.il", "yahoo.com", "hotmail.com"];
+  const randomDomain = domains[Math.floor(Math.random() * domains.length)];
+  return `${firstName}.${lastName}@${randomDomain}`;
+}
 
 // ============================================================================
 // STREET NAMES (by city)
@@ -233,16 +284,8 @@ const STREET_NAMES: Record<string, readonly string[]> = {
     "הנוריות",
     "הגפן",
   ],
-  "חוף הכרמל": [
-    "החוף",
-    "הים",
-    "הכרמל",
-    "הדולפין",
-    "הסירות",
-    "הנמל",
-    "הגלים",
-    "הצוקים",
-  ],
+
+
 };
 
 // ============================================================================
@@ -254,14 +297,15 @@ function generateStatusHistory(
   timestamp: number,
   resolvedAt: number | undefined,
   rng: SeededRandom
-): Array<{ status: Status; timestamp: number; userName: string }> {
-  const history: Array<{ status: Status; timestamp: number; userName: string }> = [];
+): Array<{ status: Status; updatedAt: number; updatedBy: string; authority?: string; email?: string }> {
+  const history: Array<{ status: Status; updatedAt: number; updatedBy: string; authority?: string; email?: string }> = [];
 
   // Start with open
   history.push({
     status: "open",
-    timestamp,
-    userName: "System",
+    updatedAt: timestamp,
+    updatedBy: "System",
+    authority: "System",
   });
 
   if (status === "open") return history;
@@ -270,8 +314,9 @@ function generateStatusHistory(
   if (rng.next() > 0.3) {
     history.push({
       status: "pending",
-      timestamp: timestamp + rng.nextInt(1, 3) * 24 * 60 * 60 * 1000,
-      userName: "Admin",
+      updatedAt: timestamp + rng.nextInt(1, 3) * 24 * 60 * 60 * 1000,
+      updatedBy: "Admin",
+      authority: "Municipal Admin",
     });
   }
 
@@ -281,8 +326,9 @@ function generateStatusHistory(
   if (status === "in progress" || status === "resolved") {
     history.push({
       status: "in progress",
-      timestamp: timestamp + rng.nextInt(2, 5) * 24 * 60 * 60 * 1000,
-      userName: "Worker",
+      updatedAt: timestamp + rng.nextInt(2, 5) * 24 * 60 * 60 * 1000,
+      updatedBy: "Worker",
+      authority: "Field Worker",
     });
   }
 
@@ -292,8 +338,9 @@ function generateStatusHistory(
   if (status === "resolved" && resolvedAt) {
     history.push({
       status: "resolved",
-      timestamp: resolvedAt,
-      userName: "Worker",
+      updatedAt: resolvedAt,
+      updatedBy: "Worker",
+      authority: "Field Worker",
     });
   }
 
@@ -323,20 +370,26 @@ function generateReport(
   }
 
   const streetList = STREET_NAMES[city] || STREET_NAMES["חיפה"];
+  const firstName = rng.pick(FIRST_NAMES);
+  const lastName = rng.pick(LAST_NAMES);
+  const street = rng.pick(streetList);
+  const streetNumber = rng.nextInt(1, 200);
 
   const report: Report = {
     city,
     area: city,
     type: category,
     description: rng.pick(DESCRIPTIONS[category]),
-    street: rng.pick(streetList),
+    street,
+    address: `${street} ${streetNumber}, ${city}`,
     status,
     timestamp,
     lat: point.lat,
     lng: point.lng,
     imageUrl: `https://source.unsplash.com/random/800x600?${category}`,
-    residentFirstName: rng.pick(["אבי", "דני", "יוסי", "משה", "רונה"]),
-    residentLastName: rng.pick(["כהן", "לוי", "מזרחי", "אבו"]),
+    submittedBy: `${firstName} ${lastName}`,
+    email: generateEmail(firstName, lastName),
+    phone: generatePhone(rng),
     deleted: false,
     statusHistory: generateStatusHistory(status, timestamp, resolvedAt, rng),
   };
@@ -344,6 +397,13 @@ function generateReport(
   // Only add resolvedAt if it exists (avoid undefined in Firebase)
   if (resolvedAt) {
     report.resolvedAt = resolvedAt;
+  }
+
+  // Add updatedBy and updatedAt based on latest status
+  if (report.statusHistory && report.statusHistory.length > 0) {
+    const latestStatus = report.statusHistory[report.statusHistory.length - 1];
+    report.updatedBy = latestStatus.updatedBy;
+    report.updatedAt = latestStatus.updatedAt;
   }
 
   return report;
@@ -473,7 +533,8 @@ async function seedCity(
     const report = generateReport(city, polygon, category, status, ageInDays, random);
     if (!report) continue;
 
-    const reportRef = db.ref(`Reports/${category}`).push();
+    // New path structure: /Reports/ActiveReports/{city}/{category}/{id}
+    const reportRef = db.ref(`Reports/ActiveReports/${city}/${category}`).push();
     await reportRef.set(report);
     writtenReports++;
   }
@@ -491,7 +552,8 @@ async function seedCity(
       const report = generateReport(city, polygon, category, "open", ageInDays, random);
       if (!report) continue;
 
-      const reportRef = db.ref(`Reports/${category}`).push();
+      // New path structure: /Reports/ActiveReports/{city}/{category}/{id}
+      const reportRef = db.ref(`Reports/ActiveReports/${city}/${category}`).push();
       await reportRef.set(report);
       writtenReports++;
     }
@@ -524,7 +586,8 @@ async function seedCity(
         random
       );
 
-      const reportRef = db.ref(`Reports/${category}`).push();
+      // New path structure: /Reports/ActiveReports/{city}/{category}/{id}
+      const reportRef = db.ref(`Reports/ActiveReports/${city}/${category}`).push();
       await reportRef.set(report);
       writtenReports++;
     }
@@ -563,7 +626,8 @@ async function seedCity(
       );
       if (!report) continue;
 
-      const reportRef = db.ref(`Reports/${category}`).push();
+      // New path structure: /Reports/ActiveReports/{city}/{category}/{id}
+      const reportRef = db.ref(`Reports/ActiveReports/${city}/${category}`).push();
       await reportRef.set(report);
       writtenReports++;
     }
@@ -576,7 +640,7 @@ async function seedCity(
   // ==========================================
   console.log(`   📦 Generating ${ARCHIVE_REPORTS_PER_CITY} archive reports...`);
 
-  const archiveYears = [2022, 2023];
+  const archiveYears = [  2024];
 
   for (let i = 0; i < ARCHIVE_REPORTS_PER_CITY; i++) {
     const category = random.pick(CATEGORIES);
@@ -588,13 +652,18 @@ async function seedCity(
     const report = generateReport(city, polygon, category, "resolved", ageInDays, random);
     if (!report) continue;
 
+    // Calculate month from timestamp
+    const reportDate = new Date(report.timestamp);
+    const month = String(reportDate.getMonth() + 1).padStart(2, '0');
+
     const archivedReport = {
       ...report,
       archivedYear: year,
       archivedCity: city,
     };
 
-    const archiveRef = db.ref(`ArchivedReports/${year}/${category}`).push();
+    // New archive path: /ArchivedReports/{year}/{month}/{city}/{category}/{id}
+    const archiveRef = db.ref(`ArchivedReports/${year}/${month}/${city}/${category}`).push();
     await archiveRef.set(archivedReport);
     writtenArchive++;
   }

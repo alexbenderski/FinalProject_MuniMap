@@ -229,6 +229,13 @@
       "media": "Media",
       "actions": "Actions"
     },
+    "tooltips": {
+      "category": "Type of reported issue:\n• Garbage - waste, full bins\n• Lighting - faulty street lights\n• Trees - branches, roots\n• Hazard - potholes, obstacles\n• Animals - stray dogs, injured animals\n• Maintenance - broken public equipment\n• Pests - rodents, insects",
+      "level": "Report urgency level:\n🔴 Critical - immediate response\n🟠 High - response within days\n🟡 Medium - response within week\n🟢 Low - routine handling\n\nCalculated based on time elapsed and SLA",
+      "status": "Report handling status:\n• Open - new report, not yet reviewed\n• Pending - approved, waiting assignment\n• In Progress - field team working\n• Resolved - issue fixed",
+      "routeLink": "Creates Google Maps navigation link\nfor all selected reports.\n\n⚠️ Only 'pending' status reports included.\n\n💡 Useful for field teams to plan daily route.",
+      "workOrder": "Generates detailed work order file\nwith all report information.\n\n⚠️ Only 'pending' status reports.\n\n💡 Can be shared via WhatsApp with field workers."
+    },
     "map": "Map",
     "details": "Details",
     "noReportsFound": "No reports found.",
@@ -277,6 +284,10 @@
     "searchPlaceholder": "Search by title / area / status...",
     "found": "found",
     "type": "Type",
+    "anomalyType": "Anomaly Type",
+    "typeSpike": "Spike",
+    "typeSlowResponse": "Slow Response",
+    "typeGeoCluster": "Geo Cluster",
     "description": "Description",
     "area": "Area",
     "reportsCount": "Reports",
@@ -310,7 +321,13 @@
     "severityMedium": "Medium",
     "severityLow": "Low",
     "userNotAuthenticated": "❌ User not authenticated. Please log in first.",
-    "alreadyReviewedAlert": "✅ You already reviewed this anomaly"
+    "alreadyReviewedAlert": "✅ You already reviewed this anomaly",
+    "tooltips": {
+      "reportType": "Category of reports involved in this anomaly:\n• Garbage - waste collection issues\n• Lighting - street light problems\n• Tree - tree maintenance needs\n• Hazard - safety hazards\n• Animal - stray or injured animals\n• Maintenance - broken public equipment\n• Pest - rodent or insect problems",
+      "anomalyType": "Type of anomaly detected by the system:\n\n📈 Spike - Sudden increase in report volume (e.g., 15 reports vs. avg 2/day)\n\n🐌 Slow Response - Reports taking longer than usual to resolve\n\n🗺️ Geo Cluster - Multiple reports concentrated in small geographic area",
+      "severity": "Impact level of the anomaly:\n\n🔴 High - Requires immediate attention\n   • Spike: >200% above normal\n   • Slow: >2x average resolution time\n   • Cluster: High density concentration\n\n🟠 Medium - Should be addressed soon\n   • Spike: 100-200% above normal\n   • Slow: 1.5-2x average time\n   • Cluster: Moderate concentration\n\n🟡 Low - Monitor for changes\n   • Spike: 50-100% above normal\n   • Slow: 1.2-1.5x average time\n   • Cluster: Light concentration",
+      "reviewStatus": "Indicates whether the anomaly has been reviewed by staff:\n\n✅ Reviewed - Staff acknowledged and are aware\n\n⏳ Mark as Reviewed - Click to mark as seen\n\nMultiple staff members can review the same anomaly."
+    }
   },
   "statistics": {
     "title": "Statistics & Analysis Hub",
@@ -632,7 +649,16 @@
     "inCity": "In",
     "avgTimeToTransition": "the average time to transition from",
     "is": "is",
-    "days": "days"
+    "days": "days",
+    "whatThisMeans": "Why is this useful?",
+    "explanations": {
+      "open_to_pending": "Open → Pending transition measures the initial review and decision time for a report. Long times (>3 days) may indicate overload in the administrative team or lack of manpower for reviewing new reports. Useful for identifying issues in the triage phase.",
+      "open_to_in progress": "Direct transition from Open to In Progress indicates urgent handling of critical reports without a pending stage. Ideal for emergencies. If this happens frequently for regular reports - the workflow may not be properly implemented.",
+      "open_to_resolved": "Direct transition from Open to Resolved is rare and exceptional. May indicate classification errors, duplicate reports closed immediately, or workflow issues. Worth examining if these cases are legitimate.",
+      "pending_to_in progress": "Pending → In Progress transition measures the assignment and actual work start time. Long times (>5 days) indicate shortage in field teams or prioritization issues. This is the most important metric for operational efficiency.",
+      "pending_to_resolved": "Direct transition from Pending to Resolved may indicate self-resolved issues or status errors. Worth checking if the report was actually handled in the field or just marked as resolved without a team visit.",
+      "in progress_to_resolved": "In Progress → Resolved transition measures actual field handling time. Long times (>7 days) indicate technical complications, lack of equipment/materials, or logistical issues. Useful for tracking field work efficiency."
+    }
   },
   "ViewTransitionMatrixForAllStatuses": "View Transition Matrix for All Statuses",
   "ViewHeatmap": "View Heatmap",

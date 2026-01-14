@@ -217,7 +217,7 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
       }
 
       const fetchedData = await fetchGraphData(
-        newGraph.category as "garbage" | "lighting" | "tree" | "hazard",
+        newGraph.category as "garbage" | "lighting" | "tree" | "hazard" | "animal" | "maintenance" | "pest",
         newGraph.timeRange as "month" | "3month" | "6month" | "year",
         newGraph.topic as GraphTopic
       );
@@ -250,7 +250,9 @@ const allowedTypesPerTopic: Record<GraphTopic, { type: Graph["type"], label: str
             <option value="lighting">{t("categories.lighting")}</option>
             <option value="tree">{t("categories.tree")}</option>
             <option value="hazard">{t("categories.hazard")}</option>
-
+            <option value="animal">{t("categories.animal")}</option>
+            <option value="maintenance">{t("categories.maintenance")}</option>
+            <option value="pest">{t("categories.pest")}</option>
           </select>
 
           {/* טווח זמן */}

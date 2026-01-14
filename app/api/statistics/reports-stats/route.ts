@@ -20,13 +20,14 @@ export async function POST(req: NextRequest) {
       endDate?: string;
     };
 
-    const snapshot = await db.ref("Reports").once("value");
+    // New path: /Reports/ActiveReports/{city}/{type}/{id}
+    const snapshot = await db.ref("Reports/ActiveReports").once("value");
 
     if (!snapshot.exists()) {
       return NextResponse.json({ total: 0, open: 0, pending: 0, inProgress: 0 });
     }
 
-    const data = snapshot.val() as Record<string, Record<string, Report>>;
+    const rawData = snapshot.val() as Record<string, Record<string, Record<string, Report>>>;
     const now = Date.now();
 
     const rangeMap: Record<Exclude<TimeRange, "custom">, number> = {
@@ -52,18 +53,21 @@ export async function POST(req: NextRequest) {
     let pending = 0;
     let inProgress = 0;
 
-    Object.values(data).forEach((group: Record<string, Report>) => {
-      Object.values(group).forEach((report: Report) => {
-        if (!report.timestamp) return;
-        if (report.deleted) return;
-        
-        if (report.timestamp < cutoffStart || report.timestamp > cutoffEnd) return;
+    // Iterate through city -> type -> id structure
+    Object.values(rawData).forEach((cityData: Record<string, Record<string, Report>>) => {
+      Object.values(cityData).forEach((typeGroup: Record<string, Report>) => {
+        Object.values(typeGroup).forEach((report: Report) => {
+          if (!report.timestamp) return;
+          if (report.deleted) return;
+          
+          if (report.timestamp < cutoffStart || report.timestamp > cutoffEnd) return;
 
-        total++;
-        const status = report.status?.toLowerCase();
-        if (status === "open") open++;
-        else if (status === "pending") pending++;
-        else if (status === "in progress") inProgress++;
+          total++;
+          const status = report.status?.toLowerCase();
+          if (status === "open") open++;
+          else if (status === "pending") pending++;
+          else if (status === "in progress") inProgress++;
+        });
       });
     });
 

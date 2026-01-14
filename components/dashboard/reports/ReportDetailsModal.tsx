@@ -136,8 +136,15 @@ const handleUpdateStatus = async () => {
   ];
 
   try {
+    // Get city from report's area field
+    const city = localReport.area;
+    if (!city) {
+      alert("Missing city (area) information");
+      return;
+    }
+
     // כתיבה למסד
-  await updateReportInDB(reportType, reportId, {
+  await updateReportInDB(reportType, reportId, city, {
     status: newStatus,
     statusHistory: nextHistory,
     updatedBy,
@@ -189,7 +196,14 @@ const handleDeleteReport = async () => {
   const deletedBy = authority || email || "Unknown User";
 
   try {
-    await softDeleteReportInDB(reportType, reportId, deletedBy);
+    // Get city from report's area field
+    const city = localReport.area;
+    if (!city) {
+      alert("Missing city (area) information");
+      return;
+    }
+
+    await softDeleteReportInDB(reportType, reportId, city, deletedBy);
 
     const merged = {
       ...localReport,
@@ -360,6 +374,7 @@ const handleDeleteReport = async () => {
                         const result = await addReportComment(
                           localReport.type || "",
                           localReport.id || "",
+                          localReport.area || "",
                           newComment
                         );
                         

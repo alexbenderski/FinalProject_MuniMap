@@ -553,7 +553,8 @@ async function seedCity(
     const report = generateReport(city, polygon, category, status, ageInDays, random);
     if (!report) continue;
     
-    const reportRef = db.ref(`Reports/${category}`).push();
+    // New path structure: /Reports/ActiveReports/{city}/{category}/{id}
+    const reportRef = db.ref(`Reports/ActiveReports/${city}/${category}`).push();
     await reportRef.set(report);
     reportIds.push(reportRef.key!);
     writtenReports++;
@@ -576,6 +577,10 @@ async function seedCity(
     const report = generateReport(city, polygon, category, "resolved", ageInDays, random);
     if (!report) continue;
     
+    // Calculate month from timestamp
+    const reportDate = new Date(report.timestamp);
+    const month = String(reportDate.getMonth() + 1).padStart(2, '0');
+    
     // Add archive-specific fields
     const archivedReport = {
       ...report,
@@ -583,7 +588,8 @@ async function seedCity(
       archivedCity: city,
     };
     
-    const archiveRef = db.ref(`ArchivedReports/${year}/${category}`).push();
+    // New archive path: /ArchivedReports/{year}/{month}/{city}/{category}/{id}
+    const archiveRef = db.ref(`ArchivedReports/${year}/${month}/${city}/${category}`).push();
     await archiveRef.set(archivedReport);
     writtenArchive++;
   }
@@ -596,11 +602,11 @@ async function seedCity(
   const anomalies = generateAnomalies(city, polygon, reportIds, random);
   
   for (const anomaly of anomalies) {
-    // Write to ActiveAnomalies
-    await db.ref(`Anomalies/ActiveAnomalies/${anomaly.id}`).set(anomaly);
+    // New path: /Anomalies/Active/{city}/{anomalyId}
+    await db.ref(`Anomalies/Active/${city}/${anomaly.id}`).set(anomaly);
     
-    // Initialize empty ActiveAnomaliesUpdates entry
-    await db.ref(`Anomalies/ActiveAnomaliesUpdates/${anomaly.id}`).set({});
+    // Initialize empty Updates entry: /Anomalies/Updates/{city}/{anomalyId}
+    await db.ref(`Anomalies/Updates/${city}/${anomaly.id}`).set({});
   }
   
   console.log(`   ✅ Written ${anomalies.length} anomalies`);

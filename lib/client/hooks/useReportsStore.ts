@@ -60,10 +60,11 @@ export function useReportsStore(
     if (!city) return;
 
     const db = getDatabase(app);
-    const reportsRef = ref(db, "Reports");
+    // New path structure: /Reports/ActiveReports/{city}/{type}/{id}
+    const cityReportsRef = ref(db, `Reports/ActiveReports/${city}`);
     const unsubscribers: (() => void)[] = [];
 
-    // Initial load
+    // Initial load for this city
     const initialLoadHandler = (snapshot: DataSnapshot) => {
       if (!snapshot.exists()) {
         initialLoadDoneRef.current = true;
@@ -74,12 +75,13 @@ export function useReportsStore(
       const data = snapshot.val();
       reportsMapRef.current.clear();
 
+      // Structure: {type: {id: report}}
       Object.entries(data).forEach(([type, group]) => {
         if (group && typeof group === "object") {
           Object.entries(group as Record<string, Omit<Report, "type" | "id">>).forEach(
             ([id, report]) => {
               const fullReport: Report = { ...report, type, id } as Report;
-              if (!fullReport.deleted && fullReport.area === city) {
+              if (!fullReport.deleted) {
                 reportsMapRef.current.set(`${type}/${id}`, fullReport);
               }
             }
@@ -92,13 +94,14 @@ export function useReportsStore(
     };
 
     // Fire once for initial load
-    onValue(reportsRef, initialLoadHandler, { onlyOnce: true });
+    onValue(cityReportsRef, initialLoadHandler, { onlyOnce: true });
 
-    // Set up incremental listeners for each category
+    // Set up incremental listeners for each category under this city
     const categories = ["garbage", "lighting", "tree", "hazard"];
     
     categories.forEach(category => {
-      const categoryRef = ref(db, `Reports/${category}`);
+      // New path: /Reports/ActiveReports/{city}/{category}
+      const categoryRef = ref(db, `Reports/ActiveReports/${city}/${category}`);
       
       // Listen for new reports (skip if initial load not done)
       onChildAdded(categoryRef, (snapshot) => {
@@ -112,14 +115,12 @@ export function useReportsStore(
         
         const fullReport: Report = { ...report, type: category, id } as Report;
         
-        // Only add if it matches our city filter
-        if (fullReport.area === city) {
-          const key = `${category}/${id}`;
-          reportsMapRef.current.set(key, fullReport);
-          scheduleUpdate();
-        }
+        // Report is already in correct city path, just add it
+        const key = `${category}/${id}`;
+        reportsMapRef.current.set(key, fullReport);
+        scheduleUpdate();
       });
-
+      
       // Listen for changed reports
       onChildChanged(categoryRef, (snapshot) => {
         const id = snapshot.key;
@@ -134,7 +135,8 @@ export function useReportsStore(
             reportsMapRef.current.delete(key);
             scheduleUpdate();
           }
-        } else if (fullReport.area === city) {
+        } else {
+          // Report is already in correct city path
           reportsMapRef.current.set(key, fullReport);
           scheduleUpdate();
         }
@@ -161,9 +163,7 @@ export function useReportsStore(
 
     return () => {
       unsubscribers.forEach(unsub => unsub());
-      // Copy ref to local variable for cleanup
-      const mapToClean = reportsMapRef.current;
-      mapToClean.clear();
+      reportsMapRef.current.clear();
       initialLoadDoneRef.current = false;
     };
   }, [city, scheduleUpdate]);

@@ -66,9 +66,9 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
 
   return (
     <>
-      <footer className="bg-blue-50 border-t shadow-md w-full flex-shrink-0 z-30">
-        {/* Single row: Header | List | Buttons */}
-        <div className="flex flex-row items-center justify-center gap-10 px-3 sm:px-4 py-2">
+      <footer className="bg-blue-50 border-t shadow-md w-full flex-shrink-0 z-30 overflow-x-auto">
+        {/* Single row: Header | List | Buttons - scrollable on mobile */}
+        <div className="flex flex-row items-start justify-center gap-10 px-4 sm:px-4 pt-2 pb-8 py-12 min-w-max">
           {/* Left: Header */}
           <div className="flex-shrink-0">
             <h2 className="text-3xl sm:text-lg md:text-xl font-bold text-blue-800 whitespace-nowrap flex items-center gap-2">
@@ -103,6 +103,14 @@ export default function BottomBar({ onOpenFullList }: { onOpenFullList: () => vo
                     ? "💡"
                     : a.category === "tree"
                     ? "🌳"
+                    : a.category === "hazard"
+                    ? "⚠️"
+                    : a.category === "animal"
+                    ? "🐾"
+                    : a.category === "maintenance"
+                    ? "🔧"
+                    : a.category === "pest"
+                    ? "🐛"
                     : "⚠️"}{" "}
                     {a.title}
                   </span>

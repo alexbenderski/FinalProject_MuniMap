@@ -398,7 +398,8 @@ async function handleDeleteSelection() {
   for (const id of selectedReports) {
     const report = rows.find(r => r.id === id);
     if (report) {
-      await deleteReport(report.type ?? "", report.id ?? "");
+      // Pass city (area) as third parameter
+      await deleteReport(report.type ?? "", report.id ?? "", report.area ?? "");
     }
   }
 
@@ -696,6 +697,7 @@ return (
                 }}
               >
                 🛣️ {t("reportsTable.routeLink")}
+                <Tooltip message={t("reportsTable.tooltips.routeLink")} position="bottom" />
               </button>
               <button
                 className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold rounded-lg px-4 py-2 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
@@ -716,6 +718,7 @@ return (
                 }}
               >
                 📄 {t("reportsTable.fieldWorkerFile")}
+                <Tooltip message={t("reportsTable.tooltips.workOrder")} position="bottom" />
               </button>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
@@ -755,12 +758,14 @@ return (
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors">📋 {t("reportsTable.columns.id")}</th>
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Category")}>
             📁 {t("reportsTable.columns.category")}
+            <Tooltip message={t("reportsTable.tooltips.category")} position="bottom" />
           </th>
           <th className="p-3 text-left cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Description")}>
             📝 {t("reportsTable.columns.description")}
           </th>
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Criticality")}>
             ⚠️ {t("reportsTable.columns.level")}
+            <Tooltip message={t("reportsTable.tooltips.level")} position="bottom" />
           </th>
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Timestamp")}>
             📅 {t("reportsTable.columns.date")}
@@ -773,6 +778,7 @@ return (
           </th>
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Status")}>
             ✓ {t("reportsTable.columns.status")}
+            <Tooltip message={t("reportsTable.tooltips.status")} position="bottom" />
           </th>
           <th className="p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => handleSort("Media")}>
             📷 {t("reportsTable.columns.media")}

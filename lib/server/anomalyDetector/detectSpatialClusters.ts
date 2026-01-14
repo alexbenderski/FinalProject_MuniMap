@@ -10,7 +10,7 @@ import { buildAnomaly, Anomaly } from "./builders";
 
 const CELL_SIZE_DEGREES = 0.003; // ~300m at Israel's latitude (~32°N) - finer granularity
 const MONTHS_BACK = 6; // Historical baseline window
-const MIN_REPORTS_FOR_ANOMALY = 15; // Minimum total reports in cell to consider for anomaly
+const MIN_REPORTS_FOR_ANOMALY = 8; // Minimum total reports in cell to consider for anomaly (reduced for new categories)
 const SPATIAL_CONSISTENCY_THRESHOLD = 0.15; // Only 15% of neighbors needed (very lenient)
 
 // ============================================================================

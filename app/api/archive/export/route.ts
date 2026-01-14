@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
       updatedBy?: string;
     }[] = [];
 
-    // 🔹 לולאה דו־שלבית: שנים → קטגוריות → דיווחים
+    // 🔹 New structure: ArchivedReports/{year}/{month}/{city}/{type}/{id}
     snap.forEach((yearSnap) => {
       const year = Number(yearSnap.key);
       if (isNaN(year)) return;
@@ -235,9 +235,11 @@ export async function POST(req: NextRequest) {
       // שלב 1: צמצום לפי שנים
       if (year < fromYear || year > toYear) return;
 
-      yearSnap.forEach((categoryNode) => {
-        categoryNode.forEach((reportSnap) => {
-          const r = reportSnap.val() as Report;
+      yearSnap.forEach((monthNode) => {
+        monthNode.forEach((cityNode) => {
+          cityNode.forEach((categoryNode) => {
+            categoryNode.forEach((reportSnap) => {
+              const r = reportSnap.val() as Report;
 
           // תאריך סגירה (resolvedAt או statusHistory)
           const resolvedTs = getResolvedTimestamp(r);
@@ -320,6 +322,8 @@ export async function POST(req: NextRequest) {
         });
       }
 
+            });
+          });
         });
       });
     });

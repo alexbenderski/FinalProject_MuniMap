@@ -8,6 +8,7 @@ import { markAnomalyAsReviewed } from "@/lib/client/fetchers";
 import { getCurrentUserInfo } from "@/lib/client/fetchers";
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/components/AuthProvider";
+import Tooltip from "../common/Tooltip";
 
 export default function AnomaliesModal({
   open,
@@ -26,7 +27,7 @@ export default function AnomaliesModal({
   const [anomalyDetailsOpen, setAnomalyDetailsOpen] = useState(false);
   const [reportsForAnomaly, setReportsForAnomaly] = useState<Report[]>([]);
   const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null);
-  const [sortKey, setSortKey] = useState<"type" | "reports" | "status" | "firstDetected" | "lastUpdated" | "severity" | null>(null);
+  const [sortKey, setSortKey] = useState<"type" | "anomalyType" | "reports" | "status" | "firstDetected" | "lastUpdated" | "severity" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
@@ -44,7 +45,7 @@ export default function AnomaliesModal({
 
   if (!open) return null;
 
-  const handleSort = (key: "type" | "reports" | "status" | "firstDetected" | "lastUpdated" | "severity") => {
+  const handleSort = (key: "type" | "anomalyType" | "reports" | "status" | "firstDetected" | "lastUpdated" | "severity") => {
     if (sortKey === key) {
       setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
@@ -94,6 +95,11 @@ export default function AnomaliesModal({
         const severityMap: Record<string, number> = { high: 3, medium: 2, low: 1 };
         aVal = severityMap[a.severity || "low"] || 1;
         bVal = severityMap[b.severity || "low"] || 1;
+      } else if (sortKey === "anomalyType") {
+        // Map anomaly type to alphabetical order
+        const typeOrder: Record<string, number> = { spike: 1, slow_response: 2, geo_cluster: 3 };
+        aVal = typeOrder[a.type || "unknown"] || 0;
+        bVal = typeOrder[b.type || "unknown"] || 0;
       }
 
       if (aVal === bVal) return 0;
@@ -199,13 +205,28 @@ async function handleMarkReviewed(anomaly: Anomaly) {
                       className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
                       onClick={() => handleSort("type")}
                     >
-                      📁 {t("anomalies.type")} {sortKey === "type" && (sortDir === "asc" ? "▲" : "▼")}
+                      <div className="flex items-center justify-center gap-1">
+                        📁 {t("anomalies.type")} {sortKey === "type" && (sortDir === "asc" ? "▲" : "▼")}
+                        <Tooltip message={t("anomalies.tooltips.reportType")} position="bottom" />
+                      </div>
+                    </th>
+                    <th
+                      className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors whitespace-nowrap"
+                      onClick={() => handleSort("anomalyType")}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        🔍 {t("anomalies.anomalyType")} {sortKey === "anomalyType" && (sortDir === "asc" ? "▲" : "▼")}
+                        <Tooltip message={t("anomalies.tooltips.anomalyType")} position="bottom" />
+                      </div>
                     </th>
                     <th
                       className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
                       onClick={() => handleSort("severity")}
                     >
-                      ⚠️ {t("anomalies.severity")} {sortKey === "severity" && (sortDir === "asc" ? "▲" : "▼")}
+                      <div className="flex items-center justify-center gap-1">
+                        ⚠️ {t("anomalies.severity")} {sortKey === "severity" && (sortDir === "asc" ? "▲" : "▼")}
+                        <Tooltip message={t("anomalies.tooltips.severity")} position="bottom" />
+                      </div>
                     </th>
                     <th className="p-3 text-left">📝 {t("anomalies.description")}</th>
                     <th className="p-3 text-center">📍 {t("anomalies.area")}</th>
@@ -219,7 +240,10 @@ async function handleMarkReviewed(anomaly: Anomaly) {
                       className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
                       onClick={() => handleSort("status")}
                     >
-                      ✓ {t("anomalies.reviewStatus")} {sortKey === "status" && (sortDir === "asc" ? "▲" : "▼")}
+                      <div className="flex items-center justify-center gap-1">
+                        ✓ {t("anomalies.reviewStatus")} {sortKey === "status" && (sortDir === "asc" ? "▲" : "▼")}
+                        <Tooltip message={t("anomalies.tooltips.reviewStatus")} position="bottom" />
+                      </div>
                     </th>
                     <th
                       className="p-3 text-center cursor-pointer hover:bg-red-600 transition-colors"
@@ -248,6 +272,21 @@ async function handleMarkReviewed(anomaly: Anomaly) {
         <td className="p-3 text-center">
           <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold capitalize">
             {a.category || "unknown"}
+          </span>
+        </td>
+
+        {/* anomaly type */}
+        <td className="p-3 text-center">
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+            a.type === "spike" ? "bg-orange-100 text-orange-800" :
+            a.type === "slow_response" ? "bg-blue-100 text-blue-800" :
+            a.type === "geo_cluster" ? "bg-green-100 text-green-800" :
+            "bg-gray-100 text-gray-800"
+          }`}>
+            {a.type === "spike" ? `📈 ${t("anomalies.typeSpike")}` :
+             a.type === "slow_response" ? `🐌 ${t("anomalies.typeSlowResponse")}` :
+             a.type === "geo_cluster" ? `🗺️ ${t("anomalies.typeGeoCluster")}` :
+             "Unknown"}
           </span>
         </td>
 

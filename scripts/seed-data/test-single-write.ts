@@ -44,7 +44,8 @@ async function main() {
   };
 
   console.log("Writing test report...");
-  const ref = db.ref("Reports/garbage").push();
+  // New path structure: /Reports/ActiveReports/{city}/{category}/{id}
+  const ref = db.ref(`Reports/ActiveReports/${testReport.area}/garbage`).push();
   await ref.set(testReport);
   console.log(`✅ Written report with ID: ${ref.key}`);
 

@@ -24,7 +24,7 @@ export default function Tooltip({ message, position = "top" }: { message: string
   return (
     <span
       ref={triggerRef}
-      className="relative group cursor-pointer text-blue-600 font-bold ml-1"
+      className="relative group cursor-pointer text-black font-bold ml-1"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >

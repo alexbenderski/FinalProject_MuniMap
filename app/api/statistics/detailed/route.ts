@@ -30,13 +30,14 @@ export async function POST(req: NextRequest) {
       toDate?: string;
     };
 
-    const snapshot = await db.ref("Reports").once("value");
+    // New path: /Reports/ActiveReports/{city}/{type}/{id}
+    const snapshot = await db.ref("Reports/ActiveReports").once("value");
 
     if (!snapshot.exists()) {
       return NextResponse.json(null);
     }
 
-    const data = snapshot.val() as Record<string, Record<string, Report>>;
+    const rawData = snapshot.val() as Record<string, Record<string, Record<string, Report>>>;
 
     // Calculate exact time range
     const now = Date.now();
@@ -58,9 +59,10 @@ export async function POST(req: NextRequest) {
       end = now;
     }
 
-    // Filter only reports in range
-    const reports: Report[] = Object.values(data)
-      .flatMap((group) => Object.values(group))
+    // Filter only reports in range - iterate through city -> type -> id structure
+    const reports: Report[] = Object.values(rawData)
+      .flatMap((cityData) => Object.values(cityData))
+      .flatMap((typeGroup) => Object.values(typeGroup))
       .filter(
         (r): r is Report => !r.deleted &&
           typeof r.timestamp === "number" &&

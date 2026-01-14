@@ -94,13 +94,14 @@ export async function POST(req: NextRequest) {
       toDate?: string;
     };
 
-    const snapshot = await db.ref("Reports").once("value");
+    // New path: /Reports/ActiveReports/{city}/{type}/{id}
+    const snapshot = await db.ref("Reports/ActiveReports").once("value");
 
     if (!snapshot.exists()) {
       return NextResponse.json([]);
     }
 
-    const data = snapshot.val() as Record<string, Record<string, Report>>;
+    const rawData = snapshot.val() as Record<string, Record<string, Record<string, Report>>>;
 
     const { buckets, start, end } = buildEmptyMonthBuckets(timeRange, fromDate, toDate);
 
@@ -112,29 +113,32 @@ export async function POST(req: NextRequest) {
       buckets.map(b => [b.key, { reports: 0, resolved: 0, totalResolveDays: 0, resolvedCount: 0, unresolved: 0 }])
     );
 
-    const catGroup = data[category] || {};
-    Object.values(catGroup).forEach((r: Report) => {
-      if (r.deleted) return;
-      if (!r.timestamp) return;
-      const t = Number(r.timestamp);
-      if (t < start || t >= end) return;
-      const k = monthKey(startOfMonth(t));
-      const c = counters[k];
-      if (!c) return;
+    // Iterate through city -> type -> id structure, filter by category
+    Object.values(rawData).forEach((cityData) => {
+      const catGroup = cityData[category] || {};
+      Object.values(catGroup).forEach((r: Report) => {
+        if (r.deleted) return;
+        if (!r.timestamp) return;
+        const t = Number(r.timestamp);
+        if (t < start || t >= end) return;
+        const k = monthKey(startOfMonth(t));
+        const c = counters[k];
+        if (!c) return;
 
-      c.reports += 1;
+        c.reports += 1;
 
-      const status = (r.status || "").toLowerCase();
-      if (status === "resolved" && r.resolvedAt) {
-        c.resolved += 1;
-        const days = (Number(r.resolvedAt) - t) / (1000 * 60 * 60 * 24);
-        if (days >= 0) {
-          c.totalResolveDays += days;
-          c.resolvedCount += 1;
+        const status = (r.status || "").toLowerCase();
+        if (status === "resolved" && r.resolvedAt) {
+          c.resolved += 1;
+          const days = (Number(r.resolvedAt) - t) / (1000 * 60 * 60 * 24);
+          if (days >= 0) {
+            c.totalResolveDays += days;
+            c.resolvedCount += 1;
+          }
+        } else {
+          c.unresolved += 1;
         }
-      } else {
-        c.unresolved += 1;
-      }
+      });
     });
 
     // Build final series based on topic

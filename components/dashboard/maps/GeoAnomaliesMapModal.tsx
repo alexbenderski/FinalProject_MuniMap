@@ -19,12 +19,26 @@ interface GeoAnomaliesMapModalProps {
 const containerStyle = { width: "1200px", height: "calc(80vh - 120px)" };
 const defaultCenter = { lat: 32.794, lng: 34.989 };
 
-// Category colors for circles
+// Category colors for circles - 7 distinct colors for 7 report types
 const CATEGORY_COLORS: Record<string, string> = {
   garbage: "#FF0000",    // Red
   lighting: "#FFA500",   // Orange
   tree: "#00FF00",       // Green
+  hazard: "#FF00FF",     // Magenta
+  animal: "#8B4513",     // Brown
+  maintenance: "#4169E1", // Royal Blue
+  pest: "#9400D3",       // Dark Violet
+};
 
+// Category icons
+const CATEGORY_ICONS: Record<string, string> = {
+  garbage: "🗑️",
+  lighting: "💡",
+  tree: "🌳",
+  hazard: "⚠️",
+  animal: "🐾",
+  maintenance: "🔧",
+  pest: "🐛",
 };
 
 export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAnomaliesMapModalProps) {
@@ -218,10 +232,7 @@ export default function GeoAnomaliesMapModal({ open, onClose, anomalies }: GeoAn
                       color: isSelected ? "#fff" : "#333",
                     }}
                   >
-                    {category === "garbage" ? "🗑️" : 
-                     category === "lighting" ? "💡" : 
-                     category === "tree" ? "🌳" : 
-                     "⚠️"} {category.toUpperCase()}
+                    {CATEGORY_ICONS[category] || "❓"} {category.toUpperCase()}
                   </button>
                 );
               })

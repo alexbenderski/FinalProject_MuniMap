@@ -118,7 +118,9 @@ async function writeReport(): Promise<{ success: boolean; writeTimeMs: number; e
   const startTime = Date.now();
   
   try {
-    const reportsRef = db.ref(`Reports/${report.type}`);
+    // New path structure: /Reports/ActiveReports/{city}/{type}/{id}
+    const city = report.area;
+    const reportsRef = db.ref(`Reports/ActiveReports/${city}/${report.type}`);
     const newRef = reportsRef.push();
     await newRef.set(report);
     
@@ -139,30 +141,33 @@ const listenerStartTimes: Map<string, number> = new Map();
 let listenerRef: admin.database.Reference | null = null;
 
 function setupListener() {
-  listenerRef = db.ref("Reports");
+  // New path structure: Listen to /Reports/ActiveReports
+  listenerRef = db.ref("Reports/ActiveReports");
   
   listenerRef.on("child_changed", (snapshot) => {
     const reactionTime = Date.now();
     const key = snapshot.key;
     if (key) {
-      // We track when new reports come in under each category
+      // We track when new reports come in under each city
       results.listenerReactionTimes.push(reactionTime - results.testStart.getTime());
     }
   });
   
-  // Also listen for new reports
-  CATEGORIES.forEach(category => {
-    const categoryRef = db.ref(`Reports/${category}`);
-    categoryRef.on("child_added", (snapshot) => {
-      const addedTime = Date.now();
-      const data = snapshot.val();
-      if (data && data.submittedBy === "LoadTestBot") {
-        // Calculate time between when report was created and when listener received it
-        const reactionTime = addedTime - data.timestamp;
-        if (reactionTime > 0 && reactionTime < 60000) { // Sanity check
-          results.listenerReactionTimes.push(reactionTime);
+  // Also listen for new reports in each area
+  AREAS.forEach(area => {
+    CATEGORIES.forEach(category => {
+      const categoryRef = db.ref(`Reports/ActiveReports/${area}/${category}`);
+      categoryRef.on("child_added", (snapshot) => {
+        const addedTime = Date.now();
+        const data = snapshot.val();
+        if (data && data.submittedBy === "LoadTestBot") {
+          // Calculate time between when report was created and when listener received it
+          const reactionTime = addedTime - data.timestamp;
+          if (reactionTime > 0 && reactionTime < 60000) { // Sanity check
+            results.listenerReactionTimes.push(reactionTime);
+          }
         }
-      }
+      });
     });
   });
   
@@ -173,8 +178,10 @@ function cleanupListener() {
   if (listenerRef) {
     listenerRef.off();
   }
-  CATEGORIES.forEach(category => {
-    db.ref(`Reports/${category}`).off();
+  AREAS.forEach(area => {
+    CATEGORIES.forEach(category => {
+      db.ref(`Reports/ActiveReports/${area}/${category}`).off();
+    });
   });
 }
 

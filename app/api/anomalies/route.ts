@@ -6,21 +6,29 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 // GET - Fetch all active anomalies
+// New path: /Anomalies/Active/{city}/{anomalyId}
 export async function GET() {
   try {
-    const snapshot = await db.ref("Anomalies/ActiveAnomalies").once("value");
+    const snapshot = await db.ref("Anomalies/Active").once("value");
     
     if (!snapshot.exists()) {
       return NextResponse.json([]);
     }
 
-    const data = snapshot.val();
-    const anomalies: Anomaly[] = Object.entries(data).map(
-      ([firebaseKey, anomalyData]) => ({
-        firebaseKey,
-        ...(anomalyData as Omit<Anomaly, "firebaseKey">),
-      })
-    );
+    const citiesData = snapshot.val();
+    const anomalies: Anomaly[] = [];
+
+    // Iterate through cities and collect all anomalies
+    Object.values(citiesData).forEach((cityAnomalies: unknown) => {
+      if (cityAnomalies && typeof cityAnomalies === 'object') {
+        Object.entries(cityAnomalies).forEach(([firebaseKey, anomalyData]) => {
+          anomalies.push({
+            firebaseKey,
+            ...(anomalyData as Omit<Anomaly, "firebaseKey">),
+          });
+        });
+      }
+    });
 
     // Sort by lastUpdated descending
     anomalies.sort((a, b) => b.lastUpdated - a.lastUpdated);
@@ -35,11 +43,11 @@ export async function GET() {
 // PATCH - Mark anomaly as reviewed
 export async function PATCH(req: NextRequest) {
   try {
-    const { firebaseKey, userEmail, alreadyReviewed, existingTimestamp } = await req.json();
+    const { firebaseKey, city, userEmail, alreadyReviewed, existingTimestamp } = await req.json();
 
-    if (!firebaseKey || !userEmail) {
+    if (!firebaseKey || !city || !userEmail) {
       return NextResponse.json(
-        { error: "Missing firebaseKey or userEmail" },
+        { error: "Missing firebaseKey, city, or userEmail" },
         { status: 400 }
       );
     }
@@ -54,7 +62,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const safeKey = userEmail.replace(/\./g, "_");
-    const anomalyPath = `Anomalies/ActiveAnomalies/${firebaseKey}`;
+    const anomalyPath = `Anomalies/Active/${city}/${firebaseKey}`;
     const nodeRef = db.ref(anomalyPath);
 
     const snapshot = await nodeRef.once("value");
@@ -85,16 +93,16 @@ export async function PATCH(req: NextRequest) {
 // POST - Add comment to anomaly
 export async function POST(req: NextRequest) {
   try {
-    const { firebaseKey, userEmail, commentText } = await req.json();
+    const { firebaseKey, city, userEmail, commentText } = await req.json();
 
-    if (!firebaseKey || !userEmail || !commentText) {
+    if (!firebaseKey || !city || !userEmail || !commentText) {
       return NextResponse.json(
-        { error: "Missing firebaseKey, userEmail, or commentText" },
+        { error: "Missing firebaseKey, city, userEmail, or commentText" },
         { status: 400 }
       );
     }
 
-    const anomalyPath = `Anomalies/ActiveAnomalies/${firebaseKey}`;
+    const anomalyPath = `Anomalies/Active/${city}/${firebaseKey}`;
     const nodeRef = db.ref(anomalyPath);
 
     const snapshot = await nodeRef.once("value");

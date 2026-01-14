@@ -44,18 +44,18 @@ function removeUndefinedValues(obj: unknown): unknown {
 ////////////////////////////////////////////////////////////////
 
 
-export async function loadActiveAnomaly(id: string): Promise<Anomaly | null> {
-  const ref = db.ref(`Anomalies/ActiveAnomalies/${id}`);
+export async function loadActiveAnomaly(id: string, city: string): Promise<Anomaly | null> {
+  const ref = db.ref(`Anomalies/Active/${city}/${id}`);
   const snapshot = await ref.once("value");
   return snapshot.exists() ? snapshot.val() : null;
 }
 
 
 // ─────────────────────────────────────────────
-// 1) שמירה תחת ActiveAnomalies/
+// 1) שמירה תחת Active/ with city
 // ─────────────────────────────────────────────
 export async function saveActiveAnomaly(anomaly: Anomaly) {
-  const ref = db.ref(`Anomalies/ActiveAnomalies/${anomaly.id}`);
+  const ref = db.ref(`Anomalies/Active/${anomaly.area}/${anomaly.id}`);
   const snapshot = await ref.once("value");
 
   if (snapshot.exists()) {
@@ -145,9 +145,9 @@ function nextEpisodeId(list: string[]): string {
 
 //────────────────close episode─────────────────────────────
 
-export async function archiveAnomalyEpisode(anomalyId: string) {
-  const activeRef = db.ref(`Anomalies/ActiveAnomalies/${anomalyId}`);
-  const updatesRef = db.ref(`Anomalies/ActiveAnomaliesUpdates/${anomalyId}`);
+export async function archiveAnomalyEpisode(anomalyId: string, city: string) {
+  const activeRef = db.ref(`Anomalies/Active/${city}/${anomalyId}`);
+  const updatesRef = db.ref(`Anomalies/Updates/${city}/${anomalyId}`);
   const episodesRef = db.ref(`Anomalies/AnomalyEpisodes/${anomalyId}`);
 
   const activeSnap = await activeRef.once("value");
@@ -185,10 +185,10 @@ export async function archiveAnomalyEpisode(anomalyId: string) {
 }
 
 // ─────────────────────────────────────────────
-// 2) שמירת Update Snapshot תחת ActiveAnomaliesUpdates/
+// 2) שמירת Update Snapshot תחת Updates/ with city
 // ─────────────────────────────────────────────
 export async function saveAnomalyUpdateSnapshot(anomaly: Anomaly) {
-  const listRef = db.ref(`Anomalies/ActiveAnomaliesUpdates/${anomaly.id}`);
+  const listRef = db.ref(`Anomalies/Updates/${anomaly.area}/${anomaly.id}`);
   const snapshot = await listRef.once("value");
 
   const updates = snapshot.exists() ? snapshot.val() : {};
@@ -270,7 +270,7 @@ export async function saveFullAnomalySnapshot(anomaly: Anomaly) {
   await saveActiveAnomaly(anomaly);
 
   // 2) משיכת העותק המעודכן מהמסד (כולל firstDetected ו-lastUpdated הנכונים)
-  const updated = await loadActiveAnomaly(anomaly.id);
+  const updated = await loadActiveAnomaly(anomaly.id, anomaly.area);
 
   if (!updated) {
     console.error("❌ Failed to load anomaly after saving:", anomaly.id);

@@ -9,10 +9,14 @@ const STATUS_ORDER = ["open", "pending", "in progress", "resolved"];
 
 // SLA thresholds in days (matching lib/server/sla.ts)
 const SLA_DAYS: Record<string, number> = {
-  garbage: 5,
-  lighting: 7,
-  tree: 8,
-  all: 7, // Default average for "all categories"
+  garbage: 4,
+  lighting: 10,
+  tree: 14,
+  hazard: 2,
+  animal: 3,
+  maintenance: 21,
+  pest: 7,
+  all: 8, // Default average for "all categories"
 };
 
 // Get SLA for the selected category
@@ -247,8 +251,12 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2 border rounded">
             <option value="all">{t("statusTransition.allCategories")}</option>
             <option value="garbage">{t("categories.garbage")}</option>
-            <option value="tree">{t("categories.tree")}</option>
             <option value="lighting">{t("categories.lighting")}</option>
+            <option value="tree">{t("categories.tree")}</option>
+            <option value="hazard">{t("categories.hazard")}</option>
+            <option value="animal">{t("categories.animal")}</option>
+            <option value="maintenance">{t("categories.maintenance")}</option>
+            <option value="pest">{t("categories.pest")}</option>
           </select>
         </div>
 
@@ -500,6 +508,19 @@ export default function StatusTransitionModal({ open, onClose, city }: Props) {
                   <span className="font-bold">{result.count} {t("statusTransition.reportsAnalyzedLabel")}</span>{" "}
                   ({getTimeRangeLabel(timeRange)}).
                 </p>
+              </div>
+
+              {/* Transition Explanation */}
+              <div className="bg-blue-50 rounded p-4 border border-blue-200">
+                <div className="flex items-start gap-2">
+                  <span className="text-2xl">💡</span>
+                  <div>
+                    <p className="font-semibold text-blue-800 mb-2">{t("statusTransition.whatThisMeans")}</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {t(`statusTransition.explanations.${statusStart}_to_${statusEnd}`)}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

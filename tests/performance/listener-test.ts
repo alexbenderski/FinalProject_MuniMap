@@ -39,7 +39,9 @@ async function measureListenerLatency() {
   console.log(`Testing ${TEST_REPORTS} individual writes with listener measurement\n`);
 
   const testCategory = "garbage";
-  const categoryRef = db.ref(`Reports/${testCategory}`);
+  const testCity = "Test Area";
+  // New path structure: /Reports/ActiveReports/{city}/{category}
+  const categoryRef = db.ref(`Reports/ActiveReports/${testCity}/${testCategory}`);
   
   // Track pending writes
   const pendingWrites = new Map<string, number>();

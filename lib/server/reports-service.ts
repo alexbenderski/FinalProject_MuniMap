@@ -16,29 +16,38 @@ export interface DetectorReport {
 /**
  * מחזיר רשימת דיווחים במבנה "שטוח" עבור מנוע האנומליות,
  * במקום הפונקציה הישנה getReportsFromFirebase ב-firebaseReader.ts
+ * 
+ * New path structure: /Reports/ActiveReports/{city}/{type}/{id}
  */
 export async function getReportsForDetector(): Promise<DetectorReport[]> {
   // 🔹 משתמשים ב-Firebase Admin במקום initializeApp / getDatabase
-  const snapshot = await db.ref("Reports").once("value");
+  const snapshot = await db.ref("Reports/ActiveReports").once("value");
   const raw = snapshot.val() || {};
   const out: DetectorReport[] = [];
 
-  // expected structure: Reports/{type}/{id} -> { area, timestamp, lat, lng, status, deleted, ... }
-  for (const type of Object.keys(raw)) {
-    const group = raw[type];
-    for (const id of Object.keys(group)) {
-      const r = group[id];
+  // New structure: Reports/ActiveReports/{city}/{type}/{id} -> { area, timestamp, lat, lng, status, deleted, ... }
+  for (const city of Object.keys(raw)) {
+    const cityData = raw[city];
+    if (!cityData || typeof cityData !== "object") continue;
 
-      out.push({
-        id,
-        type,
-        area: r.area ?? "—",
-        timestamp: Number(r.timestamp) || 0,
-        deleted: Boolean(r.deleted),
-        resolvedAt: r.resolvedAt ? Number(r.resolvedAt) : undefined,
-        lat: typeof r.lat === "number" ? r.lat : undefined,
-        lng: typeof r.lng === "number" ? r.lng : undefined,
-      });
+    for (const type of Object.keys(cityData)) {
+      const group = cityData[type];
+      if (!group || typeof group !== "object") continue;
+
+      for (const id of Object.keys(group)) {
+        const r = group[id];
+
+        out.push({
+          id,
+          type,
+          area: r.area ?? city,
+          timestamp: Number(r.timestamp) || 0,
+          deleted: Boolean(r.deleted),
+          resolvedAt: r.resolvedAt ? Number(r.resolvedAt) : undefined,
+          lat: typeof r.lat === "number" ? r.lat : undefined,
+          lng: typeof r.lng === "number" ? r.lng : undefined,
+        });
+      }
     }
   }
 

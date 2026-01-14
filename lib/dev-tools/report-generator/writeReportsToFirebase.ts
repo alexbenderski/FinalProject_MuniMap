@@ -24,7 +24,7 @@ export interface WriteResult {
 /**
  * Write generated test reports to Firebase Realtime Database
  * 
- * Structure: Reports/{type}/{id} -> report data
+ * New Structure: Reports/ActiveReports/{city}/{type}/{id} -> report data
  * 
  * @param reports - Reports to write
  */
@@ -50,6 +50,7 @@ export async function writeReportsToFirebase(
     try {
       const { generatedId, ...reportData } = report;
       const reportType = report.type;
+      const city = report.area;
       
       if (!reportType) {
         result.errors.push(`Report ${generatedId}: Missing report type`);
@@ -57,8 +58,14 @@ export async function writeReportsToFirebase(
         continue;
       }
 
-      // Write to: Reports/{type}/{id}
-      const reportRef = ref(db, `Reports/${reportType}/${generatedId}`);
+      if (!city) {
+        result.errors.push(`Report ${generatedId}: Missing city (area)`);
+        result.failedCount++;
+        continue;
+      }
+
+      // Write to: Reports/ActiveReports/{city}/{type}/{id}
+      const reportRef = ref(db, `Reports/ActiveReports/${city}/${reportType}/${generatedId}`);
       
       await set(reportRef, reportData);
 

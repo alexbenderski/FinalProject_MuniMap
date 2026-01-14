@@ -1,6 +1,8 @@
 /**
  * Firebase Writer for Simulation
  * Writes generated reports to Firebase Realtime Database
+ * 
+ * Path structure: /Reports/ActiveReports/{city}/{type}/{id}
  */
 
 import { ref, set, push } from "firebase/database";
@@ -22,10 +24,22 @@ export class SimulationFirebaseWriter {
 
   /**
    * Write a single report to Firebase
+   * Uses new path: /Reports/ActiveReports/{city}/{type}/{id}
    */
   async writeReport(report: GeneratedReport): Promise<WriteResult> {
     try {
-      const reportsRef = ref(db, `Reports/${report.type}`);
+      // Extract city from report.area
+      const city = report.area;
+      if (!city) {
+        return {
+          success: false,
+          writtenCount: 0,
+          errors: ["Report missing 'area' (city) field"],
+        };
+      }
+
+      // New path structure: /Reports/ActiveReports/{city}/{type}
+      const reportsRef = ref(db, `Reports/ActiveReports/${city}/${report.type}`);
       const newReportRef = push(reportsRef);
       
       // Remove id from the report data (Firebase generates its own)

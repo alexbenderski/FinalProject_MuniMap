@@ -21,13 +21,14 @@ export async function POST(req: NextRequest) {
       endDate?: string;
     };
 
-    const snapshot = await db.ref("Reports").once("value");
+    // New path: /Reports/ActiveReports/{city}/{type}/{id}
+    const snapshot = await db.ref("Reports/ActiveReports").once("value");
 
     if (!snapshot.exists()) {
       return NextResponse.json([]);
     }
 
-    const data = snapshot.val() as Record<string, Record<string, Report>>;
+    const rawData = snapshot.val() as Record<string, Record<string, Record<string, Report>>>;
     const now = Date.now();
 
     const rangeMap: Record<Exclude<TimeRange, "custom">, number> = {
@@ -49,21 +50,24 @@ export async function POST(req: NextRequest) {
     // Calculate average resolution time per month
     const months: Record<string, { totalDays: number; count: number; sortKey: number }> = {};
 
-    Object.values(data).forEach((group) => {
-      Object.values(group).forEach((r: Report) => {
-        if (r.deleted) return;
-        if (!r.timestamp || r.timestamp < cutoff) return;
-        if (r.status?.toLowerCase() !== "resolved") return;
-        if (!r.resolvedAt) return;
+    // Iterate through city -> type -> id structure
+    Object.values(rawData).forEach((cityData) => {
+      Object.values(cityData).forEach((typeGroup) => {
+        Object.values(typeGroup).forEach((r: Report) => {
+          if (r.deleted) return;
+          if (!r.timestamp || r.timestamp < cutoff) return;
+          if (r.status?.toLowerCase() !== "resolved") return;
+          if (!r.resolvedAt) return;
 
-        const diffDays = (r.resolvedAt - r.timestamp) / (1000 * 60 * 60 * 24);
-        const date = new Date(r.timestamp);
-        const monthKey = date.toLocaleString("en", { month: "short", year: "2-digit" });
-        const sortKey = date.getFullYear() * 100 + date.getMonth();
+          const diffDays = (r.resolvedAt - r.timestamp) / (1000 * 60 * 60 * 24);
+          const date = new Date(r.timestamp);
+          const monthKey = date.toLocaleString("en", { month: "short", year: "2-digit" });
+          const sortKey = date.getFullYear() * 100 + date.getMonth();
 
-        if (!months[monthKey]) months[monthKey] = { totalDays: 0, count: 0, sortKey };
-        months[monthKey].totalDays += diffDays;
-        months[monthKey].count++;
+          if (!months[monthKey]) months[monthKey] = { totalDays: 0, count: 0, sortKey };
+          months[monthKey].totalDays += diffDays;
+          months[monthKey].count++;
+        });
       });
     });
 

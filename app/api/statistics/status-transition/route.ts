@@ -90,30 +90,36 @@ export async function POST(req: NextRequest) {
 
   const deltas: number[] = [];
 
-  // Search in ArchivedReports first
+  // Search in ArchivedReports first - new path: /ArchivedReports/{year}/{month}/{city}/{type}/{id}
   const archiveSnap = await db.ref("ArchivedReports").once("value");
   if (archiveSnap.exists()) {
     archiveSnap.forEach((yearSnap: DataSnapshot) => {
-      yearSnap.forEach((categoryNode: DataSnapshot) => {
-        categoryNode.forEach((reportSnap: DataSnapshot) => {
-          const r = reportSnap.val() as ReportData | null;
-          if (!r) return;
+      yearSnap.forEach((monthSnap: DataSnapshot) => {
+        monthSnap.forEach((citySnap: DataSnapshot) => {
+          citySnap.forEach((typeSnap: DataSnapshot) => {
+            typeSnap.forEach((reportSnap: DataSnapshot) => {
+              const r = reportSnap.val() as ReportData | null;
+              if (!r) return;
 
-          processReportData(r, category, area, normalizedStart, normalizedEnd, cutoff, deltas);
+              processReportData(r, category, area, normalizedStart, normalizedEnd, cutoff, deltas);
+            });
+          });
         });
       });
     });
   }
 
-  // Also search in active Reports
-  const reportsSnap = await db.ref("Reports").once("value");
+  // Also search in active Reports - new path: /Reports/ActiveReports/{city}/{type}/{id}
+  const reportsSnap = await db.ref("Reports/ActiveReports").once("value");
   if (reportsSnap.exists()) {
-    reportsSnap.forEach((typeNode: DataSnapshot) => {
-      typeNode.forEach((reportSnap: DataSnapshot) => {
-        const r = reportSnap.val() as ReportData | null;
-        if (!r) return;
+    reportsSnap.forEach((citySnap: DataSnapshot) => {
+      citySnap.forEach((typeSnap: DataSnapshot) => {
+        typeSnap.forEach((reportSnap: DataSnapshot) => {
+          const r = reportSnap.val() as ReportData | null;
+          if (!r) return;
 
-        processReportData(r, category, area, normalizedStart, normalizedEnd, cutoff, deltas);
+          processReportData(r, category, area, normalizedStart, normalizedEnd, cutoff, deltas);
+        });
       });
     });
   }

@@ -4,31 +4,53 @@ import { db, adminFirestore } from "@/lib/server/firebase-admin";
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// GET - Fetch all reports
-export async function GET() {
+/**
+ * New Path Structure: /Reports/ActiveReports/{city}/{reportType}/{reportId}
+ */
+
+// GET - Fetch all reports (supports optional city filter via query param)
+export async function GET(req: NextRequest) {
   try {
-    const snapshot = await db.ref("Reports").once("value");
+    const { searchParams } = new URL(req.url);
+    const cityFilter = searchParams.get("city");
+
+    // New structure: /Reports/ActiveReports/{city}/{type}/{id}
+    const activeReportsRef = db.ref("Reports/ActiveReports");
+    const snapshot = await activeReportsRef.once("value");
     
     if (!snapshot.exists()) {
       return NextResponse.json(null);
     }
 
-    const data = snapshot.val();
+    const rawData = snapshot.val();
+    
+    // Transform from {city: {type: {id: report}}} to {type: {id: report}} for backward compatibility
+    // Also filter out deleted reports
+    const result: Record<string, Record<string, unknown>> = {};
 
-    // Filter out deleted reports
-    Object.keys(data).forEach((type) => {
-      if (data[type]) {
-        const filteredGroup = Object.fromEntries(
-          Object.entries(data[type]).filter(([, r]) => {
-            const report = r as { deleted?: boolean };
-            return !report.deleted;
-          })
-        );
-        data[type] = filteredGroup;
+    Object.entries(rawData).forEach(([city, cityData]) => {
+      // Apply city filter if provided
+      if (cityFilter && city !== cityFilter) return;
+
+      if (cityData && typeof cityData === "object") {
+        Object.entries(cityData as Record<string, Record<string, unknown>>).forEach(([type, typeData]) => {
+          if (!result[type]) {
+            result[type] = {};
+          }
+          
+          if (typeData && typeof typeData === "object") {
+            Object.entries(typeData as Record<string, unknown>).forEach(([id, report]) => {
+              const r = report as { deleted?: boolean; area?: string };
+              if (!r.deleted) {
+                result[type][id] = report;
+              }
+            });
+          }
+        });
       }
     });
 
-    return NextResponse.json(data);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error fetching reports:", error);
     return NextResponse.json({ error: "Failed to fetch reports" }, { status: 500 });
@@ -38,16 +60,17 @@ export async function GET() {
 // PATCH - Update a report
 export async function PATCH(req: NextRequest) {
   try {
-    const { reportType, reportId, updates } = await req.json();
+    const { reportType, reportId, city, updates } = await req.json();
 
-    if (!reportType || !reportId) {
+    if (!reportType || !reportId || !city) {
       return NextResponse.json(
-        { error: "Missing reportType or reportId" },
+        { error: "Missing reportType, reportId, or city" },
         { status: 400 }
       );
     }
 
-    const path = `Reports/${reportType}/${reportId}`;
+    // New path structure: /Reports/ActiveReports/{city}/{reportType}/{reportId}
+    const path = `Reports/ActiveReports/${city}/${reportType}/${reportId}`;
     const nodeRef = db.ref(path);
 
     const snapshot = await nodeRef.once("value");
@@ -71,16 +94,17 @@ export async function PATCH(req: NextRequest) {
 // DELETE - Soft delete or hard delete a report
 export async function DELETE(req: NextRequest) {
   try {
-    const { reportType, reportId, deletedBy, hardDelete = false } = await req.json();
+    const { reportType, reportId, city, deletedBy, hardDelete = false } = await req.json();
 
-    if (!reportType || !reportId) {
+    if (!reportType || !reportId || !city) {
       return NextResponse.json(
-        { error: "Missing reportType or reportId" },
+        { error: "Missing reportType, reportId, or city" },
         { status: 400 }
       );
     }
 
-    const path = `Reports/${reportType}/${reportId}`;
+    // New path structure: /Reports/ActiveReports/{city}/{reportType}/{reportId}
+    const path = `Reports/ActiveReports/${city}/${reportType}/${reportId}`;
     const nodeRef = db.ref(path);
 
     const snapshot = await nodeRef.once("value");
@@ -116,7 +140,7 @@ export async function DELETE(req: NextRequest) {
 // POST - Add comment to report
 export async function POST(req: NextRequest) {
   try {
-    const { action, reportType, reportId, userEmail, commentText } = await req.json();
+    const { action, reportType, reportId, city, userEmail, commentText } = await req.json();
 
     if (action !== "addComment") {
       return NextResponse.json(
@@ -125,9 +149,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!reportType || !reportId) {
+    if (!reportType || !reportId || !city) {
       return NextResponse.json(
-        { error: "Missing reportType or reportId" },
+        { error: "Missing reportType, reportId, or city" },
         { status: 400 }
       );
     }
@@ -160,7 +184,8 @@ export async function POST(req: NextRequest) {
       console.warn("Could not fetch user authority:", err);
     }
 
-    const path = `Reports/${reportType}/${reportId}`;
+    // New path structure: /Reports/ActiveReports/{city}/{reportType}/{reportId}
+    const path = `Reports/ActiveReports/${city}/${reportType}/${reportId}`;
     const nodeRef = db.ref(path);
 
     const snapshot = await nodeRef.once("value");

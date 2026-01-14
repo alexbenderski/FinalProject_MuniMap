@@ -58,8 +58,11 @@ export async function fetchReports() {
 
 /**
  * Delete a report (soft delete) via server API
+ * @param reportType - The category/type of the report
+ * @param reportId - The unique ID of the report
+ * @param city - The city where the report belongs
  */
-export async function deleteReport(reportType: string, reportId: string) {
+export async function deleteReport(reportType: string, reportId: string, city: string) {
   const { email } = getCurrentUserInfo();
   const response = await fetch("/api/reports", {
     method: "DELETE",
@@ -67,6 +70,7 @@ export async function deleteReport(reportType: string, reportId: string) {
     body: JSON.stringify({
       reportType,
       reportId,
+      city,
       deletedBy: email || "unknown",
       hardDelete: false
     })
@@ -77,14 +81,19 @@ export async function deleteReport(reportType: string, reportId: string) {
 
 /**
  * Update a report via server API
+ * @param reportType - The category/type of the report
+ * @param reportId - The unique ID of the report
+ * @param city - The city where the report belongs
+ * @param partial - The partial updates to apply
  */
 export async function updateReportInDB(
   reportType: string,
   reportId: string,
+  city: string,
   partial: Partial<Report>
 ) {
-  if (!reportType || !reportId) {
-    throw new Error(`updateReportInDB: missing identifiers. type='${reportType}', id='${reportId}'`);
+  if (!reportType || !reportId || !city) {
+    throw new Error(`updateReportInDB: missing identifiers. type='${reportType}', id='${reportId}', city='${city}'`);
   }
 
   const response = await fetch("/api/reports", {
@@ -93,6 +102,7 @@ export async function updateReportInDB(
     body: JSON.stringify({
       reportType,
       reportId,
+      city,
       updates: partial
     })
   });
@@ -102,16 +112,21 @@ export async function updateReportInDB(
     throw new Error(error.error || "Failed to update report");
   }
 
-  console.log("[updateReportInDB] Updated:", reportType, reportId, partial);
+  console.log("[updateReportInDB] Updated:", reportType, reportId, city, partial);
   return true;
 }
 
 /**
  * Soft delete a report via server API
+ * @param reportType - The category/type of the report
+ * @param reportId - The unique ID of the report
+ * @param city - The city where the report belongs
+ * @param deletedBy - Email of user performing the deletion
  */
 export async function softDeleteReportInDB(
   reportType: string,
   reportId: string,
+  city: string,
   deletedBy: string
 ) {
   const response = await fetch("/api/reports", {
@@ -120,6 +135,7 @@ export async function softDeleteReportInDB(
     body: JSON.stringify({
       reportType,
       reportId,
+      city,
       deletedBy,
       hardDelete: false
     })
@@ -136,14 +152,18 @@ export async function softDeleteReportInDB(
 
 /**
  * Hard delete a report via server API
+ * @param reportType - The category/type of the report
+ * @param reportId - The unique ID of the report
+ * @param city - The city where the report belongs
  */
-export async function hardDeleteReportInDB(reportType: string, reportId: string) {
+export async function hardDeleteReportInDB(reportType: string, reportId: string, city: string) {
   const response = await fetch("/api/reports", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       reportType,
       reportId,
+      city,
       hardDelete: true
     })
   });
@@ -191,11 +211,16 @@ export async function markAnomalyAsReviewed(anomaly: Anomaly) {
     throw new Error("Anomaly missing firebaseKey");
   }
 
+  if (!anomaly.area) {
+    throw new Error("Anomaly missing area (city)");
+  }
+
   const response = await fetch("/api/anomalies", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       firebaseKey: anomaly.firebaseKey,
+      city: anomaly.area,
       userEmail: email,
       alreadyReviewed,
       existingTimestamp
@@ -224,6 +249,10 @@ export async function addAnomalyComment(anomaly: Anomaly, commentText: string) {
     throw new Error("Anomaly missing firebaseKey");
   }
 
+  if (!anomaly.area) {
+    throw new Error("Anomaly missing area (city)");
+  }
+
   if (!commentText.trim()) {
     throw new Error("Comment text cannot be empty");
   }
@@ -233,6 +262,7 @@ export async function addAnomalyComment(anomaly: Anomaly, commentText: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       firebaseKey: anomaly.firebaseKey,
+      city: anomaly.area,
       userEmail: email,
       commentText: commentText.trim()
     })
@@ -248,16 +278,20 @@ export async function addAnomalyComment(anomaly: Anomaly, commentText: string) {
 
 /**
  * Add comment to report via server API
+ * @param reportType - The category/type of the report
+ * @param reportId - The unique ID of the report  
+ * @param city - The city where the report belongs
+ * @param commentText - The comment text to add
  */
-export async function addReportComment(reportType: string, reportId: string, commentText: string) {
+export async function addReportComment(reportType: string, reportId: string, city: string, commentText: string) {
   const { email } = getCurrentUserInfo();
   
   if (!email) {
     throw new Error("User not authenticated");
   }
 
-  if (!reportType || !reportId) {
-    throw new Error("Report missing type or id");
+  if (!reportType || !reportId || !city) {
+    throw new Error("Report missing type, id, or city");
   }
 
   if (!commentText.trim()) {
@@ -271,6 +305,7 @@ export async function addReportComment(reportType: string, reportId: string, com
       action: "addComment",
       reportType,
       reportId,
+      city,
       userEmail: email,
       commentText: commentText.trim()
     })
@@ -392,7 +427,7 @@ export function getRangeBounds(
  * Fetch graph data via server API
  */
 export async function fetchGraphData(
-  category: "garbage" | "lighting" | "tree" | "hazard",
+  category: "garbage" | "lighting" | "tree" | "hazard" | "animal" | "maintenance" | "pest",
   timeRange: TimeRange,
   topic: GraphTopic,
   fromDate?: string,
@@ -448,6 +483,7 @@ export async function fetchDetailedStatistics(
 
 /**
  * Subscribe to real-time anomalies updates (READ-ONLY)
+ * New path structure: /Anomalies/Active/{city}/{anomalyId}
  * @param callback Function to call when anomalies change
  * @returns Unsubscribe function
  */
@@ -455,7 +491,7 @@ export function subscribeToAnomalies(
   callback: (anomalies: Anomaly[]) => void
 ): () => void {
   const db = getDatabase(app);
-  const anomaliesRef = ref(db, "Anomalies/ActiveAnomalies");
+  const anomaliesRef = ref(db, "Anomalies/Active");
 
   const unsubscribe = onValue(anomaliesRef, (snapshot) => {
     if (!snapshot.exists()) {
@@ -463,13 +499,20 @@ export function subscribeToAnomalies(
       return;
     }
 
-    const data = snapshot.val();
-    const anomaliesArray: Anomaly[] = Object.entries(data).map(
-      ([firebaseKey, anomaly]) => ({
-        ...(anomaly as Anomaly),
-        firebaseKey,
-      })
-    );
+    const citiesData = snapshot.val();
+    const anomaliesArray: Anomaly[] = [];
+
+    // Iterate through cities and collect all anomalies
+    Object.values(citiesData).forEach((cityAnomalies: unknown) => {
+      if (cityAnomalies && typeof cityAnomalies === 'object') {
+        Object.entries(cityAnomalies).forEach(([firebaseKey, anomaly]) => {
+          anomaliesArray.push({
+            ...(anomaly as Anomaly),
+            firebaseKey,
+          });
+        });
+      }
+    });
 
     callback(anomaliesArray);
   });
@@ -479,6 +522,7 @@ export function subscribeToAnomalies(
 
 /**
  * Subscribe to real-time reports updates (READ-ONLY)
+ * New path structure: /Reports/ActiveReports/{city}/{type}/{id}
  * @param callback Function to call when reports change
  * @returns Unsubscribe function
  */
@@ -486,7 +530,7 @@ export function subscribeToReports(
   callback: (reports: Record<string, Record<string, Omit<Report, "type" | "id">>>) => void
 ): () => void {
   const db = getDatabase(app);
-  const reportsRef = ref(db, "Reports");
+  const reportsRef = ref(db, "Reports/ActiveReports");
 
   const unsubscribe = onValue(reportsRef, (snapshot) => {
     if (!snapshot.exists()) {
@@ -494,20 +538,32 @@ export function subscribeToReports(
       return;
     }
 
-    const data = snapshot.val();
+    const rawData = snapshot.val();
+    // Structure: {city: {type: {id: report}}}
+    
+    // Flatten to old format: {type: {id: report}} (for backward compatibility with MapCanvas)
+    const flatData: Record<string, Record<string, Omit<Report, "type" | "id">>> = {};
 
-    // Filter out deleted reports
-    Object.keys(data).forEach((type) => {
-      const filteredGroup = Object.fromEntries(
-        Object.entries(data[type]).filter(([, r]) => {
-          const report = r as unknown as Report;
-          return !report.deleted;
-        })
-      );
-      data[type] = filteredGroup;
+    Object.values(rawData).forEach((cityData: unknown) => {
+      if (!cityData || typeof cityData !== 'object') return;
+      
+      Object.entries(cityData).forEach(([type, reportsGroup]) => {
+        if (!reportsGroup || typeof reportsGroup !== 'object') return;
+        
+        if (!flatData[type]) {
+          flatData[type] = {};
+        }
+        
+        // Merge reports from all cities under same type
+        Object.entries(reportsGroup as Record<string, unknown>).forEach(([id, report]) => {
+          const reportData = report as Partial<Report>;
+          if (reportData.deleted) return;
+          flatData[type][id] = report as Omit<Report, "type" | "id">;
+        });
+      });
     });
 
-    callback(data);
+    callback(flatData);
   });
 
   return () => unsubscribe();
