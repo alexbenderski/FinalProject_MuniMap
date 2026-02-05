@@ -98,5 +98,5 @@ User Guide and Maintenance Guide are included in the report.
 ## Deploy
 Built for Vercel deployment.
 
-##License
+## License
 Academic project (Braude College). No commercial license.
