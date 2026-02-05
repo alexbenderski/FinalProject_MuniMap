@@ -7,8 +7,8 @@ import type { User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/client/firestore";
 
-// ⏱️ Inactivity timeout: 5 minutes (in milliseconds)
-const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 1 minutes
+// ⏱️ Inactivity timeout: 3 hours (in milliseconds)
+const INACTIVITY_TIMEOUT_MS = 3 * 60 * 60 * 1000; // 3 hours
 
 type Permissions = {
   //district: string;
@@ -45,7 +45,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     if (isLoggingOutRef.current) return;
     isLoggingOutRef.current = true;
     
-    console.log("⏱️ Session expired due to inactivity (5 minutes)");
+    console.log("⏱️ Session expired due to inactivity (3 hours)");
     
     try {
       await logOut();
@@ -79,51 +79,51 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     }
   }, [user, handleInactivityLogout]);
 
-  // 👁️ Monitor user activity
-  useEffect(() => {
-    if (!user) return;
+  // 👁️ Monitor user activity - DISABLED
+  // useEffect(() => {
+  //   if (!user) return;
 
-    // Events that indicate user activity
-    const activityEvents = [
-      'mousedown',
-      'mousemove',
-      'keydown',
-      'scroll',
-      'touchstart',
-      'click',
-      'wheel'
-    ];
+  //   // Events that indicate user activity
+  //   const activityEvents = [
+  //     'mousedown',
+  //     'mousemove',
+  //     'keydown',
+  //     'scroll',
+  //     'touchstart',
+  //     'click',
+  //     'wheel'
+  //   ];
 
-    // Throttle activity detection to avoid excessive timer resets
-    let lastActivity = Date.now();
-    const THROTTLE_MS = 1000; // Only reset timer once per second max
+  //   // Throttle activity detection to avoid excessive timer resets
+  //   let lastActivity = Date.now();
+  //   const THROTTLE_MS = 1000; // Only reset timer once per second max
 
-    const handleActivity = () => {
-      const now = Date.now();
-      if (now - lastActivity > THROTTLE_MS) {
-        lastActivity = now;
-        resetActivityTimer();
-      }
-    };
+  //   const handleActivity = () => {
+  //     const now = Date.now();
+  //     if (now - lastActivity > THROTTLE_MS) {
+  //       lastActivity = now;
+  //       resetActivityTimer();
+  //     }
+  //   };
 
-    // Add event listeners
-    activityEvents.forEach(event => {
-      document.addEventListener(event, handleActivity, { passive: true });
-    });
+  //   // Add event listeners
+  //   activityEvents.forEach(event => {
+  //     document.addEventListener(event, handleActivity, { passive: true });
+  //   });
 
-    // Start initial timer
-    resetActivityTimer();
+  //   // Start initial timer
+  //   resetActivityTimer();
 
-    // Cleanup
-    return () => {
-      activityEvents.forEach(event => {
-        document.removeEventListener(event, handleActivity);
-      });
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-      }
-    };
-  }, [user, resetActivityTimer]);
+  //   // Cleanup
+  //   return () => {
+  //     activityEvents.forEach(event => {
+  //       document.removeEventListener(event, handleActivity);
+  //     });
+  //     if (inactivityTimerRef.current) {
+  //       clearTimeout(inactivityTimerRef.current);
+  //     }
+  //   };
+  // }, [user, resetActivityTimer]);
 
   // 🔐 Firebase auth state observer
   useEffect(() => {
